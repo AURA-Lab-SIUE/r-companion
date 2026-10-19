@@ -2,7 +2,7 @@
 
 import { PackageSpec } from './profiles';
 
-/** The R script that installs the plan. CRAN mirror set, no source builds, a personal library when needed. */
+/** The R script that installs the plan. CRAN mirror set, binaries on Windows and macOS, a personal library when needed. */
 export function installScript(plan: PackageSpec[], mirror: string): string {
   const q = (s: string) => JSON.stringify(s);
   const cran = plan.filter((p) => p.source === 'cran').map((p) => q(p.name));
@@ -10,6 +10,10 @@ export function installScript(plan: PackageSpec[], mirror: string): string {
   const lines = [
     '# Written by AURA Lab R Companion: Install what is missing',
     `options(repos = c(CRAN = ${q(mirror)}), install.packages.compile.from.sources = "never")`,
+    '# Windows and macOS: CRAN\'s ready-built binaries only. R\'s default ("both") installs a package',
+    '# from source whenever the source is newer than the binary, even with the option above, which',
+    '# only stops packages that need compiling (seen on leith-hp 2026-10-19: datawizard, performance)',
+    'if (.Platform$pkgType != "source") options(pkgType = "binary")',
     '# Install into the first library R can write to, creating the personal library if needed',
     'lib <- .libPaths()[1]',
     'if (file.access(lib, 2) != 0) {',
@@ -21,6 +25,11 @@ export function installScript(plan: PackageSpec[], mirror: string): string {
   ];
   if (cran.length) {
     lines.push(`install.packages(c(${cran.join(', ')}), lib = lib)`);
+    lines.push(
+      '# A package CRAN has no binary for yet: allow its source only when it needs no compiling',
+      `still <- setdiff(c(${cran.join(', ')}), rownames(installed.packages(lib.loc = lib)))`,
+      'if (length(still) && .Platform$pkgType != "source") install.packages(still, lib = lib, type = "both")',
+    );
   }
   if (gh.length) {
     lines.push('if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes", lib = lib)');

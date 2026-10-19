@@ -201,6 +201,11 @@ test('install script sets the mirror, never builds from source, uses force for G
   assert.ok(script.includes('install.packages(c("effectsize"), lib = lib)'));
   assert.ok(script.includes('remotes::install_github("AURA-Lab-SIUE/v2v-r", upgrade = "never", force = TRUE, lib = lib)'));
   assert.ok(script.includes('R_LIBS_USER'));
+  // Binaries only on Windows and macOS: without this, a pure-R package whose source is newer than
+  // CRAN's binary installs from source (toggled on R 4.5.1, 2026-10-19: datawizard 1.4.1 source vs 1.4.0 binary)
+  assert.ok(script.includes('if (.Platform$pkgType != "source") options(pkgType = "binary")'));
+  assert.ok(script.indexOf('options(pkgType = "binary")') < script.indexOf('install.packages(c("effectsize")'));
+  assert.ok(script.includes('install.packages(still, lib = lib, type = "both")'), 'source fallback only for packages with no binary');
 });
 
 test('mergeRecommendations keeps the student file and never overwrites a commented one', () => {
