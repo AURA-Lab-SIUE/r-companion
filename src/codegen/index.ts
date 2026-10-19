@@ -8,8 +8,10 @@ import { GenParams, GenOptions, GenProfile, Release, Template, DEFAULT_OPTIONS, 
 import { MC427_R2, V2V_R2, V2V_PLAIN_R2 } from './r2';
 import { MC427_R3, V2V_R3 } from './r3';
 import { MC427_R4, V2V_R4, MC451_R4, MC501_R4, V2V_PLAIN_R4 } from './r4';
+import { MC427_APA, V2V_APA } from './apa';
 
 export { GenParams, GenOptions, GenProfile, Release } from './types';
+export { APA_TESTS, ApaTest, apaTask } from './apa';
 
 /** What release a task belongs to, for the quick-pick menus and the "behind a setting" gate. */
 export const TASK_RELEASE: Record<string, Release> = {
@@ -24,6 +26,8 @@ export const TASK_RELEASE: Record<string, Release> = {
   // R4 Test
   't-test': 'R4', 't-test-missing': 'R4', 'chi-square': 'R4', anova: 'R4',
   regression: 'R4', correlation: 'R4', 'settings-block': 'R4',
+  // R4 APA numbers to check the student's sentence (0.4.0; owner decision U4)
+  'apa-t-test': 'R4', 'apa-chi-square': 'R4', 'apa-anova': 'R4', 'apa-regression': 'R4', 'apa-correlation': 'R4',
 };
 
 const V2V_R2_R3: Record<string, Template> = { ...V2V_R2, ...V2V_R3 };
@@ -35,15 +39,15 @@ const V2V_R2_R3: Record<string, Template> = { ...V2V_R2, ...V2V_R3 };
 function resolve(profile: GenProfile, task: string): Template | undefined {
   switch (profile) {
     case 'mc427':
-      return MC427_R2[task] ?? MC427_R3[task] ?? MC427_R4[task];
+      return MC427_R2[task] ?? MC427_R3[task] ?? MC427_R4[task] ?? MC427_APA[task];
     case 'v2v-plain':
       return V2V_PLAIN_R2[task] ?? V2V_PLAIN_R4[task];
     case 'mc451':
       if (PER_PROFILE_R4.has(task)) return MC451_R4[task];
-      return V2V_R2_R3[task] ?? V2V_R4[task];
+      return V2V_R2_R3[task] ?? V2V_R4[task] ?? V2V_APA[task];
     case 'mc501':
       if (PER_PROFILE_R4.has(task)) return MC501_R4[task];
-      return V2V_R2_R3[task] ?? V2V_R4[task];
+      return V2V_R2_R3[task] ?? V2V_R4[task] ?? V2V_APA[task];
   }
 }
 

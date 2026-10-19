@@ -285,8 +285,7 @@ async function run() {
     const r10 = runR(ws, t10, 'tweets');
     log('10 R: rows and columns', r10.match(/(Rows|Columns): [\d,]+/g));
 
-    // 11. Preview releases on, R3 Describe > Frequency table (the eighth MC 427 item)
-    await vscode.workspace.getConfiguration('auraR').update('previewReleases', true, vscode.ConfigurationTarget.Global);
+    // 11. R3 Describe > Frequency table (the eighth MC 427 item; every release is on from 0.4.0)
     await editor.edit((b) => b.insert(new vscode.Position(editor.document.lineCount, 0), '\n'));
     end();
     const w11 = vscode.commands.executeCommand('auraR.writeCode');
@@ -301,7 +300,6 @@ async function run() {
     const r11 = runR(ws, t11, 'freq');
     log('11 R: percent column', /percent/.test(r11.split('Frequency table').pop() || ''));
     log('11 R: errors', r11.split('\n').filter((l) => /^Error/.test(l)));
-    await vscode.workspace.getConfiguration('auraR').update('previewReleases', undefined, vscode.ConfigurationTarget.Global);
 
     // 12. A .qmd file, cursor below plain text: the block is wrapped in an R chunk
     const notes = path.join(ws, 'notes.qmd');

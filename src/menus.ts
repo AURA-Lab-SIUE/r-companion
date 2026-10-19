@@ -9,9 +9,10 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CourseId } from './profiles';
-import { generate, hasTask, GenProfile, GenParams, GenOptions, TASK_RELEASE, Release } from './codegen';
+import { generate, hasTask, GenProfile, GenParams, GenOptions, APA_TESTS, ApaTest, apaTask } from './codegen';
+import { TEST_LABEL } from './testChoice';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint } from './columnProbe';
-import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
+import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES } from './tables';
 
@@ -31,8 +32,10 @@ export interface MenuDeps {
   resourcePath: (name: string) => string;
   /** The extension's global storage dir (for the generated CSV and probe temp files). */
   storageDir: string;
-  /** auraR.previewReleases: unlock R3 and R4 before their release dates. */
-  previewReleases: () => boolean;
+  /** auraR.apaCheck: offer the APA numbers block in the Test menu (owner decision U4). */
+  apaCheck: () => boolean;
+  /** auraR.mc427TestMenu: in MC 427 the Test menu is a cross-check on Copilot's code (U2). */
+  mc427TestMenu: () => 'cross-check' | 'writer';
   /** auraR.plainCalls: the plain calls instead of the v2v wrappers (q-20261018-0044 = A). */
   plainCalls: () => boolean;
 }
@@ -79,15 +82,27 @@ const CATALOG: TaskDef[] = [
   { task: 'anova', label: 'One-way ANOVA with eta squared', category: 'R4 Test' },
   { task: 'regression', label: 'Linear regression', category: 'R4 Test' },
   { task: 'correlation', label: 'Correlation', category: 'R4 Test' },
+  { task: 'check-test-choice', label: 'Check my test choice', category: 'R4 Test' },
+  { task: 'apa-check', label: 'APA numbers to check your sentence', category: 'R4 Test' },
 ];
+
+
+// The R4 tasks MC 427 offers as a check on Copilot's code under U2 ("cross-check")
+const R4_TEST_TASKS = new Set(['t-test', 't-test-missing', 'chi-square', 'anova', 'regression', 'correlation', 'apa-check']);
 
 function profileOf(course: CourseId): GenProfile {
   return course;
 }
 
-function releaseEnabled(task: string, preview: boolean): boolean {
-  const rel: Release = TASK_RELEASE[task];
-  return rel === 'R2' || preview;
+function offers(profile: GenProfile, task: string, apaCheck: boolean): boolean {
+  if (task === 'check-test-choice') return true;
+  if (task === 'apa-check') return apaCheck && hasTask(profile, apaTask('t-test'));
+  return hasTask(profile, task);
+}
+
+/** The Write R code items a course offers, in menu order (the integration suites pick by index). */
+export function menuTasks(profile: GenProfile, apaCheck: boolean): string[] {
+  return CATALOG.filter((t) => offers(profile, t.task, apaCheck)).map((t) => t.task);
 }
 
 export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps): void {
@@ -103,28 +118,36 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
   const course = deps.currentCourse() ?? (await deps.pickCourse(false));
   if (!course) return;
   const profile = profileOf(course);
-  const preview = deps.previewReleases();
+  const crossCheck = course === 'mc427' && deps.mc427TestMenu() === 'cross-check';
 
-  const offered = CATALOG.filter((t) => hasTask(profile, t.task) && releaseEnabled(t.task, preview));
+  const offered = CATALOG.filter((t) => offers(profile, t.task, deps.apaCheck()));
   const picks: (vscode.QuickPickItem & { def?: TaskDef })[] = [];
   let category = '';
   for (const t of offered) {
     if (t.category !== category) {
       category = t.category;
-      picks.push({ label: category, kind: vscode.QuickPickItemKind.Separator });
+      const label = crossCheck && category === 'R4 Test' ? "R4 Test: a check on Copilot's code" : category;
+      picks.push({ label, kind: vscode.QuickPickItemKind.Separator });
     }
     picks.push({ label: t.label, description: t.alternative ? 'alternative' : undefined, def: t });
   }
   const chosen = await vscode.window.showQuickPick(picks, {
     title: `Write R code (${course.toUpperCase()})`,
-    placeHolder: preview ? 'Pick a task' : 'Pick a task. R3 and R4 unlock near their release dates.',
+    placeHolder: 'Pick a task',
     matchOnDescription: true,
   });
   const def = chosen?.def;
   if (!def) return;
 
-  // The reliability task opens the grid webview instead of writing a block directly.
+  // These open a webview, a command, or a second pick instead of writing one block directly
   if (def.task === 'reliability') return vscode.commands.executeCommand('auraR.openReliabilityGrid');
+  if (def.task === 'check-test-choice') return vscode.commands.executeCommand('auraR.checkTestChoice');
+  let task = def.task;
+  if (task === 'apa-check') {
+    const test = await pickApaTest(profile);
+    if (!test) return;
+    task = apaTask(test);
+  }
 
   const params: GenParams = {};
   if (course !== 'mc427' && TABLE_TASKS.has(def.task)) {
@@ -143,8 +166,24 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
   }
 
   const opts: GenOptions = { plainCalls: deps.plainCalls() };
-  const code = generate(profile, def.task, params, opts);
-  await insertAndMaybeRun(deps, code, def.label, def.task);
+  const code = generate(profile, task, params, opts);
+  // U2 (coordinator default, auraR.mc427TestMenu): in MC 427 Module 5, Copilot writes the graded
+  // analysis and the Test menu checks it. Shown with the Run prompt, not after it, so it appears
+  // even when the student never answers that prompt.
+  const note = crossCheck && R4_TEST_TASKS.has(def.task)
+    ? 'Module 5: Copilot writes your analysis code. Use this block to check it, and log any difference as a Copilot error you caught.'
+    : undefined;
+  await insertAndMaybeRun(deps, code, def.label, task, note);
+}
+
+/** Which test the APA numbers block is for. */
+async function pickApaTest(profile: GenProfile): Promise<ApaTest | undefined> {
+  const items = APA_TESTS.filter((t) => hasTask(profile, apaTask(t))).map((t) => ({ label: TEST_LABEL[t], test: t }));
+  const chosen = await vscode.window.showQuickPick(items, {
+    title: 'APA numbers to check your sentence',
+    placeHolder: 'Which test did you run? The block prints its numbers in APA form; the sentence stays yours.',
+  });
+  return chosen?.test;
 }
 
 // The tables a menu block made when the student ran it in this window (MAKES in tables.ts)
@@ -286,8 +325,11 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
   return probe;
 }
 
+// The chart tasks: each writes alt text, and gets a fig-alt chunk option in Quarto
+const CHART_TASKS = new Set(['bar', 'histogram', 'boxplot']);
+
 // Insert the generated code at the cursor, then offer to run it.
-async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string): Promise<void> {
+async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     const doc = await vscode.workspace.openTextDocument({ language: 'r', content: code });
@@ -296,11 +338,19 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
     const doc = editor.document;
     const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
     const linesAbove = doc.getText(new vscode.Range(0, 0, editor.selection.active.line, editor.selection.active.character)).split(/\r?\n/);
-    const plan = prepareInsert(code, quarto, quarto ? isInsideRChunk(linesAbove) : true);
+    const chart = CHART_TASKS.has(task ?? '');
+    const plan = prepareInsert(code, quarto, quarto ? isInsideRChunk(linesAbove) : true, chart ? [FIG_ALT_OPTION] : []);
     await editor.edit((b) => b.insert(editor.selection.active, plan.text));
     if (plan.wrappedInChunk) deps.output.appendLine('Wrapped the code in a new ```{r} chunk.');
+    // Inside a chunk the student already has, the option cannot go in for them: options sit at its top
+    if (chart && quarto && !plan.wrappedInChunk) {
+      void vscode.window.showInformationMessage(
+        'Quarto reads alt text from a #| fig-alt: line at the top of the chunk, not from labs(). Add one with the same sentence.',
+      );
+    }
   }
   deps.output.appendLine(`Inserted: ${label}.`);
+  if (note) void vscode.window.showInformationMessage(note);
   const run = await vscode.window.showInformationMessage(`Inserted the ${label} code. Run it now?`, 'Run it');
   if (run) {
     const runIt = async () => {

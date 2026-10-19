@@ -1,8 +1,8 @@
 {
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
-  "description": "Gets students to a working R setup in VS Code: finds R, checks the packages each course needs, installs what is missing, and explains the errors students meet most often.",
-  "version": "0.3.1",
+  "description": "Gets students to a working R setup in VS Code, then writes commented tidyverse code from menus: data and wrangling, a data viewer and coding sheet, reliability, descriptive statistics and charts, and the course's statistical tests.",
+  "version": "0.4.0",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
@@ -19,7 +19,7 @@
     "url": "https://github.com/AURA-Lab-SIUE/r-companion/issues"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Education",
@@ -119,6 +119,106 @@
         "command": "auraR.openDataViewer",
         "title": "Open the data viewer",
         "category": "AURA"
+      },
+      {
+        "command": "auraR.checkTestChoice",
+        "title": "Check my test choice",
+        "category": "AURA"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "aura_r_check_setup",
+        "displayName": "Check my R setup",
+        "toolReferenceName": "auraCheckSetup",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Checks R and the packages the student's course needs. Changes no files and installs nothing.",
+        "modelDescription": "Checks whether R and the packages the student's course needs (MC 451 or MC 501) are installed and working, and returns the checklist (OK, MISSING, or CHECK per item). Read-only: it installs nothing and changes no files. Use it when a student's R code fails because a package or R itself may be missing, or when they ask whether their setup works. To install what is missing, tell the student to run the command AURA: Install what is missing.",
+        "tags": [
+          "r",
+          "aura-lab"
+        ],
+        "when": "auraR.copilotToolsOn",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "aura_r_explain_error",
+        "displayName": "Explain an R error",
+        "toolReferenceName": "auraExplainError",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Explains an R error message in plain English with the course's fix and help page. Changes no files.",
+        "modelDescription": "Looks up an R error or warning message in the course's table of the messages students meet most often and returns a plain-English explanation, the fix steps the course teaches, and the course help page. Read-only. Pass the exact text R printed. If nothing matches, say so and explain the message yourself.",
+        "tags": [
+          "r",
+          "aura-lab"
+        ],
+        "when": "auraR.copilotToolsOn",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "The error or warning text exactly as R printed it."
+            }
+          },
+          "required": [
+            "message"
+          ]
+        }
+      },
+      {
+        "name": "aura_r_check_test_choice",
+        "displayName": "Check my test choice",
+        "toolReferenceName": "auraCheckTestChoice",
+        "canBeReferencedInPrompt": true,
+        "userDescription": "Checks whether the statistical test a student chose fits their variables. It checks a choice; it does not choose.",
+        "modelDescription": "Checks a statistical test the STUDENT has already chosen against the kind of variables they described, using the course's rules (chi-square for two categorical variables, Welch t-test for a numeric outcome across two groups, one-way ANOVA for three or more groups, linear regression or correlation for two numeric variables). Returns whether the choice fits and why. Choosing the test is graded work: never call this without the student's own choice, and never tell the student which test to use beyond what this tool returns.",
+        "tags": [
+          "r",
+          "aura-lab"
+        ],
+        "when": "auraR.copilotToolsOn",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "categorical",
+                "numeric"
+              ],
+              "description": "The kind of variable the student is explaining or comparing (the outcome)."
+            },
+            "comparison": {
+              "type": "string",
+              "enum": [
+                "categorical-two-groups",
+                "categorical-three-plus-groups",
+                "numeric"
+              ],
+              "description": "The kind of variable the outcome is compared across or predicted from."
+            },
+            "chosenTest": {
+              "type": "string",
+              "enum": [
+                "chi-square",
+                "t-test",
+                "anova",
+                "regression",
+                "correlation"
+              ],
+              "description": "The test the student chose."
+            }
+          },
+          "required": [
+            "outcome",
+            "comparison",
+            "chosenTest"
+          ]
+        }
       }
     ],
     "configuration": {
@@ -167,10 +267,51 @@
           "default": "",
           "markdownDescription": "Only for copies installed from a `.vsix` file. The GitHub releases API address to check for a newer version, for example `https://api.github.com/repos/AURA-Lab-SIUE/r-companion/releases/latest`. Empty means no update check. Copies installed from the Marketplace or Open VSX are updated by VS Code itself and never use this."
         },
-        "auraR.previewReleases": {
+        "auraR.copilotTools": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "enumDescriptions": [
+            "On for MC 451 and MC 501, off for MC 427 (MC 427 does not let Copilot Agent mode run anything).",
+            "On in every course.",
+            "Off in every course."
+          ],
+          "default": "auto",
+          "markdownDescription": "The three tools GitHub Copilot Chat's agent mode can call: **Check my R setup**, **Explain an R error**, and **Check my test choice**. None of them changes a file or runs your analysis. `auto` turns them on for MC 451 and MC 501 and off for MC 427."
+        },
+        "auraR.testChoice": {
+          "type": "string",
+          "enum": [
+            "check",
+            "suggest"
+          ],
+          "enumDescriptions": [
+            "You pick the test; the companion says whether it fits your variables.",
+            "The companion names the test that fits your variables."
+          ],
+          "default": "check",
+          "markdownDescription": "How **Check my test choice** works. `check` (the default) asks for the test you chose and says whether it fits, because choosing the test is part of your grade. `suggest` names the test for you."
+        },
+        "auraR.apaCheck": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Show the **R3** (Describe and plots) and **R4** (Tests) menu tasks before their release dates. **R2** (Data, wrangling, and the reliability grid) is always on. Each release is published for students on its date; this only reveals the later menus early for testing."
+          "default": true,
+          "markdownDescription": "Offer **APA numbers to check your sentence** in the Test menu: a short R block that prints a test's numbers in APA form from your own run, so you can check the numbers in the sentence you wrote. It never writes the sentence's words or a plain-English interpretation."
+        },
+        "auraR.mc427TestMenu": {
+          "type": "string",
+          "enum": [
+            "cross-check",
+            "writer"
+          ],
+          "enumDescriptions": [
+            "Module 5: Copilot writes your analysis code; the Test menu is a check on it.",
+            "Module 5: the Test menu may write the analysis code."
+          ],
+          "default": "cross-check",
+          "markdownDescription": "MC 427 only. In Module 5, Copilot writes the code for your graded analyses and the **Test** menu is a cross-check: run both, and log a difference as a Copilot error you caught. `writer` drops that reminder."
         },
         "auraR.plainCalls": {
           "type": "boolean",
@@ -242,7 +383,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
-    "@types/vscode": "1.90.0",
+    "@types/vscode": "1.95.0",
     "@vscode/vsce": "^3.6.0",
     "ag-grid-community": "^36.2.0",
     "typescript": "^5.9.3"

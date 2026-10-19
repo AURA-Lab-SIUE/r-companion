@@ -78,6 +78,15 @@ body {
   background: var(--aura-btn-hover);
 }
 
+/* Dark themes: Dark Modern's button blue (#0078d4) under white text is 4.53:1, below the 5:1
+   house floor. A 15% darker shade of the theme's own color keeps its hue and clears it. */
+body.vscode-dark .aura-btn {
+  background: color-mix(in srgb, var(--aura-btn-bg) 85%, black);
+}
+body.vscode-dark .aura-btn:hover {
+  background: color-mix(in srgb, var(--aura-btn-hover) 85%, black);
+}
+
 .aura-btn:focus-visible {
   outline: 2px solid var(--aura-accent);
   outline-offset: 2px;
@@ -100,8 +109,10 @@ body {
   min-height: 320px;
 }
 
-/* Map AG Grid (quartz) onto the VS Code theme. */
-.ag-theme-quartz {
+/* Map AG Grid (quartz) onto the VS Code theme. Two classes, because AG Grid injects its own
+   .ag-theme-quartz defaults at runtime, after this file: with one class they won and the grid
+   stayed white in dark themes, which left the coding column dark on dark (0.4.0 run, 2026-10-19). */
+.ag-theme-quartz.aura-grid {
   --ag-background-color: var(--aura-bg);
   --ag-foreground-color: var(--aura-fg);
   --ag-header-background-color: var(--aura-header-bg);

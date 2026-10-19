@@ -14,11 +14,16 @@ export function isInsideRChunk(linesAbove: string[]): boolean {
   return false;
 }
 
-/** Wrap a block of R in a Quarto R chunk. */
-export function wrapChunk(code: string): string {
+/** Wrap a block of R in a Quarto R chunk, with any `#|` chunk options first. */
+export function wrapChunk(code: string, options: string[] = []): string {
   const body = code.replace(/\n+$/, '');
-  return '```{r}\n' + body + '\n```\n';
+  return '```{r}\n' + options.map((o) => o + '\n').join('') + body + '\n```\n';
 }
+
+// Quarto does not read ggplot2's labs(alt = ...): checked 2026-10-19 with Quarto 1.9.38 and knitr
+// 1.52, the rendered <img> had no alt attribute. So a chart in a Quarto document also gets a
+// fig-alt chunk option for the same sentence.
+export const FIG_ALT_OPTION = '#| fig-alt: "YOUR TURN: the same one sentence as alt in labs() below."';
 
 export interface InsertPlan {
   /** The text to insert at the cursor. */
@@ -31,10 +36,10 @@ export interface InsertPlan {
  * Decide what to insert. `isQuarto` is true for .qmd/.Rmd; `insideChunk` says whether the cursor
  * is already in an R chunk there. The inserted block always ends with a newline.
  */
-export function prepareInsert(code: string, isQuarto: boolean, insideChunk: boolean): InsertPlan {
+export function prepareInsert(code: string, isQuarto: boolean, insideChunk: boolean, chunkOptions: string[] = []): InsertPlan {
   const block = code.endsWith('\n') ? code : code + '\n';
   if (isQuarto && !insideChunk) {
-    return { text: '\n' + wrapChunk(block), wrappedInChunk: true };
+    return { text: '\n' + wrapChunk(block, chunkOptions), wrappedInChunk: true };
   }
   return { text: block, wrappedInChunk: false };
 }

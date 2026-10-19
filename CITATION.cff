@@ -9,7 +9,7 @@ authors:
     email: aleith@siue.edu
     orcid: "https://orcid.org/0000-0001-7330-2153"
     affiliation: "AURA Lab, Southern Illinois University Edwardsville"
-version: 0.1.0
+version: 0.4.0
 date-released: 2026-10-21
 license: MIT
 repository-code: "https://github.com/AURA-Lab-SIUE/r-companion"

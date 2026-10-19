@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (R2, R3, and R4 together: every menu on)
+
+- Every release is on by default. The `auraR.previewReleases` setting is gone: **AURA: Write R code** lists the R2 Data, R3 Describe, and R4 Test tasks for every course, and the reliability grid and the data viewer and coding sheet stay on.
+- **Check my test choice** (R4, also **AURA: Check my test choice**). The student says what kind of variables they have and which test they chose; the companion says whether that test fits and why. It checks the choice and does not make it, because choosing the test is graded. A mismatch says what the chosen test needs, without naming another test. The setting `auraR.testChoice` (`check` by default) can switch it to `suggest`.
+- **APA numbers to check your sentence** (R4). For a chi-square test, a Welch t-test, a one-way ANOVA, a regression, or a correlation, it writes a short R block that prints the test's numbers in APA form from the student's own data, for example `t(3768.7) = -4.94, p < .001, d = -0.13, 95% CI [-0.16, -0.09]`. It never writes the words of the sentence or a plain-English interpretation, which stay the student's graded work. The setting `auraR.apaCheck` (on by default) hides it.
+- **Copilot tools.** Three read-only tools GitHub Copilot Chat's agent mode can call: **Check my R setup**, **Explain an R error**, and **Check my test choice**. None changes a file, installs anything, or runs the student's analysis. The setting `auraR.copilotTools` (`auto` by default) turns them on for MC 451 and MC 501 and off for MC 427, whose course rules do not let Agent mode run anything. The companion works the same with Copilot off. Needs VS Code 1.95 or newer.
+- **MC 427 Test menu as a cross-check.** In MC 427 the R4 heading reads "a check on Copilot's code", and after a test block is inserted a notification says Copilot writes the Module 5 analysis code and a difference is logged as a Copilot error caught. The setting `auraR.mc427TestMenu` (`cross-check` by default) drops the reminder.
+- **Charts in Quarto get a `fig-alt` line.** Quarto does not read the alt text in `labs(alt = ...)`, so a bar chart, histogram, or boxplot written into a new Quarto chunk also gets a `#| fig-alt:` option for the same sentence. Inside an existing chunk, a notification says to add one.
+- `effectsize` is required in MC 451 and MC 501, as it is in MC 427: the plain tests the Test menu writes call it.
+- The data viewer follows dark themes. AG Grid's own defaults, injected after the extension's styles, kept the grid white in a dark theme, which left the coding column dark text on a dark tint. Buttons in both webviews use a slightly darker shade of the theme's button color in dark themes, so their text clears the 5:1 contrast floor (Dark Modern's own blue is 4.53:1).
+- **Insert rebuild code** puts the code inside an R chunk when the open file is a Quarto document; it used to land in the prose.
+- Verification: the 84 golden blocks byte-identical and Rscript-clean on v2v 0.3.3; the 15 APA blocks run through Rscript and match the numbers in the golden filled sentences; an R3 and R4 command-API suite in a real VS Code.
+
 ## 0.3.1
 
 - The data viewer and coding sheet of 0.3.0, built on 0.2.1: v2v 0.3.3 or newer for MC 451 and MC 501, and the Count, filter, and select fixes listed under 0.2.1.

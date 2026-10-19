@@ -106,8 +106,9 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
     minR: '4.2.0',
     packages: [
       ...V2V_PACKAGES,
-      // The plain t-test and chi-square the Test menu writes (owner q-20261018-0044 = A)
-      { name: 'effectsize', why: "Cohen's d and Cramer's V in the tests (Inferencing Data)", level: 'recommended', source: 'cran' },
+      // The plain t-test and chi-square the Test menu writes (owner q-20261018-0044 = A) call it,
+      // so it is required from 0.4.0 on
+      { name: 'effectsize', why: "Cohen's d and Cramer's V in the tests (Inferencing Data)", level: 'required', source: 'cran' },
     ],
     copilotInstructions: 'copilot-instructions-v2v.md',
     needsQuarto: true,
@@ -134,7 +135,8 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
     minR: '4.2.0',
     packages: [
       ...V2V_PACKAGES,
-      { name: 'effectsize', why: 'confidence intervals on effect sizes (Inferencing Data)', level: 'recommended', source: 'cran' },
+      // Required from 0.4.0 on: the plain tests the Test menu writes call it
+      { name: 'effectsize', why: 'confidence intervals on effect sizes (Inferencing Data)', level: 'required', source: 'cran' },
       // w05 and chapter06 (power analysis), w02 and chapter02 (renv)
       { name: 'pwr', why: 'power analysis for your sample size', level: 'recommended', source: 'cran' },
       { name: 'renv', why: 'records the package versions your project used', level: 'recommended', source: 'cran' },

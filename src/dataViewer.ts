@@ -15,6 +15,7 @@ import { loadCsvFile, loadRDataFrame, runRscriptSync } from './dataSource';
 import { CodeStore } from './codesStore';
 import { rebuildChunk } from './rebuild';
 import { webviewHtml, standaloneHtml } from './gridHtml';
+import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
 
 export interface ViewerDeps {
   /** Path to Rscript, or undefined when R was not found. */
@@ -366,7 +367,13 @@ class DataViewerPanel {
     });
     const editor = vscode.window.visibleTextEditors.find((e) => /\.(R|r|qmd|Rmd)$/.test(e.document.uri.fsPath));
     if (editor) {
-      await editor.edit((b) => b.insert(editor.selection.active, chunk));
+      // In a Quarto document the code goes in an R chunk, or it would be prose (seen in the 0.4.0
+      // command-API run, 2026-10-19): the cursor's own chunk, or a new one
+      const doc = editor.document;
+      const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
+      const above = doc.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)).split(/\r?\n/);
+      const plan = prepareInsert(chunk, quarto, quarto ? isInsideRChunk(above) : true);
+      await editor.edit((b) => b.insert(editor.selection.active, plan.text));
       await vscode.window.showTextDocument(editor.document, editor.viewColumn);
       vscode.window.showInformationMessage('Inserted the code that rebuilds your coded data.');
     } else {

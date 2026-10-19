@@ -155,6 +155,10 @@ ${csp}
     padding: 0.45rem 0.9rem;
   }
   button:hover { background: var(--vscode-button-hoverBackground); }
+  /* Dark themes: Dark Modern's button blue under white text is 4.53:1, below the 5:1 house
+     floor; a 15% darker shade of the theme's own color clears it */
+  body.vscode-dark button { background: color-mix(in srgb, var(--vscode-button-background) 85%, black); }
+  body.vscode-dark button:hover { background: color-mix(in srgb, var(--vscode-button-hoverBackground) 85%, black); }
   :focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 2px; }
   table { border-collapse: collapse; width: auto; margin-top: 0.5rem; }
   caption { text-align: left; font-weight: 600; margin-bottom: 0.4rem; }

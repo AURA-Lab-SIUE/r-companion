@@ -2,7 +2,7 @@
 
 A Visual Studio Code extension that gets students new to R to a working setup, built for the R courses taught at Southern Illinois University Edwardsville: MC 427 Social Media Analytics, MC 451 Research Methods, and MC 501 Research Methods (graduate).
 
-R stays visible. The extension finds R, checks what your course needs, installs what is missing, and explains the messages students meet most often. A student whose setup already works does not have to change anything.
+R stays visible. The extension finds R, checks what your course needs, installs what is missing, and explains the messages students meet most often. Its menus then write commented tidyverse code into your own script for the tasks the courses teach, from importing data to the statistical tests, and a data viewer and coding sheet lets you code data in a familiar grid. A student whose setup already works does not have to change anything.
 
 ## Part of From Vibes to Variables
 
@@ -12,7 +12,7 @@ R stays visible. The extension finds R, checks what your course needs, installs 
 - [Course hub](https://aura-lab.siue.edu/v2v-hub/) ([source](https://github.com/AURA-Lab-SIUE/v2v-hub)): the course website for MC 451 and MC 501 that sequences the textbook, the labs, and the setup guides.
 - [v2v R package](https://github.com/AURA-Lab-SIUE/v2v-r): the companion package with the Twitch practice corpus and the helpers the textbook introduces chapter by chapter.
 - [Course workspace](https://github.com/AURA-Lab-SIUE/v2v-workspace): the VS Code template students copy for journals, reading notes, and project work.
-- [R Companion](https://github.com/AURA-Lab-SIUE/r-companion) (this repository): the VS Code extension that checks each student's R setup, installs what is missing, and explains common R errors.
+- [R Companion](https://github.com/AURA-Lab-SIUE/r-companion) (this repository): the VS Code extension that checks each student's R setup, installs what is missing, explains common R errors, and writes the course's R code from menus.
 
 A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-codespace), gives MC 427 Social Media Analytics the same VS Code and R toolchain in a GitHub Codespace; the R Companion serves MC 427 as well, and the v2v package is not used there.
 
@@ -29,7 +29,6 @@ A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-cod
 
 - **AURA: Write R code.** A short list of tasks (import a CSV or the course Twitch corpus, filter, select, mutate, count, clean dates, join chat to streams, label channels, save as CSV or RDS). Each task writes a commented tidyverse block into your `.R` file or `.qmd` chunk at the cursor, the same code the course pages show, then offers to run it. MC 427 gets plain tidyverse; MC 451 and MC 501 get the `v2v` helpers their decks use. The comment header stays with the code, so you can explain every line.
 - **AURA: Reliability grid** (MC 451 and MC 501). Enter your two coding passes item by item: Pass 1 is hidden while you enter Pass 2, and the date of each pass is recorded. It saves the items as `data/reliability-pilot.csv` and writes the R that reads them: Cohen's kappa and Krippendorff's alpha with `irr::kappa2()` and `irr::kripp.alpha()`, followed by the `v2v` `reliability()` call as a check that prints the same kappa.
-- The Describe, plots, and Tests tasks arrive with later releases.
 
 ## What it does (release 0.3, "the data viewer and coding sheet")
 
@@ -37,6 +36,15 @@ A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-cod
 - **Coding sheet.** Add your own coding columns (a dropdown of allowed values you type or paste from your codebook, or free text) and enter a value per row from the keyboard: type, then Enter to move down. Work saves by itself, and Ctrl+Z (Cmd+Z on a Mac) undoes. Codes are kept in a separate long file, `data/derived/<name>-codes.csv`, with one row per coded cell (row_id, column, value, coded_at). Your original data file is never written. The viewer adds a `row_id` column only when the data has none.
 - **Insert rebuild code.** Writes a commented tidyverse chunk that rebuilds the coded data from the original file plus your codes (read_csv, pivot_wider, left_join by row_id), so the result is reproducible and the original stays untouched.
 - **Refresh** re-reads the data file. **Export HTML for accessibility check** writes a self-contained copy of the grid.
+
+## What it does (release 0.4, "R3 Describe and R4 Tests", every menu on)
+
+- **Describe** tasks in **AURA: Write R code**: a frequency table with percents, a crosstab with proportions, a summary by group, and a bar chart, histogram, or boxplot. Each chart's code carries `alt = "YOUR TURN: ..."` in `labs()` for the alt text you write, and in a Quarto document the chunk also gets a `#| fig-alt:` line, because Quarto reads alt text only from there.
+- **Test** tasks: the settings block that names the variables, a Welch t-test with Cohen's d, a chi-square test with Cramer's V, a one-way ANOVA with eta squared, a linear regression, and a correlation, each written the way your course's rubric shows it.
+- **Check my test choice.** Say what kind of variables you have and which test you chose; the companion says whether it fits and why. It checks your choice and does not make it for you, because choosing the test is part of your grade.
+- **APA numbers to check your sentence.** Prints a test's numbers in APA form from your own data, for example `t(3768.7) = -4.94, p < .001, d = -0.13, 95% CI [-0.16, -0.09]`, so you can check the numbers in the sentence you wrote. It never writes the sentence's words or what the result means.
+- **Copilot tools** (MC 451 and MC 501). GitHub Copilot Chat's agent mode can call three read-only tools: **Check my R setup**, **Explain an R error**, and **Check my test choice**. None changes a file, installs anything, or runs your analysis. They are off in MC 427, whose course rules do not let Agent mode run anything. Everything else works the same with Copilot off.
+- **MC 427, Module 5.** Copilot writes the code for your graded analyses; the Test menu is a check on it. The menu's heading says so, and a difference between the two is logged as a Copilot error you caught.
 
 ## How it finds R
 
@@ -60,13 +68,16 @@ No telemetry. The only network traffic is the CRAN and GitHub downloads you star
 | `auraR.runWith` | `auto` | `auto`, `positron`, `vscode-r`, or `terminal`. |
 | `auraR.updates.releaseUrl` | empty | For `.vsix` installs only: the GitHub releases API address to check. |
 | `auraR.plainCalls` | on | MC 451 and MC 501: write the plain R calls (`t.test()`, `chisq.test()`, `effectsize`, `irr`) with the `v2v` wrapper last as a check. Off writes the wrappers alone. |
-| `auraR.previewReleases` | off | Shows the menu tasks of releases not yet published, for testing. |
+| `auraR.copilotTools` | `auto` | The three Copilot tools: `auto` is on for MC 451 and MC 501 and off for MC 427; `on` or `off` in every course. |
+| `auraR.testChoice` | `check` | **Check my test choice**: `check` asks for the test you chose and says whether it fits; `suggest` names the test. |
+| `auraR.apaCheck` | on | Offers **APA numbers to check your sentence** in the Test menu. |
+| `auraR.mc427TestMenu` | `cross-check` | MC 427: the Test menu is labeled a check on Copilot's code. `writer` drops that reminder. |
 
 ## Accessibility
 
 The setup features use only native VS Code interface: the Command Palette, quick picks, notifications, the Output panel, and the Get Started walkthrough. All of it is keyboard-operable and read by screen readers, and it follows your color theme, including high contrast.
 
-The data viewer is the one webview. It follows the WAI-ARIA grid pattern (role grid, rows, and cells, with row and column counts), is fully keyboard-operable (navigate, edit, Enter to move down, Ctrl+Z to undo), shows a visible focus ring, labels every control, takes its colors from your VS Code theme through the `--vscode-*` variables, and has a high-contrast rule. **Export HTML for accessibility check** writes a self-contained copy of the grid so it can be checked with axe.
+The reliability grid and the data viewer are the two webviews. Both take their colors from your VS Code theme, label every field, and are keyboard-operable. The data viewer follows the WAI-ARIA grid pattern (role grid, rows, and cells, with row and column counts), is fully keyboard-operable (navigate, edit, Enter to move down, Ctrl+Z to undo), shows a visible focus ring, labels every control, takes its colors from your VS Code theme through the `--vscode-*` variables, and has a high-contrast rule. **Export HTML for accessibility check** writes a self-contained copy of the grid so it can be checked with axe.
 
 ## Course pages
 
@@ -93,7 +104,9 @@ The extension is built so another course, or another campus, can adopt it by edi
 3. **Extend the error explainer** in `src/errors.ts`. Each entry is a regular expression matched against the pasted message, a plain-English "why," fix steps, a help link, and optionally the courses it applies to.
 4. **Generated install code** comes from `src/installScript.ts`, which writes the `install.packages()` script from the profile's package list (CRAN mirror set, binary-only installs on Windows and macOS, a personal library when the system one is not writable). A new profile usually needs no change here.
 5. **Copilot instructions** your course hands to students live in `resources/course-files/`; add a file there and name it in the profile's `copilotInstructions` field.
-6. **Build a VSIX** with `npm run package`. It runs the separation check and the unit tests, then writes `dist/r-companion-<version>.vsix`, which installs through VS Code's **Install from VSIX** command without any marketplace.
+6. **Change the code the menus write** in `src/codegen/`: `r2.ts` (data and wrangling), `r3.ts` (describe and charts), `r4.ts` (tests), and `apa.ts` (the APA numbers). Each task is a template that takes your data and column names; the menu list itself is the `CATALOG` in `src/menus.ts`. Your course's own example code makes the best test: put it in `golden/` and the unit tests check each template against it byte for byte.
+7. **Change the test-choice rules** in `src/testChoice.ts` if your course teaches other tests, and decide in the settings whether the Copilot tools are on for your course (`auraR.copilotTools`) and whether the test chooser checks or suggests (`auraR.testChoice`).
+8. **Build a VSIX** with `npm run package`. It runs the separation check and the unit tests, then writes `dist/r-companion-<version>.vsix`, which installs through VS Code's **Install from VSIX** command without any marketplace.
 
 If you publish an adapted build, change `name`, `displayName`, and `publisher` in `package.json` so it does not collide with this extension on the Visual Studio Marketplace or Open VSX.
 
@@ -101,4 +114,4 @@ If you publish an adapted build, change `name`, `displayName`, and `publisher` i
 
 MIT. See [LICENSE](LICENSE). To cite the extension, use [CITATION.cff](CITATION.cff):
 
-Leith, A. P. (2026). *AURA Lab R Companion* (Version 0.1.0) [Computer software]. AURA Lab, Southern Illinois University Edwardsville. https://github.com/AURA-Lab-SIUE/r-companion
+Leith, A. P. (2026). *AURA Lab R Companion* (Version 0.4.0) [Computer software]. AURA Lab, Southern Illinois University Edwardsville. https://github.com/AURA-Lab-SIUE/r-companion

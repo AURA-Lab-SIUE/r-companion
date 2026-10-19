@@ -1,9 +1,10 @@
-// AURA Lab R Companion, release R1 (Setup).
+// AURA Lab R Companion: R1 Setup through R4 Tests (0.4.0).
 //
-// Commands: Check my setup, Install what is missing, Pick my course, Open my course workspace,
+// R1 commands: Check my setup, Install what is missing, Pick my course, Open my course workspace,
 // Where to get help, Explain an R error, Run the course setup check script, Open an R terminal,
-// Check for updates. UI is native quick picks, the output channel, and the Get Started
-// walkthrough only: no webview in R1.
+// Check for updates, and the Get Started walkthrough. R2 to R4: Write R code (menus.ts), the
+// reliability grid, the data viewer and coding sheet (dataViewer.ts), Check my test choice, and
+// three read-only Copilot tools (copilotTools.ts).
 // Network: only the CRAN and GitHub downloads a student starts, and the optional GitHub release
 // check for .vsix installs. No telemetry.
 
@@ -33,6 +34,8 @@ import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus } from './menus';
 import { openDataViewer, ViewerDeps } from './dataViewer';
+import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
+import { checkTestChoice, fittingTests, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
 const WALKTHROUGH = `${EXT_ID}#getStarted`;
@@ -159,8 +162,23 @@ export function activate(context: vscode.ExtensionContext) {
     requireTrust,
     resourcePath,
     storageDir: context.globalStorageUri.fsPath,
-    previewReleases: () => setting<boolean>('previewReleases', false),
     plainCalls: () => setting<boolean>('plainCalls', true),
+    apaCheck: () => setting<boolean>('apaCheck', true),
+    mc427TestMenu: () => (setting<string>('mc427TestMenu', 'cross-check') === 'writer' ? 'writer' : 'cross-check'),
+  });
+  reg('auraR.checkTestChoice', (input?: TestChoiceInput) => checkTestChoiceCommand(input));
+  // R4 Copilot tools: read-only, on for MC 451 and MC 501, off for MC 427 by default (U3)
+  registerCopilotTools(context, {
+    setting: () => setting<CopilotToolsSetting>('copilotTools', 'auto'),
+    currentCourse,
+    checkSetup: async (course) => {
+      const r = await runCheck(course);
+      return {
+        course,
+        ok: r.failing.length === 0,
+        lines: r.items.map((i) => `[${STATUS_WORD[i.status]}] ${i.name}: ${i.detail}`),
+      };
+    },
   });
 
   // A course found in the folder or remembered is not a pick: "Pick your course" ticks only when the
@@ -792,6 +810,65 @@ async function addCourseFiles(opts?: SilentOpts): Promise<CourseFilesResult | un
 }
 
 // ---------- Updates and walkthrough ----------
+
+// ---------- Check my test choice (R4) ----------
+
+interface TestChoiceInput {
+  outcome?: OutcomeKind;
+  comparison?: ComparisonKind;
+  chosenTest?: TestId;
+}
+
+// Owner decision U4 (coordinator default, auraR.testChoice = "check"): the student names the test
+// they chose and the companion says whether it fits. "suggest" names the fitting test instead.
+// Arguments skip the picks (tests and support); the verdict is returned either way.
+async function checkTestChoiceCommand(input?: TestChoiceInput): Promise<{ fits?: boolean; fitting: TestId[]; reason: string } | undefined> {
+  const mode = setting<string>('testChoice', 'check') === 'suggest' ? 'suggest' : 'check';
+  const title = 'Check my test choice';
+  const outcome =
+    input?.outcome ??
+    (
+      await vscode.window.showQuickPick(
+        (['numeric', 'categorical'] as OutcomeKind[]).map((k) => ({ label: OUTCOME_LABEL[k], k })),
+        { title, placeHolder: 'Your outcome, the variable you are explaining or comparing, is' },
+      )
+    )?.k;
+  if (!outcome) return undefined;
+  const comparison =
+    input?.comparison ??
+    (
+      await vscode.window.showQuickPick(
+        (['categorical-two-groups', 'categorical-three-plus-groups', 'numeric'] as ComparisonKind[]).map((k) => ({ label: COMPARISON_LABEL[k], k })),
+        { title, placeHolder: 'You compare it across, or predict it from,' },
+      )
+    )?.k;
+  if (!comparison) return undefined;
+
+  if (mode === 'suggest' && !input?.chosenTest) {
+    const fitting = fittingTests(outcome, comparison);
+    const reason = fitting.length
+      ? `For these variables: ${fitting.map((t) => TEST_LABEL[t]).join(' or ')}.`
+      : "None of the course's tests fits these variables. Check which one is the outcome.";
+    if (!input) void vscode.window.showInformationMessage(reason);
+    return { fitting, reason };
+  }
+  const chosenTest =
+    input?.chosenTest ??
+    (
+      await vscode.window.showQuickPick(
+        (Object.keys(TEST_LABEL) as TestId[]).map((t) => ({ label: TEST_LABEL[t], t })),
+        { title, placeHolder: 'Which test did you choose?' },
+      )
+    )?.t;
+  if (!chosenTest) return undefined;
+  const verdict = checkTestChoice(outcome, comparison, chosenTest);
+  output.appendLine(`Check my test choice: ${TEST_LABEL[chosenTest]}: ${verdict.fits ? 'fits' : 'does not fit'}. ${verdict.reason}`);
+  if (!input) {
+    const show = verdict.fits ? vscode.window.showInformationMessage : vscode.window.showWarningMessage;
+    void show(`${verdict.fits ? 'Fits.' : 'Does not fit.'} ${verdict.reason}`);
+  }
+  return verdict;
+}
 
 async function checkForUpdatesCommand(automatic: boolean) {
   const source = installSource(ctx);
