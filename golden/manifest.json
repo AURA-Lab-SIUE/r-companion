@@ -1937,6 +1937,40 @@
       "sentence_template": null
     },
     {
+      "id": "mc451.line.after-r2",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc451",
+      "generated": true,
+      "role": "check",
+      "alternative_to": "mc451.line",
+      "file": "fixtures/v2v/r3-line.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-clean-dates.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.line.after-r2",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc501",
+      "generated": true,
+      "role": "check",
+      "alternative_to": "mc501.line",
+      "file": "fixtures/v2v/r3-line.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-clean-dates.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
       "id": "mc451.histogram-grouped",
       "release": "R3",
       "task": "histogram-grouped",

@@ -40,9 +40,10 @@ const generated = manifest.entries.filter((e) => e.generated);
 // 84 from workstream B, plus the four MC 451 and MC 501 plain-call test defaults (q-20261018-0044 = A),
 // plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19).
 // Phase 2 charts (#rgui, 2026-10-19) add 5: mc451/mc501 line, mc451/mc501 grouped histogram, mc501 power.
-test('the golden manifest has 95 entries, 89 generated', () => {
-  assert.equal(manifest.entries.length, 95);
-  assert.equal(generated.length, 89);
+// 0.5.1 adds 2 checks: the mc451/mc501 line chart run after the R2 clean_dates() step as well as fresh.
+test('the golden manifest has 97 entries, 91 generated', () => {
+  assert.equal(manifest.entries.length, 97);
+  assert.equal(generated.length, 91);
 });
 
 for (const e of generated) {
@@ -129,6 +130,9 @@ test('the line chart is a v2v (MC 451/MC 501) task only, in house style', () => 
     assert.ok(code.includes('alt = "YOUR TURN'), 'the YOUR TURN alt line');
     // one verb per line after each pipe
     for (const line of code.split('\n')) assert.ok((line.match(/%>%/g) || []).length <= 1, line);
+    // U7 = B: time comes from the clean_dates() helper as in decks s23 and w12, never as.POSIXct
+    assert.ok(code.includes('    ts = clean_dates(date),') && code.includes('six_hour = floor_date(ts, "6 hours")'), 'clean_dates ts');
+    assert.ok(!code.includes('as.POSIXct'), 'no hand as.POSIXct conversion');
   }
   assert.ok(!hasTask('mc427', 'line'), 'MC 427 does not offer the line chart');
 });

@@ -4,7 +4,7 @@
 // `?v2v::common_errors` wording for the symptom-only cases. See src/errors.ts for sources.
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { explain, ERROR_TABLE } from '../src/errors';
+import { explain, ERROR_TABLE, explanationMarkdown } from '../src/errors';
 import { CourseId } from '../src/profiles';
 
 interface Case {
@@ -47,6 +47,15 @@ const CASES: Case[] = [
   { id: 'named-input-equals', msg: "Error in `filter()`:\n! We detected a named input.\nℹ This usually means that you've used `=` instead of `==`.\nℹ Did you mean `update == \"Beyond\"`?" },
   { id: 'log-of-zero', msg: "Error in lm.fit(x, y) : NA/NaN/Inf in 'y'" },
   { id: 'log-of-zero', msg: 'Warning message:\nIn log(c(0, -1, 5)) : NaNs produced' },
+  // 0.5.1: the R00 table's t-test of NaN and -Inf, three ways a student pastes it (R 4.6.1)
+  { id: 't-test-nan-inf', msg: '\tWelch Two Sample t-test\n\ndata:  log_likes by share_button\nt = NaN, df = NaN, p-value = NA\nalternative hypothesis: true difference in means between group no and group yes is not equal to 0\n95 percent confidence interval:\n NaN NaN\nsample estimates:\n mean in group no mean in group yes \n             -Inf              -Inf ', course: 'mc427' },
+  { id: 't-test-nan-inf', msg: ' mean in group no mean in group yes \n             -Inf              -Inf ', course: 'mc427' },
+  // The input box drops line breaks, so a two-line selection arrives joined: 'share_buttont = NaN'
+  { id: 't-test-nan-inf', msg: 'data:  log_likes by share_buttont = NaN, df = NaN, p-value = NA', course: 'mc427' },
+  { id: 't-test-nan-inf', msg: '  estimate estimate1 estimate2 statistic p.value parameter conf.low conf.high\n1      NaN      -Inf      -Inf       NaN     NaN       NaN      NaN       NaN', course: 'mc427' },
+  // 0.5.1: R Field Guide C11, mean() on a text column, inside summarize() and on its own (R 4.6.1)
+  { id: 'mean-not-numeric', msg: '# A tibble: 1 \u00d7 1\n  average\n    <dbl>\n1      NA\nWarning message:\nThere was 1 warning in `summarize()`.\n\u2139 In argument: `average = mean(pct_gain)`.\nCaused by warning in `mean.default()`:\n! argument is not numeric or logical: returning NA ', course: 'mc427' },
+  { id: 'mean-not-numeric', msg: '[1] NA\nWarning message:\nIn mean.default(players$pct_gain) :\n  argument is not numeric or logical: returning NA', course: 'mc451' },
   { id: 'chisq-approximation', msg: 'Warning message:\nIn chisq.test(m) : Chi-squared approximation may be incorrect' },
   // Wrangling and test syntax
   { id: 'unexpected-equals', msg: '<text>:1:5: unexpected \'=\'\n1: x = =\n        ^' },
@@ -134,4 +143,43 @@ test('no entry links to the generic Install R common-issues section', () => {
   for (const e of ERROR_TABLE) {
     if (e.link) assert.ok(!/#common-first-time-issues$/.test(e.link.url), `${e.id} links to a section that does not discuss it`);
   }
+});
+
+// 0.5.1: the quick pick cut every Why and Step to one line, so the full explanation opens as a
+// Markdown page. Every entry's page must carry the full Why, every step numbered in order, and the
+// link, with R code, paths, and Git markers shown as typed (Markdown punctuation escaped).
+const unescape = (md: string) => md.replace(/\\([\\`*_{}[\]()<>#+\-.!|~])/g, '$1');
+
+test('every entry renders as a full Markdown page: why, numbered steps, link', () => {
+  for (const e of ERROR_TABLE) {
+    const md = explanationMarkdown({ entry: e, matched: e.title });
+    const plain = unescape(md);
+    assert.ok(md.startsWith('# '), e.id);
+    assert.ok(plain.includes(`# ${e.title}\n`), `${e.id}: title`);
+    assert.ok(plain.includes('## Why this happens\n\n' + e.why + '\n'), `${e.id}: why in full`);
+    e.fix.forEach((step, i) => assert.ok(plain.includes(`\n${i + 1}. ${step}\n`), `${e.id}: step ${i + 1} in full`));
+    if (e.link) assert.ok(md.includes(`](${e.link.url})`), `${e.id}: link`);
+    else assert.ok(!md.includes('## Read more'), `${e.id}: no empty link section`);
+    assert.ok(!md.includes('\u2026'), `${e.id}: no ellipsis`);
+  }
+});
+
+test('the backslash-U page keeps the backslashes and the whole of Step 1', () => {
+  const [x] = explain("Error: '\\U' used without hex digits in character string (<input>:1:22)", 'mc451');
+  const md = explanationMarkdown(x);
+  // The 0.5.0 quick pick ended Step 1 at "put th..."
+  assert.ok(unescape(md).includes('put the data file inside it, and read it by name: read_csv("data.csv").'));
+  assert.ok(md.includes('C:\\\\Users\\\\data\\.csv'), 'backslashes escaped so they render');
+  // The matched text is one line of inline code, shown as the student pasted it
+  assert.ok(md.includes("From your message: `'\\U' used without hex digits`\n"));
+});
+
+test('Git conflict markers and a pasted backtick run cannot break the page', () => {
+  const [x] = explain('CONFLICT (content): Merge conflict in a.R');
+  const md = explanationMarkdown(x);
+  assert.ok(md.includes('\\<\\<\\<\\<\\<\\<\\<'), 'markers escaped');
+  const ticks = explanationMarkdown({ entry: x.entry, matched: 'a ```` b' });
+  assert.ok(ticks.includes('From your message: `````a ```` b`````\n'), 'delimiters longer than the backtick run');
+  const edge = explanationMarkdown({ entry: x.entry, matched: '`x` doesn\'t\nexist' });
+  assert.ok(edge.includes("From your message: `` `x` doesn't exist ``\n"), 'padded at a backtick edge, one line');
 });

@@ -1,13 +1,14 @@
 # ---- Line chart: a total over time ----
 # Bucket the stream snapshots into six-hour blocks, keep the five biggest game categories and
-# lump the rest into "Other", then add up the viewers in each block. as.POSIXct turns the raw
-# millisecond date into a time, floor_date rounds it down to its six-hour block, and fct_lump_n
+# lump the rest into "Other", then add up the viewers in each block. clean_dates() makes the
+# ts time column from the millisecond date, as in the wrangling step (without v2v:
+# as_datetime(date / 1000)), floor_date rounds it down to its six-hour block, and fct_lump_n
 # keeps the top five games. This line prints nothing.
 viewers_over_time <- streams %>%
   filter(!is.na(game)) %>%
   mutate(
-    timestamp = as.POSIXct(date / 1000, origin = "1970-01-01", tz = "UTC"),
-    six_hour = floor_date(timestamp, "6 hours"),
+    ts = clean_dates(date),
+    six_hour = floor_date(ts, "6 hours"),
     category = fct_lump_n(game, n = 5)
   ) %>%
   group_by(six_hour, category) %>%

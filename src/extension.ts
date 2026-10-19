@@ -26,7 +26,7 @@ import {
   renderText,
   STATUS_WORD,
 } from './checklist';
-import { explain, Explanation } from './errors';
+import { explain, Explanation, explanationMarkdown } from './errors';
 import { pickAdapter, TerminalAdapter, inPositron } from './adapters';
 import { checkForUpdate, installSource } from './update';
 import { installScript } from './installScript';
@@ -119,6 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
     }),
+    vscode.workspace.registerTextDocumentContentProvider(EXPLAIN_SCHEME, explainPages),
   );
 
   const reg = (id: string, fn: (...args: any[]) => any) =>
@@ -661,16 +662,70 @@ async function explainErrorCommand(text?: string): Promise<string[]> {
   return found.map((f) => f.entry.id);
 }
 
+// The full explanation opens as a read-only Markdown preview beside the script (0.5.1). The quick
+// pick shows each row on one line and cut every Why and Step with an ellipsis, so it is kept only
+// for choosing among several matches. A preview rather than a modal dialog: the steps are things to
+// do in the editor and terminal, and a modal blocks both until it is closed, while the preview
+// stays open beside the code. A screen reader reads it as a page (headings, a paragraph, a numbered
+// list, a link), the keyboard reaches the link with Tab, and Ctrl+W closes it. The page is a
+// virtual document, so nothing is written to the student's folder.
+const EXPLAIN_SCHEME = 'aura-explain';
+
+class ExplainPages implements vscode.TextDocumentContentProvider {
+  private readonly pages = new Map<string, string>();
+  private readonly changed = new vscode.EventEmitter<vscode.Uri>();
+  readonly onDidChange = this.changed.event;
+  put(uri: vscode.Uri, text: string) {
+    this.pages.set(uri.toString(), text);
+    this.changed.fire(uri);
+  }
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    return this.pages.get(uri.toString()) ?? '# This explanation is no longer open\n\nRun AURA: Explain an R error again.\n';
+  }
+}
+const explainPages = new ExplainPages();
+
+async function openExplanation(x: Explanation): Promise<void> {
+  const uri = vscode.Uri.from({ scheme: EXPLAIN_SCHEME, path: `/R error explained - ${x.entry.id}.md` });
+  explainPages.put(uri, explanationMarkdown(x));
+  output.appendLine(`Explained: ${x.entry.title}`);
+  try {
+    await vscode.commands.executeCommand('markdown.showLockedPreviewToSide', uri);
+    // The preview takes keyboard focus as it opens, then loses it about 0.3 s later when its page
+    // loads (only the first preview of a session kept it, on Pythia 2026-10-19). Focusing the group
+    // again once the page has loaded keeps keyboard and screen-reader focus on the explanation.
+    // Only while the preview is still the active tab, so a student who has clicked away keeps focus.
+    const label = `R error explained - ${x.entry.id}.md`;
+    for (const ms of [700, 1500]) {
+      setTimeout(() => {
+        const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+        if (tab && tab.input instanceof vscode.TabInputWebview && tab.label.includes(label)) {
+          void vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+        }
+      }, ms);
+    }
+  } catch {
+    // No Markdown preview (the built-in Markdown extension is turned off): the same page as read-only text
+    const doc = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside, preview: false });
+  }
+}
+
 async function showExplanations(found: Explanation[], heading?: string, original?: string) {
+  if (!heading) markDone(DONE.help);
+  // One match: nothing to choose, so the explanation opens straight away
+  if (found.length === 1) {
+    if (heading) void vscode.window.showWarningMessage(heading);
+    await openExplanation(found[0]);
+    return;
+  }
   const picks: ActionItem[] = [];
   for (const f of found) {
-    picks.push({ label: f.entry.title, kind: vscode.QuickPickItemKind.Separator });
-    picks.push({ label: `$(info) Why`, detail: f.entry.why });
-    f.entry.fix.forEach((step, i) => picks.push({ label: `$(tools) Step ${i + 1}`, detail: step }));
-    if (f.entry.link) {
-      const url = f.entry.link.url;
-      picks.push({ label: `$(link-external) ${f.entry.link.label}`, detail: url, action: () => vscode.env.openExternal(vscode.Uri.parse(url)) });
-    }
+    picks.push({
+      label: `$(info) ${f.entry.title}`,
+      detail: f.entry.why,
+      action: () => openExplanation(f),
+    });
   }
   if (found.length === 0) {
     picks.push({ label: 'Not in the table yet', kind: vscode.QuickPickItemKind.Separator });
@@ -686,13 +741,12 @@ async function showExplanations(found: Explanation[], heading?: string, original
     });
     picks.push({ label: '$(question) Where to get help', action: () => getHelp() });
   }
-  const shown = vscode.window.showQuickPick(picks, {
-    title: heading ?? (found.length ? `What this message means (${found.length} match${found.length > 1 ? 'es' : ''})` : 'No match for this message'),
+  const choice = await vscode.window.showQuickPick(picks, {
+    title: heading ?? (found.length ? `${found.length} explanations match this message. Pick one to read it in full.` : 'No match for this message'),
+    placeHolder: found.length ? 'Pick the explanation to open beside your code' : undefined,
     matchOnDetail: true,
     ignoreFocusOut: true,
   });
-  if (!heading) markDone(DONE.help);
-  const choice = await shown;
   await choice?.action?.();
 }
 

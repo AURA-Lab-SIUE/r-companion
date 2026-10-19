@@ -11,7 +11,7 @@ import {
   emptyCodedColumns,
   pickerHint,
 } from '../src/columnProbe';
-import { isInsideRChunk, wrapChunk, prepareInsert, isQuartoFile, savedChartPath } from '../src/insert';
+import { isInsideRChunk, wrapChunk, prepareInsert, isQuartoFile, savedChartPath, isCompletePng } from '../src/insert';
 import { generate } from '../src/codegen';
 import { buildGridHtml, gridCsv, DEFAULT_GRID, GridResult } from '../src/grid';
 import { assignedNames, tableChoices, MAKES } from '../src/tables';
@@ -169,4 +169,16 @@ test('filter and select keep the course default analysis once it exists, and nev
 test('the menu blocks that make tables are the ones the choice looks for', () => {
   assert.deepEqual(MAKES['import-course-dataset'], ['chat', 'streams']);
   assert.deepEqual(MAKES['import-rds'], ['analysis']);
+});
+
+// 0.5.1: the chart tab opens when the PNG is completely written, not at a fixed time. R's png device
+// creates the file first and fills it when the device closes, so an empty or partial file must wait.
+test('isCompletePng accepts a whole PNG and refuses an empty, partial, or non-PNG file', () => {
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const ihdr = Buffer.from('0000000d49484452000000010000000108060000001f15c489', 'hex');
+  const iend = Buffer.from('0000000049454e44ae426082', 'hex');
+  assert.equal(isCompletePng(Buffer.concat([sig, ihdr, iend])), true);
+  assert.equal(isCompletePng(Buffer.alloc(0)), false, 'just created by the device');
+  assert.equal(isCompletePng(Buffer.concat([sig, ihdr])), false, 'IEND not written yet');
+  assert.equal(isCompletePng(Buffer.concat([Buffer.from('GIF89a..'), ihdr, iend])), false, 'not a PNG');
 });

@@ -280,6 +280,31 @@ export const ERROR_TABLE: ErrorEntry[] = [
     ],
   },
   {
+    // The R00 table's first form of the log of zero: the t-test runs and prints NaN and -Inf
+    // instead of stopping (R 4.6.1, t.test() and broom::tidy() on log() of a count with zeros).
+    id: 't-test-nan-inf',
+    pattern: /t = NaN, df = NaN|mean in group \S+\s+mean in group \S+\s+-Inf|NaN\s+-Inf\s+-Inf\s+NaN/i,
+    title: 't-test prints t = NaN and group means of -Inf',
+    why: 'A group mean of -Inf means the outcome holds the log of zero: log(0) is -Inf. One -Inf makes the group mean -Inf, so the t-test has nothing to compare and prints NaN, and Cohen\'s d comes back empty.',
+    fix: [
+      'Use log1p() instead of log() for skewed counts: it computes log(1 + x), so a zero becomes 0 rather than -Inf.',
+      'In MC 427 the Module 5 pages write mutate(log_likes = log1p(like_count)).',
+      'Run the mutate() line again, then the t-test.',
+    ],
+  },
+  {
+    // MC 427 R Field Guide C11 (R 4.6.1): mean() on a text column inside summarize(), or on its own.
+    id: 'mean-not-numeric',
+    pattern: /argument is not numeric or logical(?:: returning NA)?/i,
+    title: 'argument is not numeric or logical: returning NA',
+    why: 'This is a warning: mean() was given a text column, so it returned NA. The values can look like numbers (for example +186.23%) and still be stored as text, because of the plus sign or the percent sign.',
+    fix: [
+      'Run glimpse() on your data and look at the column type: <chr> means text, <dbl> or <int> means numbers.',
+      'Work from a number column instead, such as avg_players.',
+      'If you need this column as a number, convert it first: mutate(pct = parse_number(pct_gain)) turns "+186.23%" into 186.23.',
+    ],
+  },
+  {
     id: 'chisq-approximation',
     pattern: /Chi-squared approximation may be incorrect/i,
     title: 'Chi-squared approximation may be incorrect',
@@ -560,9 +585,52 @@ export function explain(text: string, course?: CourseId): Explanation[] {
     if (entry.id === 'no-package' && out.some((e) => e.entry.id === 'no-package-v2v' || e.entry.id === 'v2v-restored')) continue;
     // The specific library(v2v-r) hyphen case already covers the generic "object not found"
     if (entry.id === 'object-not-found' && out.some((e) => e.entry.id === 'object-r-not-found')) continue;
+    // A text column already explains the [1] NA that mean() printed beside its warning
+    if (entry.id === 'na-mean' && out.some((e) => e.entry.id === 'mean-not-numeric')) continue;
     if (seenGeneric.has(entry.id)) continue;
     seenGeneric.add(entry.id);
     out.push({ entry, matched: m[0] });
   }
   return out;
+}
+
+/** Escape Markdown punctuation so R code, paths, and Git's <<<<<<< markers show as typed. */
+function mdText(s: string): string {
+  return s.replace(/[\\`*_{}[\]()<>#+\-.!|~]/g, (c) => '\\' + c);
+}
+
+/**
+ * Text the student pasted, as one line of inline code, with delimiters longer than any backtick run
+ * in it (and a space inside them when it starts or ends with a backtick).
+ */
+function inlineCode(s: string): string {
+  const one = s.replace(/\s+/g, ' ').trim();
+  const longest = Math.max(0, ...(one.match(/`+/g) ?? []).map((r) => r.length));
+  const ticks = '`'.repeat(longest + 1);
+  const pad = one.startsWith('`') || one.endsWith('`') ? ' ' : '';
+  return `${ticks}${pad}${one}${pad}${ticks}`;
+}
+
+/**
+ * One explanation as a Markdown page: the title, the part of the message it explains, why, the
+ * numbered steps, and the help link. The quick pick truncates every row to one line, so the full
+ * text is shown here, in a read-only preview a screen reader reads as headings, a paragraph, and an
+ * ordered list (#rgui 0.5.1). The matched text is one short line, so the steps stay near the top.
+ */
+export function explanationMarkdown(x: Explanation): string {
+  const e = x.entry;
+  const out = [`# ${mdText(e.title)}`, ''];
+  if (x.matched.trim()) out.push(`From your message: ${inlineCode(x.matched)}`, '');
+  out.push('## Why this happens', '', mdText(e.why), '');
+  out.push('## What to do', '');
+  e.fix.forEach((step, i) => out.push(`${i + 1}. ${mdText(step)}`));
+  out.push('');
+  if (e.link) out.push('## Read more', '', `[${mdText(e.link.label)}](${e.link.url})`, '');
+  out.push(
+    '## Still stuck?',
+    '',
+    'After 15 minutes, email your instructor or come to office hours. Send the exact wording of the message, or a screenshot of the whole console.',
+    '',
+  );
+  return out.join('\n');
 }

@@ -138,6 +138,9 @@ const MESSAGES = {
   'backslash-U': "Error: '\\U' used without hex digits in character string (<input>:1:22)",
   'named-input-equals': "Error in `filter()`:\n! We detected a named input.\nℹ This usually means that you've used `=` instead of `==`.\nℹ Did you mean `a == 1`?",
   'permission-denied-publickey': 'git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.',
+  // 0.5.1: the MC 427 R00 t-test of NaN and -Inf, and the R Field Guide C11 warning (R 4.6.1 text)
+  't-test-nan-inf': '\tWelch Two Sample t-test\n\ndata:  log_likes by share_button\nt = NaN, df = NaN, p-value = NA\nalternative hypothesis: true difference in means between group no and group yes is not equal to 0\n95 percent confidence interval:\n NaN NaN\nsample estimates:\n mean in group no mean in group yes \n             -Inf              -Inf ',
+  'mean-not-numeric': 'Warning message:\nThere was 1 warning in `summarize()`.\n\u2139 In argument: `average = mean(pct_gain)`.\nCaused by warning in `mean.default()`:\n! argument is not numeric or logical: returning NA ',
 };
 
 async function run() {
@@ -198,9 +201,10 @@ async function run() {
     for (const c of charts) {
       const started = Date.now();
       await write(c.task, 0);
-      // revealSavedChart waits up to 12 s for the file after the block is sent
+      // The tab opens when the watched PNG lands complete
       let tab = null;
       for (let i = 0; i < 40 && !(tab = pngTab(c.png)); i++) await sleep(500);
+      if (tab) { await sleep(1000); tab = pngTab(c.png); }
       const file = path.join(figs, c.png);
       const st = fs.existsSync(file) ? fs.statSync(file) : null;
       log(`1 ${c.task}: PNG tab`, tab);
@@ -224,8 +228,41 @@ async function run() {
     await sleep(4000);
     log('1 not run: PNG tab opened anyway', pngTab('viewers-over-time-line.png'));
 
-    // 3. Explain an R error
+    // R busy (0.5.1): R is still running a 25 s block when the line chart is sent, so the PNG lands
+    // about 30 s after Run it. 0.5.0 gave up 12 s after sending and never opened the tab; the
+    // watch waits for the file itself.
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    const rTerm = vscode.window.terminals.find((t) => t.name === 'R (AURA)');
+    log('1 busy: R terminal found', !!rTerm);
+    editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(analysisR), vscode.ViewColumn.One);
+    if (rTerm) {
+      rTerm.sendText('Sys.sleep(25)');
+      await sleep(500);
+      const sent = Date.now();
+      await write('line', 0);
+      let tab = null;
+      for (let i = 0; i < 180 && !(tab = pngTab('viewers-over-time-line.png')); i++) await sleep(500);
+      // The tab appears a moment before its group becomes the active one; read it again after a second
+      if (tab) { await sleep(1000); tab = pngTab('viewers-over-time-line.png'); }
+      const st = fs.statSync(path.join(figs, 'viewers-over-time-line.png'));
+      log('1 busy: PNG tab', tab);
+      log('1 busy: seconds from Run it to the PNG written', Math.round((st.mtimeMs - sent) / 1000));
+      log('1 busy: seconds from Run it to the tab', tab ? Math.round((Date.now() - sent) / 1000) : null);
+      await shot('busy R: line chart opened when the PNG landed', out);
+    }
+
+    // AURA_IT_P2_CHARTS_ONLY stops here: running this suite against 0.5.0, whose single-match quick
+    // pick never closes on Enter, for the busy-R comparison
+    if (process.env.AURA_IT_P2_CHARTS_ONLY) {
+      fs.writeFileSync(process.env.AURA_IT_OUT, JSON.stringify(out, null, 2));
+      return;
+    }
+
+    // 3. Explain an R error. The terminal panel and secondary side bar close first, so the
+    // screenshots show the steps and link without scrolling at the recording zoom.
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await vscode.commands.executeCommand('workbench.action.closePanel');
+    await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
     const api = {};
     for (const [want, msg] of Object.entries(MESSAGES)) {
       api[want] = await vscode.commands.executeCommand('auraR.explainError', msg);
@@ -233,27 +270,100 @@ async function run() {
     log('3 command API: matched ids per message', api);
     log('3 command API: each message finds its entry', Object.entries(api).map(([want, ids]) => `${want}: ${ids.includes(want) ? 'yes' : 'NO'}`));
 
-    // The real input box and quick pick, on a selection
+    // The real input box, on a selection, then the full explanation (0.5.1). One match opens the
+    // explanation straight away as a locked Markdown preview beside the code; two or more matches
+    // show a quick pick to choose from, and the chosen one opens the same way. Tried on the entries
+    // with the longest text (object-not-found, column-not-found), the most steps (v2v-restored),
+    // and backslash-U, whose Step 1 the 0.5.0 quick pick cut to "put th...".
     const wb = await workbenchTarget();
     const ui = {};
-    for (const want of ['backslash-U', 'permission-denied-publickey']) {
+    const UI_CASES = {
+      'backslash-U': MESSAGES['backslash-U'],
+      'object-not-found': MESSAGES['object-not-found'],
+      'column-not-found': MESSAGES['column-not-found'],
+      'v2v-restored': 'Warning: cannot remove prior installation of package \u2018rlang\u2019\nWarning: restored \u2018rlang\u2019',
+      't-test-nan-inf': MESSAGES['t-test-nan-inf'],
+      'two-matches': MESSAGES['object-not-found'] + '\n' + MESSAGES['named-input-equals'],
+    };
+    for (const [want, msg] of Object.entries(UI_CASES)) {
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       const f = path.join(ws, `${want}.txt`);
-      fs.writeFileSync(f, MESSAGES[want]);
+      fs.writeFileSync(f, msg);
       const ed = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(f), vscode.ViewColumn.One);
       ed.selection = new vscode.Selection(0, 0, ed.document.lineCount, 0);
       const p = vscode.commands.executeCommand('auraR.explainError');
       await sleep(2000);
       const prefilled = wb ? await wb.eval(`(document.querySelector('.quick-input-widget input') || {}).value`) : null;
       if (wb) await pressEnter(wb);
-      await sleep(2000);
-      const rows = wb ? await wb.eval(QUICK_ROWS) : null;
-      const title = wb ? await wb.eval(`(document.querySelector('.quick-input-widget .quick-input-title') || {}).innerText`) : null;
-      ui[want] = { prefilledFromSelection: prefilled === MESSAGES[want].replace(/\n$/, ''), title, rows };
-      await shot(`Explain an R error: ${want} in the quick pick`, out);
-      await vscode.commands.executeCommand('workbench.action.closeQuickOpen');
-      ui[want].returned = await p;
+      await sleep(2500);
+      // The input box is one line, so VS Code drops the line breaks of a multi-line selection
+      const r = { prefilledFromSelection: prefilled === msg.replace(/\r?\n/g, '') };
+      if (want === 'two-matches') {
+        r.title = wb ? await wb.eval(`(document.querySelector('.quick-input-widget .quick-input-title') || {}).innerText`) : null;
+        r.rows = wb ? await wb.eval(QUICK_ROWS) : null;
+        await shot('Explain an R error: two matches, the quick pick to choose one', out);
+        await choose(1); // the second match
+        await sleep(2500);
+      }
+      r.returned = await p;
+      const tabs = [];
+      for (const g of vscode.window.tabGroups.all) {
+        for (const t of g.tabs) tabs.push({ label: t.label, viewColumn: g.viewColumn, active: t.isActive && g === vscode.window.tabGroups.activeTabGroup, viewType: (t.input && t.input.viewType) || null });
+      }
+      r.previewTab = tabs.find((t) => /R error explained/.test(t.label)) || null;
+      r.tabs = tabs.map((t) => t.label);
+      const shownId = want === 'two-matches' ? r.returned[1] : want;
+      const page = vscode.workspace.textDocuments.find((d) => d.uri.scheme === 'aura-explain' && d.uri.path.includes(shownId));
+      const entry = ERROR_TABLE.find((x) => x.id === shownId);
+      const text = page ? page.getText() : '';
+      // Every Why and Step in full: the page carries each one once its Markdown escapes are removed
+      const plain = text.replace(/\\([\\`*_{}[\]()<>#+\-.!|~])/g, '$1');
+      r.shownEntry = shownId;
+      r.pageFullText = !!entry && plain.includes(entry.why) && entry.fix.every((step, i) => plain.includes(`${i + 1}. ${step}`));
+      r.pageHasLink = entry && entry.link ? text.includes(`](${entry.link.url})`) : 'no link on this entry';
+      // Keyboard focus once the page has loaded: inside the preview's webview, not the bare body
+      await sleep(2500);
+      r.focus = wb ? await wb.eval(`(function () { var a = document.activeElement; return a ? a.tagName + (a.closest && a.closest('.webview') ? ' in webview' : '') + ' ' + (a.className || '') : null; })()`) : null;
+      r.quickPickStillOpen = wb ? await wb.eval(`(function () { var q = document.querySelector('.quick-input-widget'); return !!q && getComputedStyle(q).display !== 'none'; })()`) : null;
+      ui[want] = r;
+      await shot(`Explain an R error: ${want}, the full explanation beside the code`, out);
     }
     log('3 UI path', ui);
+    // The rendered preview, read through the DevTools targets of its webview frames
+    const rendered = [];
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${process.env.AURA_IT_CDP_PORT}/json/list`)).json();
+      rendered.push({ targets: list.map((t) => `${t.type} ${String(t.url).slice(0, 60)}`) });
+      for (const t of list) {
+        if (!/vscode-webview:/.test(t.url || '')) continue;
+        const c = new Cdp(t.webSocketDebuggerUrl);
+        try {
+          await c.open();
+          const v = await c.eval(`(function () {
+            var docs = [document];
+            var inner = document.querySelector('iframe');
+            try { if (inner && inner.contentDocument) docs.push(inner.contentDocument); } catch (e) {}
+            for (var i = 0; i < docs.length; i++) {
+              var d = docs[i];
+              if (!d.querySelector('h1')) continue;
+              return {
+                h1: d.querySelector('h1').innerText,
+                h2: Array.from(d.querySelectorAll('h2')).map(function (h) { return h.innerText; }),
+                steps: Array.from(d.querySelectorAll('ol > li')).map(function (li) { return li.innerText; }),
+                links: Array.from(d.querySelectorAll('a[href^="http"]')).map(function (a) { return a.getAttribute('href'); }),
+                ellipsis: /\u2026/.test(d.body.innerText)
+              };
+            }
+            return null;
+          })()`);
+          if (v) rendered.push(v);
+        } catch (_) { /* not a page target */ }
+        c.close();
+      }
+    } catch (e) {
+      rendered.push({ error: String(e && e.message) });
+    }
+    log('3 rendered preview (DevTools)', rendered);
     if (wb) wb.close();
 
     // Every link the matched entries carry: HTTP 200 and the #anchor present on the page

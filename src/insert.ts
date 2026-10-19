@@ -59,3 +59,19 @@ export function savedChartPath(code: string): string | undefined {
   const m = code.match(/ggsave\(\s*["']([^"']+\.png)["']/i);
   return m ? m[1] : undefined;
 }
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_IEND = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
+
+/**
+ * Is this PNG file completely written? R's png device creates the file when ggsave() opens it and
+ * fills it when the device closes, so a watcher can see the file before the picture is in it. A
+ * finished PNG starts with the PNG signature and ends with the IEND chunk.
+ */
+export function isCompletePng(bytes: Buffer): boolean {
+  return (
+    bytes.length >= PNG_SIGNATURE.length + PNG_IEND.length &&
+    bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE) &&
+    bytes.subarray(bytes.length - PNG_IEND.length).equals(PNG_IEND)
+  );
+}
