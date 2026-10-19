@@ -2,3 +2,8 @@ node_modules/
 out/
 dist/
 *.vsix
+
+# local R library and run artifacts (not source)
+.rlib/
+.rlib-install*.log
+verify-run-*.json

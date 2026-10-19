@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code: finds R, checks the packages each course needs, installs what is missing, and explains the errors students meet most often.",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
@@ -104,6 +104,16 @@
         "command": "auraR.addCourseFiles",
         "title": "Add the course's Copilot instructions to this folder",
         "category": "AURA"
+      },
+      {
+        "command": "auraR.writeCode",
+        "title": "Write R code",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openReliabilityGrid",
+        "title": "Reliability grid",
+        "category": "AURA"
       }
     ],
     "configuration": {
@@ -151,6 +161,16 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Only for copies installed from a `.vsix` file. The GitHub releases API address to check for a newer version, for example `https://api.github.com/repos/AURA-Lab-SIUE/r-companion/releases/latest`. Empty means no update check. Copies installed from the Marketplace or Open VSX are updated by VS Code itself and never use this."
+        },
+        "auraR.previewReleases": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show the **R3** (Describe and plots) and **R4** (Tests) menu tasks before their release dates. **R2** (Data, wrangling, and the reliability grid) is always on. Each release is published for students on its date; this only reveals the later menus early for testing."
+        },
+        "auraR.reliabilityPlainCalls": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Write the plain `irr::kappa2()` and `irr::kripp.alpha()` calls instead of the v2v `reliability()` wrapper. Pending owner decision q-20261018-0044; the default keeps the rubric-named wrapper."
         }
       }
     },
@@ -212,7 +232,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "check:separation": "node scripts/check-separation.mjs",
-    "test": "npm run compile && node --test out/test/unit.test.js",
+    "test": "npm run compile && node --test out/test/*.test.js",
     "package": "npm run check:separation && npm run test && node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && vsce package --out dist/"
   },
   "devDependencies": {

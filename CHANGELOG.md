@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 (R2 Data, wrangling, and the reliability grid)
+
+- **AURA: Write R code** quick-pick wizard. It writes a commented tidyverse block for each task, matching what the course pages show line for line, and inserts it at the cursor in a `.R` file or a `.qmd` chunk, then offers to run it. Every block keeps its comment header (owner decision U1).
+- Course profiles decide the code: MC 427 writes plain tidyverse with `%>%`; MC 451 and MC 501 write the v2v helpers and the rubric-named wrappers. The column picker reads a JSON probe of the data, never console text.
+- **R2 Data** tasks: import a CSV, load the course Twitch corpus or a saved RDS, filter, select, mutate, count, `clean_dates()` (with a plain `as.POSIXct()` alternative), `join_chat_streams()`, label channels by top category and join the labels on (with a per-moment alternative), save as CSV or RDS, and reliability.
+- **AURA: Reliability grid**, the one webview. It hides Pass 1 while Pass 2 is entered and records the date of each pass (U6), saves the coded items as a CSV, and generates the `reliability()` call that reads them. It follows the VS Code theme, labels every field, and is keyboard operable. Hidden in MC 427.
+- The R3 (Describe and plots) and R4 (Tests and sentences) menus are built and tested but stay behind the `auraR.previewReleases` setting until their release dates.
+- Generated R follows the house style (magrittr `%>%`, one verb per line, a comment per block) and is verified two ways: a unit test asserts each of the 78 generated blocks is byte-identical to the golden fixtures, and every block was run through Rscript against the course data on v2v 0.3.2 and 0.3.3.
+
 ## 0.1.3
 
 - Get Started: **Pick your course** ticks when the student picks a course, including the one the extension already found, and never before. It used to tick on its own when the folder held a course file, or, when VS Code opened no Welcome page at startup, never tick at all; **Open your course workspace** had the same fault. Steps now record their tick through VS Code's own walkthrough command as well as the context key.

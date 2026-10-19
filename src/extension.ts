@@ -31,6 +31,7 @@ import { checkForUpdate, installSource } from './update';
 import { installScript } from './installScript';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
+import { registerMenus } from './menus';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
 const WALKTHROUGH = `${EXT_ID}#getStarted`;
@@ -139,6 +140,21 @@ export function activate(context: vscode.ExtensionContext) {
     walkthroughDone: [...doneKeys],
     waitingForTrust: trustGate.waiting,
   }));
+  // R2/R3/R4 code-generation menus and the reliability grid (workstream E)
+  registerMenus(context, {
+    output,
+    currentCourse,
+    pickCourse,
+    runRscript: (rscript, args, timeoutMs) => runRscript(rscript, args, { timeoutMs }),
+    rscriptPath: () => findR()[0]?.rscript,
+    runInSession: (code) => pickAdapter(setting('runWith', 'auto'), terminalAdapter).runCode(code),
+    requireTrust,
+    resourcePath,
+    storageDir: context.globalStorageUri.fsPath,
+    previewReleases: () => setting<boolean>('previewReleases', false),
+    plainCalls: () => setting<boolean>('reliabilityPlainCalls', false),
+  });
+
   // A course found in the folder or remembered is not a pick: "Pick your course" ticks only when the
   // student picks one, even the one already found. A folder already open does count as opened.
   if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
