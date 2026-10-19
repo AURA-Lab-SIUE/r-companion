@@ -1,0 +1,128 @@
+// Per-entry tests for the error explainer: one real message per entry, plus a test that no two
+// entries match the same message ambiguously. The messages are the exact text R 4.6.1, Git, or
+// Quarto prints (reproduced in Rscript during Phase 2), or the exact "Common Errors" deck and
+// `?v2v::common_errors` wording for the symptom-only cases. See src/errors.ts for sources.
+import { test } from 'node:test';
+import * as assert from 'node:assert/strict';
+import { explain, ERROR_TABLE } from '../src/errors';
+import { CourseId } from '../src/profiles';
+
+interface Case {
+  id: string;
+  msg: string;
+  course?: CourseId;
+  note?: string;
+}
+
+// One representative message per entry (several entries carry two phrasings).
+const CASES: Case[] = [
+  // ---- existing entries ----
+  { id: 'bracketed-paste', msg: '> [200~print("hi")[201~' },
+  { id: 'v2v-not-available', msg: "package 'v2v' is not available for this version of R", course: 'mc451' },
+  { id: 'v2v-restored', msg: "Warning: cannot remove prior installation of package 'rlang'\nWarning: restored 'rlang'" },
+  { id: 'no-package-v2v', msg: "Error in library(v2v) : there is no package called 'v2v'", course: 'mc451' },
+  { id: 'no-package', msg: "Error in library(tidyverse) : there is no package called 'tidyverse'", course: 'mc427' },
+  { id: 'not-available-version', msg: "package 'rlang' is not available (for R version 4.1.0)" },
+  { id: 'rate-limit', msg: 'Error: HTTP error 403.\n  API rate limit exceeded for 146.163.1.1.' },
+  { id: 'needs-compilation', msg: 'Do you want to install from sources the package which needs compilation? (Yes/no/cancel)' },
+  { id: 'file-in-use', msg: 'Error: file is in use' },
+  { id: 'help-corrupt', msg: "installed help of package 'v2v' is corrupt" },
+  { id: 'could-not-find-function', msg: 'Error in cohens_d(mpg ~ am) : could not find function "cohens_d"', course: 'mc427' },
+  { id: 'r-not-recognized', msg: "R : The term 'R' is not recognized as the name of a cmdlet" },
+  { id: 'cannot-open-file', msg: "cannot open file 'mc427-setup-chek.R': No such file or directory", course: 'mc427' },
+  { id: 'cran-mirror', msg: '--- Please select a CRAN mirror for use in this session ---' },
+  { id: 'personal-library', msg: 'Would you like to use a personal library instead?  (yes/No/cancel)' },
+  { id: 'update-prompt', msg: 'These packages have more recent versions available.\nEnter one or more numbers, or an empty line to skip updates:' },
+  { id: 'object-r-not-found', msg: "Error in library(v2v-r) : object 'r' not found", course: 'mc501' },
+  { id: 'git-clone-missing', msg: "'git' is not recognized as an internal or external command" },
+  { id: 'plus-prompt', msg: '+ ' },
+
+  // ---- Phase 2 additions: the 30 course messages ----
+  // Priority 1
+  { id: 'object-not-found', msg: "Error: object 'df' not found", course: 'mc427' },
+  { id: 'column-not-found', msg: "Error in select(df, share_buton) : Can't select columns that don't exist.\n✖ Column `share_buton` doesn't exist." },
+  { id: 'column-not-found', msg: "Error in count(., share_buton) :\n  Must group by variables found in `.data`.\n✖ Column `share_buton` is not found." },
+  // Priority 2: the other MC 427 R00 messages
+  { id: 'backslash-U', msg: "Error: '\\U' used without hex digits in character string (<input>:1:14)" },
+  { id: 'named-input-equals', msg: "Error in `filter()`:\n! We detected a named input.\nℹ This usually means that you've used `=` instead of `==`.\nℹ Did you mean `update == \"Beyond\"`?" },
+  { id: 'log-of-zero', msg: "Error in lm.fit(x, y) : NA/NaN/Inf in 'y'" },
+  { id: 'log-of-zero', msg: 'Warning message:\nIn log(c(0, -1, 5)) : NaNs produced' },
+  { id: 'chisq-approximation', msg: 'Warning message:\nIn chisq.test(m) : Chi-squared approximation may be incorrect' },
+  // Wrangling and test syntax
+  { id: 'unexpected-equals', msg: '<text>:1:5: unexpected \'=\'\n1: x = =\n        ^' },
+  { id: 'slice-max-order-by', msg: "Error in `slice_max()`:\n! `order_by` is absent but must be supplied." },
+  { id: 't-test-two-levels', msg: 'Error in t.test.formula(v ~ grp, data = d) : grouping factor must have exactly 2 levels' },
+  { id: 'not-enough-observations', msg: "Error in t.test.default(x, y) : not enough 'x' observations" },
+  { id: 'na-mean', msg: '[1] NA' },
+  { id: 'ggplot-missing-plus', msg: '<text>:1:20: unexpected symbol\n1: ggplot(df, aes(a)) geom_histogram\n                       ^' },
+  // The five ?v2v::common_errors cases (V2V only)
+  { id: 'epoch-ms-year-50888', msg: '# A tibble: 2 × 1\n  ts                  \n  <dttm>              \n1 49503-02-10 02:40:00\n2 52671-12-25 12:26:40', course: 'mc451' },
+  { id: 'join-all-na', msg: 'Join produces zero matched rows between chat and streams', course: 'mc451' },
+  { id: 'row-count-grew-after-join', msg: 'Row count grew after a join: duplicate keys in the lookup', course: 'mc501' },
+  { id: 'setup-quarto-false-alarm', msg: 'x Quarto CLI not found', course: 'mc451' },
+  { id: 'kappa-lower-than-expected', msg: "Cohen's kappa is much lower than I expected", course: 'mc451' },
+  { id: 'twitch-sample-not-found', msg: "Error in data(twitch_chat_sample) : data set 'twitch_chat_sample' not found", course: 'mc451' },
+  // Quarto and Git/GitHub (all courses)
+  { id: 'quarto-command-not-found', msg: 'bash: quarto: command not found' },
+  { id: 'quarto-check-no-r', msg: 'quarto check says R was not found' },
+  { id: 'failed-to-spawn-rscript', msg: "ERROR: Failed to spawn 'Rscript'" },
+  { id: 'yaml-render-error', msg: 'ERROR: Render failed due to a YAML error in the front matter' },
+  { id: 'unc-share', msg: 'The drive or UNC share does not exist' },
+  { id: 'permission-denied-publickey', msg: 'git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.' },
+  { id: 'author-identity-unknown', msg: 'fatal: unable to auto-detect email address\nAuthor identity unknown' },
+  { id: 'repository-not-found', msg: "remote: Repository not found.\nfatal: repository 'https://github.com/x/y.git/' not found" },
+  { id: 'merge-conflict', msg: 'CONFLICT (content): Merge conflict in analysis.R\nAutomatic merge failed; fix conflicts and then commit the result.' },
+  { id: 'large-files', msg: "remote: error: GH001: Large files detected.\nremote: error: File data.csv is 123.00 MB; this exceeds GitHub's file size limit of 100.00 MB" },
+];
+
+test('every error-table entry has at least one real-message test case', () => {
+  const tableIds = new Set(ERROR_TABLE.map((e) => e.id));
+  const caseIds = new Set(CASES.map((c) => c.id));
+  const untested = [...tableIds].filter((id) => !caseIds.has(id));
+  assert.deepEqual(untested, [], `entries with no test case: ${untested.join(', ')}`);
+  const unknown = [...caseIds].filter((id) => !tableIds.has(id));
+  assert.deepEqual(unknown, [], `cases referencing a missing entry: ${unknown.join(', ')}`);
+});
+
+test('each entry matches its own real message', () => {
+  for (const c of CASES) {
+    const ids = explain(c.msg, c.course).map((e) => e.entry.id);
+    assert.ok(ids.includes(c.id), `${c.id} did not match its message (got ${ids.join(',') || 'nothing'}): ${c.msg}`);
+  }
+});
+
+test('no two entries match the same message ambiguously', () => {
+  for (const c of CASES) {
+    const matches = explain(c.msg, c.course);
+    const ids = matches.map((e) => e.entry.id);
+    assert.equal(
+      matches.length,
+      1,
+      `message for ${c.id}${c.course ? ' (' + c.course + ')' : ''} matched ${matches.length} entries: ${ids.join(', ')}\n  ${c.msg.replace(/\n/g, ' / ')}`,
+    );
+    assert.equal(ids[0], c.id, `message for ${c.id} resolved to ${ids[0]}`);
+  }
+});
+
+test('the matched text is a real substring of the pasted message', () => {
+  for (const c of CASES) {
+    for (const m of explain(c.msg, c.course)) {
+      assert.ok(c.msg.includes(m.matched), `${c.id}: matched text "${m.matched}" is not in the message`);
+    }
+  }
+});
+
+test('MC 427 never sees a v2v-only error entry', () => {
+  const v2vOnly = ERROR_TABLE.filter((e) => e.courses && !e.courses.includes('mc427')).map((e) => e.id);
+  for (const c of CASES) {
+    const ids = explain(c.msg, 'mc427').map((e) => e.entry.id);
+    for (const id of ids) assert.ok(!v2vOnly.includes(id), `${id} should be hidden from MC 427 but matched: ${c.msg}`);
+  }
+});
+
+test('every new entry links to the canonical domain with numbered fix steps', () => {
+  for (const e of ERROR_TABLE) {
+    assert.ok(e.fix.length >= 1, `${e.id} has no fix steps`);
+    if (e.link) assert.ok(/^https:\/\/aura-lab\.siue\.edu\//.test(e.link.url), `${e.id} link is not canonical: ${e.link.url}`);
+  }
+});

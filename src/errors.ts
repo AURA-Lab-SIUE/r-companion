@@ -1,9 +1,14 @@
-// The first error explainer table.
+// The error explainer table.
 //
 // Each entry maps a message students actually see to a plain-English fix and a help link.
-// Sources: the failure headings on the v2v-hub pages install-r, install-v2v, and fix-it
-// (aura-lab.siue.edu/v2v-hub/resources/, section ids read 2026-10-18), plus the "Messages
-// you will meet" lists in the MC 427 R Field Guide (C1 to C5, C14, C24).
+// Sources: the failure headings on the v2v-hub pages install-r, install-v2v, install-quarto,
+// install-vscode, github-setup, and fix-it (aura-lab.siue.edu/v2v-hub/resources/, section ids
+// verified live 2026-10-19), the public workbook chapters 04/05/06, the "Messages you will meet"
+// table in the MC 427 Module 5 R00 page and R Field Guide, the MC 451/501 "Common Errors Today"
+// deck slides (s21, s22, s24, s26; w11, w12, w13), and the `?v2v::common_errors` catalog.
+// Every pattern was reproduced in R 4.6.1 where R or the tool prints the text; the symptom-only
+// entries (year-50,888 dates, all-NA joins, low kappa, row count grew, NA mean) match the
+// distinctive output a student pastes.
 // Links use the canonical aura-lab.siue.edu domain, never the github.io mirror.
 // Pure: no VS Code API, so the unit tests load it directly.
 
@@ -25,6 +30,7 @@ export interface ErrorEntry {
 }
 
 const HUB = 'https://aura-lab.siue.edu/v2v-hub/resources';
+const WB = 'https://aura-lab.siue.edu/v2v-hub/workbook';
 const V2V: CourseId[] = ['mc451', 'mc501'];
 
 export const ERROR_TABLE: ErrorEntry[] = [
@@ -217,6 +223,327 @@ export const ERROR_TABLE: ErrorEntry[] = [
     why: 'R is waiting for you to finish a line, usually a missing closing bracket or quotation mark.',
     fix: ['Click in the R terminal and press Esc to get the > back, then run the line again.'],
   },
+
+  // ---- Phase 2 additions: the 30 course messages the explainer did not cover ----
+
+  // Priority 1: the single most frequent message, and the column twin, every course.
+  {
+    id: 'object-not-found',
+    pattern: /object ['‘’"]?([A-Za-z0-9._]+)['‘’"]? not found/i,
+    title: "object '...' not found",
+    why: 'R has no value stored under that name. Either the line that would create it never ran, the name is misspelled, or a text value was typed without quotation marks (R then reads the word as a name).',
+    fix: [
+      'If it is a data frame like df, run the read_csv line that creates it first, then the line that failed.',
+      'Check the spelling and capital letters against the name you assigned with <-.',
+      'If it is a word that should be text, put it in quotation marks, for example share_button == "yes".',
+    ],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+  {
+    id: 'column-not-found',
+    pattern: /[Cc]an't (?:select|subset|rename) columns that don't exist|[Cc]olumn ['‘’"`]?[^'‘’"`\n]+['‘’"`]? (?:doesn't exist|is not found)|Must group by variables found/i,
+    title: "Column '...' doesn't exist",
+    why: 'You named a column that is not in the data frame, usually a spelling or capitalization slip. R and the tidyverse print this two ways: "Can\'t select columns that don\'t exist" / "Column `x` doesn\'t exist" from select(), and "Column `x` is not found" from count() or group_by().',
+    fix: [
+      'Run glimpse(df) or names(df) and compare the column name letter for letter.',
+      'Copy the name from that list instead of retyping it; watch for capital letters and underscores.',
+    ],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+
+  // Priority 2: the other MC 427 Module 5 R00 messages.
+  {
+    id: 'backslash-U',
+    pattern: /['‘’"]?\\U['‘’"]? used without hex digits/i,
+    title: "'\\U' used without hex digits",
+    why: 'You pasted a Windows path copied from File Explorer. Its backslashes mean something special to R, so a path like "C:\\Users\\data.csv" breaks before the file is ever read.',
+    fix: [
+      'Do not paste a path from File Explorer. Open the folder in VS Code (File, then Open Folder), put the data file inside it, and read it by name: read_csv("data.csv").',
+      'If you must write a path, use forward slashes: "C:/Users/data.csv".',
+    ],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+  {
+    id: 'named-input-equals',
+    pattern: /We detected a named input|Did you mean .*==/i,
+    title: 'We detected a named input (= where == belongs)',
+    why: 'Inside filter() one equals sign names an argument; two equals signs ask a question. You wrote one where you meant to compare, so the tidyverse stops and asks.',
+    fix: ['Change the single = to == inside filter(), for example filter(update == "Beyond").'],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+  {
+    id: 'log-of-zero',
+    pattern: /NA\/NaN\/Inf in ['‘’"]?[yx]['‘’"]?|NaNs produced/i,
+    title: 'NaN, -Inf, or NA/NaN/Inf from the log of zero',
+    why: 'log(0) is -Inf and log of a negative number is NaN. When those values flow into a test or model, R prints "NaNs produced" or stops with "NA/NaN/Inf in \'y\'".',
+    fix: [
+      'Use log1p() instead of log() for skewed counts: it computes log(1 + x), so a zero becomes 0 rather than -Inf.',
+      'In MC 427 the Module 5 pages write mutate(log_likes = log1p(like_count)).',
+    ],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+  {
+    id: 'chisq-approximation',
+    pattern: /Chi-squared approximation may be incorrect/i,
+    title: 'Chi-squared approximation may be incorrect',
+    why: 'This is a warning, not an error: the test ran and the result printed. It means some expected cell counts are under 5, so the p-value is approximate.',
+    fix: [
+      'Keep the result. Report the warning in your verification log.',
+      'If several cells are small, say so in your write-up; the effect size (Cramer\'s V) still stands.',
+    ],
+    link: { label: 'Workbook: run the chi-square test', url: `${WB}/06-inferencing-data.html#step-3-run-the-chi-square-test` },
+  },
+
+  // Wrangling and test syntax (MC 451/501 deck error slides; general R).
+  {
+    id: 'unexpected-equals',
+    pattern: /unexpected '='/i,
+    title: "unexpected '='",
+    why: 'R could not parse the line. This is almost always a single = where two were needed to compare, or a stray = in the wrong place.',
+    fix: ['Look for = where you meant ==, and fix the line.', 'If the line looks right, check the one above it for a missing comma or bracket.'],
+    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
+  },
+  {
+    id: 'slice-max-order-by',
+    pattern: /`order_by` is absent but must be supplied|slice_max\(\)[^\n]*order_by/i,
+    title: 'slice_max(): order_by is absent but must be supplied',
+    why: 'slice_max() needs to know which column to rank by. For a per-group top value you also need group_by() first, or it ranks across the whole table.',
+    fix: [
+      'Name the column to rank: slice_max(count, n = 1).',
+      'For the top value in each group, pipe group_by(channel) %>% before slice_max().',
+    ],
+    link: { label: 'Workbook: check categorical variables', url: `${WB}/04-data-wrangling.html#check-categorical-variables` },
+  },
+  {
+    id: 't-test-two-levels',
+    pattern: /must have exactly 2 levels/i,
+    title: 'grouping factor must have exactly 2 levels',
+    why: 'A t-test compares exactly two groups. The grouping column has three or more values, or it has NAs that R counts as a level.',
+    fix: [
+      'Run count() on the grouping column to see its values.',
+      'Keep two groups with filter(), for example filter(group %in% c("a", "b")), or drop the NAs, then run the test again.',
+    ],
+    link: { label: 'Workbook: the t-test', url: `${WB}/06-inferencing-data.html#when-the-outcome-is-continuous-the-t-test` },
+  },
+  {
+    id: 'not-enough-observations',
+    pattern: /not enough ['‘’"]?[xy]['‘’"]? observations/i,
+    title: "not enough 'x' observations",
+    why: 'A group has too few rows for the test, usually because a filter left almost nothing behind.',
+    fix: [
+      'Run count() on the grouping column to see how many rows each group has.',
+      'Loosen the filter, or pick groups that have enough data.',
+    ],
+    link: { label: 'Workbook: the t-test', url: `${WB}/06-inferencing-data.html#when-the-outcome-is-continuous-the-t-test` },
+  },
+  {
+    id: 'na-mean',
+    pattern: /^\s*\[1\]\s+NA\s*$/m,
+    title: 'mean() or sd() prints NA',
+    why: 'A single missing value makes mean(), median(), and sd() return NA, because R will not quietly average around a hole.',
+    fix: [
+      'Add na.rm = TRUE: mean(x, na.rm = TRUE).',
+      'Then ask why the values are missing; a missing value is sometimes a wrangling mistake worth fixing at the source.',
+    ],
+    link: { label: 'Workbook: the summary table', url: `${WB}/05-describing-data.html#the-summary-table-behind-the-picture` },
+  },
+  {
+    id: 'ggplot-missing-plus',
+    pattern: /(?:ggplot\s*\(|geom_[A-Za-z_]+)[\s\S]*?unexpected symbol|unexpected symbol[\s\S]*?geom_[A-Za-z_]+/i,
+    title: 'A ggplot layer with a missing +',
+    why: 'Every ggplot layer is joined by a + at the end of the line above it. A missing + makes R read the next geom_ as a surprise; a trailing + with nothing after it leaves R waiting (you see a + prompt).',
+    fix: [
+      'Put a + at the end of every line except the last in a ggplot block.',
+      'Make sure the last line has no trailing +. If the terminal shows a +, click in it and press Esc.',
+    ],
+    link: { label: 'Workbook: the grammar of graphics', url: `${WB}/05-describing-data.html#the-grammar-of-graphics-ggplot2` },
+  },
+
+  // The five `?v2v::common_errors` cases (MC 451 and MC 501 only).
+  {
+    id: 'epoch-ms-year-50888',
+    pattern: /\b[45]\d{4}-\d{2}-\d{2}\b/,
+    title: 'Timestamps land in the year 50,888',
+    why: 'The date column is Unix time in milliseconds, but as.POSIXct() expects seconds, so every time is a thousand times too large and lands tens of thousands of years in the future.',
+    fix: [
+      'Use clean_dates(): mutate(ts = clean_dates(date)).',
+      'By hand it is a divide by 1000 first: as.POSIXct(date / 1000, origin = "1970-01-01").',
+    ],
+    link: { label: 'Workbook: make the timestamp readable', url: `${WB}/04-data-wrangling.html#a-make-the-timestamp-readable` },
+    courses: V2V,
+  },
+  {
+    id: 'join-all-na',
+    pattern: /join (?:produces|returns)[\s\S]{0,50}(?:zero|all|no)[\s\S]{0,20}(?:NA|matched|rows)|every joined column[\s\S]{0,10}NA|mismatched keys/i,
+    title: 'A join returns zero rows, or every joined column is NA',
+    why: 'The join key does not match between the two tables. In the Twitch data the chat channel is prefixed with a # (an IRC convention) and the stream channel is not, so no row lines up.',
+    fix: [
+      'Compare the key columns: the shipped twitch_chat_sample has the # already stripped, so the join works as-is.',
+      'If you pulled raw data, normalize first: mutate(channel = sub("^#", "", channel)) before the join.',
+    ],
+    link: { label: 'Workbook: match each message to its stream', url: `${WB}/04-data-wrangling.html#c-match-each-message-to-its-stream` },
+    courses: V2V,
+  },
+  {
+    id: 'row-count-grew-after-join',
+    pattern: /row count grew|(?:more|extra) rows after[\s\S]{0,15}join|join[\s\S]{0,30}duplicate keys/i,
+    title: 'The row count grew after a join',
+    why: 'A left_join() should keep one row per chat message. If the row count goes up, the lookup table has duplicate keys, so each chat row matches more than one lookup row.',
+    fix: [
+      'Check the lookup for duplicates: lookup %>% count(channel) %>% filter(n > 1).',
+      'Keep one row per key with distinct(channel, .keep_all = TRUE) before the join, then join again and confirm nrow() is unchanged.',
+    ],
+    link: { label: 'Workbook: match each message to its stream', url: `${WB}/04-data-wrangling.html#c-match-each-message-to-its-stream` },
+    courses: V2V,
+  },
+  {
+    id: 'setup-quarto-false-alarm',
+    pattern: /Quarto CLI not found|setup\(\)[\s\S]{0,40}[Qq]uarto[\s\S]{0,20}missing|[Qq]uarto[\s\S]{0,15}missing but[\s\S]{0,15}installed/i,
+    title: 'setup() says Quarto is missing, but you have it installed',
+    why: 'R reads the PATH once, when it starts. If R was already open when Quarto was installed, that session cannot see Quarto even though the terminal can.',
+    fix: [
+      'Quit R, open it again, and run v2v::setup() once more.',
+      'If the red x stays, reinstall Quarto from quarto.org. The quarto R package is a separate optional wrapper and does not install the program.',
+    ],
+    link: { label: 'Installing Quarto: open a new terminal', url: `${HUB}/install-quarto.html#step-2-close-your-terminal-and-open-a-new-one` },
+    courses: V2V,
+  },
+  {
+    id: 'kappa-lower-than-expected',
+    pattern: /kappa[\s\S]{0,40}(?:lower than (?:I )?expected|much lower|near 0|is .{0,10}low)|low(?:er)? (?:than expected )?kappa/i,
+    title: "Cohen's kappa is much lower than you expected",
+    why: 'Kappa corrects for chance agreement. When one code is rare, two coders can agree most of the time on the common code and still score a low kappa, because the agreement on the rare code is what carries the signal.',
+    fix: [
+      'Revise the codebook so the rare code is defined more sharply and appears more often, or',
+      'Report Krippendorff\'s alpha with reliability(method = "alpha"), which handles an imbalanced code better.',
+    ],
+    link: { label: 'Workbook: the codebook', url: `${WB}/01-codebook.html` },
+    courses: V2V,
+  },
+  {
+    id: 'twitch-sample-not-found',
+    pattern: /data set ['‘’"]?twitch_chat_sample['‘’"]? not found|twitch_chat_sample[^\n]*not found/i,
+    title: "data set 'twitch_chat_sample' not found",
+    why: 'Either the v2v package is not installed, or you called data() before library(v2v).',
+    fix: [
+      'Run library(v2v) first, then try again.',
+      'If it still fails, reinstall: remotes::install_github("AURA-Lab-SIUE/v2v-r", upgrade = "never", force = TRUE). v2v is not on CRAN, so install.packages() cannot find it.',
+    ],
+    link: { label: 'Installing the v2v package: when it fails', url: `${HUB}/install-v2v.html#when-it-fails` },
+    courses: V2V,
+  },
+
+  // Quarto and Git/GitHub (publishing and setup; all courses).
+  {
+    id: 'quarto-command-not-found',
+    pattern: /quarto: command not found|['‘’"]?quarto['‘’"]? is not recognized/i,
+    title: "quarto: command not found",
+    why: 'The Quarto program is not installed, or the terminal was open before it was installed and has not picked it up yet.',
+    fix: [
+      'Close the terminal and open a new one, then run quarto check.',
+      'If it still fails, install Quarto from quarto.org and open a fresh terminal.',
+    ],
+    link: { label: 'Installing Quarto: command not found', url: `${HUB}/install-quarto.html#quarto-command-not-found-or-quarto-is-not-recognized` },
+  },
+  {
+    id: 'quarto-check-no-r',
+    pattern: /quarto check[\s\S]{0,30}R (?:was )?not found|quarto check[\s\S]{0,30}could not find R/i,
+    title: 'quarto check says R was not found',
+    why: 'Quarto looks for R on the PATH. On Windows the R installer leaves R off the PATH on purpose, so quarto check can report R missing even though R works in VS Code.',
+    fix: [
+      'This does not mean R is broken. Confirm R with AURA: Check my setup.',
+      'Render from inside VS Code with the R extension active, which hands Quarto the right R.',
+    ],
+    link: { label: 'Installing Quarto: quarto check says R not found', url: `${HUB}/install-quarto.html#quarto-check-says-r-was-not-found` },
+  },
+  {
+    id: 'failed-to-spawn-rscript',
+    pattern: /Failed to spawn ['‘’"]?Rscript/i,
+    title: "Failed to spawn 'Rscript'",
+    why: 'Quarto tried to run R to render a code chunk but could not find Rscript.',
+    fix: [
+      'Run AURA: Check my setup to confirm R is found, then render again from inside VS Code.',
+      'Close the terminal and open a new one so it picks up the current PATH.',
+    ],
+    link: { label: 'Installing Quarto: Failed to spawn Rscript', url: `${HUB}/install-quarto.html#error-failed-to-spawn-rscript` },
+  },
+  {
+    id: 'yaml-render-error',
+    pattern: /\byaml\b|_quarto\.yml|did not find expected key|mapping values are not allowed here/i,
+    title: 'Render fails with a YAML error',
+    why: 'The block of settings at the top of your .qmd, between the --- lines, is misread. YAML is strict about spaces and colons.',
+    fix: [
+      'Check the lines between the two --- for a missing space after a colon (title: My Report, not title:My Report).',
+      'Keep every key flush left unless it belongs under another key, and indent with spaces, never tabs.',
+    ],
+    link: { label: 'Installing Quarto: YAML error', url: `${HUB}/install-quarto.html#render-fails-with-a-yaml-error` },
+  },
+  {
+    id: 'unc-share',
+    pattern: /drive or UNC share does not exist|UNC (?:path|share) /i,
+    title: 'The installer says the drive or UNC share does not exist',
+    why: 'A tool is pointed at a network or OneDrive path that is not reachable, often because the working folder is on a synced drive that is offline.',
+    fix: [
+      'Work from a plain local folder, for example C:\\Users\\you\\MC427, not a mapped network drive.',
+      'If your Documents folder is in OneDrive, move the course folder somewhere local and open that in VS Code.',
+    ],
+    link: { label: 'Installing VS Code: drive or UNC share', url: `${HUB}/install-vscode.html#the-installer-says-the-drive-or-unc-share-does-not-exist` },
+  },
+  {
+    id: 'permission-denied-publickey',
+    pattern: /Permission denied \(publickey\)/i,
+    title: 'Permission denied (publickey)',
+    why: 'Git tried to reach GitHub over SSH, but GitHub does not recognize a key for you. This course uses HTTPS, so the SSH key is the wrong road.',
+    fix: [
+      'Clone with the https:// address, not the git@github.com: address.',
+      'When Git asks you to sign in, use the browser sign-in or a personal access token, not an SSH key.',
+    ],
+    link: { label: 'GitHub setup: Permission denied', url: `${HUB}/github-setup.html#permission-denied-error` },
+  },
+  {
+    id: 'author-identity-unknown',
+    pattern: /Author identity unknown|empty ident name|please tell me who you are/i,
+    title: 'Author identity unknown',
+    why: 'Git will not record a commit until it knows your name and email, and this is the first commit on this computer.',
+    fix: [
+      'Set them once: git config --global user.name "Your Name" and git config --global user.email "you@example.com".',
+      'Then commit again.',
+    ],
+    link: { label: 'GitHub setup: tell Git who you are', url: `${HUB}/github-setup.html#tell-git-who-you-are` },
+  },
+  {
+    id: 'repository-not-found',
+    pattern: /Repository not found/i,
+    title: 'Repository not found',
+    why: 'The repository address is wrong, the repo is private and you are not signed in, or you do not have access.',
+    fix: [
+      'Check the address against the green Code button on the GitHub page; copy it rather than typing it.',
+      'Sign in to GitHub in VS Code if the repo is private or belongs to the course organization.',
+    ],
+    link: { label: 'GitHub setup: clone a repository', url: `${HUB}/github-setup.html#step-4-clone-a-repository-get-it-on-your-computer` },
+  },
+  {
+    id: 'merge-conflict',
+    pattern: /merge conflict|CONFLICT \(content\)|Automatic merge failed|<<<<<<< HEAD/i,
+    title: 'Merge conflict',
+    why: 'The same lines changed in two places, so Git cannot decide which to keep and marks the spot for you.',
+    fix: [
+      'Open the file. Git marked the clash with <<<<<<<, =======, and >>>>>>>.',
+      'Delete the markers, keep the lines you want, save, then commit again.',
+    ],
+    link: { label: 'GitHub setup: troubleshooting', url: `${HUB}/github-setup.html#step-8-troubleshooting` },
+  },
+  {
+    id: 'large-files',
+    pattern: /GH001|[Ll]arge files? detected|exceeds GitHub's (?:recommended )?(?:maximum )?file size|this exceeds GitHub|this is larger than GitHub's recommended/i,
+    title: 'GitHub rejects or warns about large files',
+    why: 'GitHub refuses files over 100 MB and warns over 50 MB. A big data file or a rendered output was committed by mistake.',
+    fix: [
+      'Keep raw data and large rendered files out of the repo; commit the code and the small inputs.',
+      'Add the file to .gitignore, remove it from the commit, and push again. Ask for help before rewriting history.',
+    ],
+    link: { label: 'GitHub setup: troubleshooting', url: `${HUB}/github-setup.html#step-8-troubleshooting` },
+  },
 ];
 
 export interface Explanation {
@@ -235,6 +562,8 @@ export function explain(text: string, course?: CourseId): Explanation[] {
     if (!m) continue;
     // The specific v2v entries already cover the generic "no package" message
     if (entry.id === 'no-package' && out.some((e) => e.entry.id === 'no-package-v2v' || e.entry.id === 'v2v-restored')) continue;
+    // The specific library(v2v-r) hyphen case already covers the generic "object not found"
+    if (entry.id === 'object-not-found' && out.some((e) => e.entry.id === 'object-r-not-found')) continue;
     if (seenGeneric.has(entry.id)) continue;
     seenGeneric.add(entry.id);
     out.push({ entry, matched: m[0] });
