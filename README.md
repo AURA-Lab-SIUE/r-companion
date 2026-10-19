@@ -25,6 +25,12 @@ A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-cod
 - **AURA: Explain an R error.** Paste a message R printed and get a plain-English explanation, the steps to fix it, and a link to the course page that covers it.
 - **AURA: Run the course setup check script.** For MC 427, runs `mc427-setup-check.R` in an R terminal so the `SETUP OK` line appears for the Tools Stack Setup screenshot.
 
+## What it does (release 0.2, "R2 Data and the reliability grid")
+
+- **AURA: Write R code.** A short list of tasks (import a CSV or the course Twitch corpus, filter, select, mutate, count, clean dates, join chat to streams, label channels, save as CSV or RDS). Each task writes a commented tidyverse block into your `.R` file or `.qmd` chunk at the cursor, the same code the course pages show, then offers to run it. MC 427 gets plain tidyverse; MC 451 and MC 501 get the `v2v` helpers their decks use. The comment header stays with the code, so you can explain every line.
+- **AURA: Reliability grid** (MC 451 and MC 501). Enter your two coding passes item by item: Pass 1 is hidden while you enter Pass 2, and the date of each pass is recorded. It saves the items as `data/reliability-pilot.csv` and writes the R that reads them: Cohen's kappa and Krippendorff's alpha with `irr::kappa2()` and `irr::kripp.alpha()`, followed by the `v2v` `reliability()` call as a check that prints the same kappa.
+- The Describe, plots, and Tests tasks arrive with later releases.
+
 ## How it finds R
 
 In order: the `auraR.rPath` setting, the R extension's `r.rpath` and `r.rterm` settings, your PATH, then on Windows the registry and the standard install folders (the Windows R installer leaves R off the PATH on purpose), and on macOS the R.framework and Homebrew locations.
@@ -46,6 +52,8 @@ No telemetry. The only network traffic is the CRAN and GitHub downloads you star
 | `auraR.cranMirror` | `https://cloud.r-project.org` | Download site for Install what is missing. |
 | `auraR.runWith` | `auto` | `auto`, `positron`, `vscode-r`, or `terminal`. |
 | `auraR.updates.releaseUrl` | empty | For `.vsix` installs only: the GitHub releases API address to check. |
+| `auraR.plainCalls` | on | MC 451 and MC 501: write the plain R calls (`t.test()`, `chisq.test()`, `effectsize`, `irr`) with the `v2v` wrapper last as a check. Off writes the wrappers alone. |
+| `auraR.previewReleases` | off | Shows the menu tasks of releases not yet published, for testing. |
 
 ## Accessibility
 
