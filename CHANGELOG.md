@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Listing image: a plain gold tile from the SIUE palette, with no mark, letter, or symbol, until UMC settles an approved identity for AURA Lab.
+
 ## 0.1.1 (R1.0.1, fixes from the leith-hp test of 2026-10-19)
 
 - **Install what is missing** installs CRAN binaries only on Windows and macOS. R's default installed a package from source whenever the source was newer than the binary (datawizard, performance), which fails without Rtools for any package that needs compiling.
