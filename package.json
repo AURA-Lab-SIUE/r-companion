@@ -1,0 +1,225 @@
+{
+  "name": "r-companion",
+  "displayName": "AURA Lab R Companion",
+  "description": "Gets students to a working R setup in VS Code: finds R, checks the packages each course needs, installs what is missing, and explains the errors students meet most often.",
+  "version": "0.1.0",
+  "publisher": "aura-lab-siue",
+  "license": "MIT",
+  "author": {
+    "name": "Alex P. Leith",
+    "email": "aleith@siue.edu"
+  },
+  "homepage": "https://aura-lab.siue.edu/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AURA-Lab-SIUE/r-companion"
+  },
+  "bugs": {
+    "url": "https://github.com/AURA-Lab-SIUE/r-companion/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Education",
+    "Data Science",
+    "Other"
+  ],
+  "keywords": [
+    "R",
+    "tidyverse",
+    "education",
+    "statistics",
+    "setup"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode the setup check runs R from a neutral folder and ignores folder settings that point at a program. Opening an R terminal and running the course setup script wait until you trust the folder.",
+      "restrictedConfigurations": [
+        "auraR.rPath",
+        "auraR.updates.releaseUrl"
+      ]
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "auraR.checkSetup",
+        "title": "Check my setup",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.installMissing",
+        "title": "Install what is missing",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.pickCourse",
+        "title": "Pick my course",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openCourseWorkspace",
+        "title": "Open my course workspace",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.getHelp",
+        "title": "Where to get help",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.explainError",
+        "title": "Explain an R error",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.runCourseSetupCheck",
+        "title": "Run the course setup check script",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openRTerminal",
+        "title": "Open an R terminal",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.checkForUpdates",
+        "title": "Check for updates",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openWalkthrough",
+        "title": "Open the Get Started walkthrough",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.addCourseFiles",
+        "title": "Add the course's Copilot instructions to this folder",
+        "category": "AURA"
+      }
+    ],
+    "configuration": {
+      "title": "AURA Lab R Companion",
+      "properties": {
+        "auraR.course": {
+          "type": "string",
+          "enum": [
+            "",
+            "mc427",
+            "mc451",
+            "mc501"
+          ],
+          "enumDescriptions": [
+            "Not set: the extension asks, or remembers your answer for this folder.",
+            "MC 427 Social Media Analytics",
+            "MC 451 Research Methods",
+            "MC 501 Research Methods (graduate)"
+          ],
+          "default": "",
+          "markdownDescription": "Your course. Leave it empty and the extension asks once, then remembers your answer for the open folder."
+        },
+        "auraR.rPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Full path to `Rscript` (or `Rscript.exe`). Leave it empty to let the extension find R: it checks this setting, then the R extension's `r.rpath` and `r.rterm` settings, then your PATH, then the Windows registry and the standard install folders."
+        },
+        "auraR.cranMirror": {
+          "type": "string",
+          "default": "https://cloud.r-project.org",
+          "markdownDescription": "The CRAN mirror used by **Install what is missing**. Setting it means R never shows the long list of countries and cities."
+        },
+        "auraR.runWith": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "vscode-r",
+            "positron",
+            "terminal"
+          ],
+          "default": "auto",
+          "markdownDescription": "How the extension runs R code you can see. `auto` uses Positron inside Positron, the R extension (REditorSupport) when it is installed, and otherwise a plain R terminal with bracketed paste off."
+        },
+        "auraR.updates.releaseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Only for copies installed from a `.vsix` file. The GitHub releases API address to check for a newer version, for example `https://api.github.com/repos/AURA-Lab-SIUE/r-companion/releases/latest`. Empty means no update check. Copies installed from the Marketplace or Open VSX are updated by VS Code itself and never use this."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "AURA Lab R Companion: Get Started",
+        "description": "Four steps from a fresh install to a working R setup for MC 427, MC 451, or MC 501.",
+        "steps": [
+          {
+            "id": "pickCourse",
+            "title": "Pick your course",
+            "description": "Tell the extension which course you are in, so it checks the right packages.\n[Pick my course](command:auraR.pickCourse)",
+            "media": {
+              "markdown": "media/walkthrough/1-pick-course.md"
+            },
+            "completionEvents": [
+              "onCommand:auraR.pickCourse",
+              "onSettingChanged:auraR.course"
+            ]
+          },
+          {
+            "id": "checkSetup",
+            "title": "Check your setup",
+            "description": "Find R, check each package your course needs, and install anything missing.\n[Check my setup](command:auraR.checkSetup)",
+            "media": {
+              "markdown": "media/walkthrough/2-check-setup.md"
+            },
+            "completionEvents": [
+              "onCommand:auraR.checkSetup"
+            ]
+          },
+          {
+            "id": "openWorkspace",
+            "title": "Open your course workspace",
+            "description": "Open the folder that holds your course files, so R can find them by name. Made your copy before this extension existed? Add the course's Copilot instructions to it.\n[Open my course workspace](command:auraR.openCourseWorkspace)\n[Add the Copilot instructions](command:auraR.addCourseFiles)",
+            "media": {
+              "markdown": "media/walkthrough/3-open-workspace.md"
+            },
+            "completionEvents": [
+              "onCommand:auraR.openCourseWorkspace"
+            ]
+          },
+          {
+            "id": "getHelp",
+            "title": "Where to get help",
+            "description": "Paste an R message to get a plain-English explanation, or open the help pages for your course.\n[Explain an R error](command:auraR.explainError)\n[Where to get help](command:auraR.getHelp)",
+            "media": {
+              "markdown": "media/walkthrough/4-get-help.md"
+            },
+            "completionEvents": [
+              "onCommand:auraR.getHelp",
+              "onCommand:auraR.explainError"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "check:separation": "node scripts/check-separation.mjs",
+    "test": "npm run compile && node --test out/test/unit.test.js",
+    "package": "npm run check:separation && npm run test && vsce package --out dist/"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "^5.9.3"
+  }
+}

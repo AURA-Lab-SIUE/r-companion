@@ -1,0 +1,29 @@
+{
+  "name": "MC 451 and MC 501: R, Quarto, and the v2v package",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/rocker-org/devcontainer-features/quarto-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "REditorSupport.r@3.0.1",
+        "quarto.quarto",
+        "eamodio.gitlens",
+        "aura-lab-siue.r-companion"
+      ],
+      "settings": {
+        "r.rterm.linux": "/usr/local/bin/R",
+        "r.bracketedPaste": false,
+        "r.sessionWatcher": true,
+        "r.plot.useHttpgd": true,
+        "r.lsp.promptToInstall": false,
+        "auraR.course": "",
+        "files.autoSave": "afterDelay"
+      }
+    },
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+}

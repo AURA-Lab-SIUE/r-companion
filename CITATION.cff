@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software in teaching or research, please cite it as below."
+type: software
+title: "AURA Lab R Companion"
+abstract: "A Visual Studio Code extension that gets students new to R to a working setup: it finds R, checks the packages each course needs, installs what is missing, and explains common errors in plain English."
+authors:
+  - family-names: Leith
+    given-names: Alex P.
+    email: aleith@siue.edu
+    orcid: "https://orcid.org/0000-0001-7330-2153"
+    affiliation: "AURA Lab, Southern Illinois University Edwardsville"
+version: 0.1.0
+date-released: 2026-10-21
+license: MIT
+repository-code: "https://github.com/AURA-Lab-SIUE/r-companion"
+url: "https://aura-lab.siue.edu/"
+keywords:
+  - R
+  - Visual Studio Code
+  - statistics education
+  - tidyverse
