@@ -6,8 +6,11 @@
 //   - In the exported self-contained HTML: window.__AURA_INIT__ is set, so build at once. The
 //     buttons do nothing there; the file exists only for the accessibility check.
 //
-// Data columns are read only. Coding columns are on the right and editable: a dropdown for a
-// column with allowed values, a text box otherwise. Enter commits and moves down. AG Grid keeps
+// Data columns are read only. Coding columns are on the right and editable, with spreadsheet keys:
+// in a column with allowed values, typing picks the first code that starts with the typed letters
+// (CodeListEditor); in a free-text column, typing starts the edit. Enter commits and moves down,
+// Tab commits and moves right, Escape cancels, F2 or a double-click opens the whole list, and
+// Delete clears the cell. AG Grid keeps
 // undo/redo, and every value change (including an undo) is sent to the host, so the codes file
 // always matches the grid.
 
@@ -17,6 +20,7 @@
   var vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : null;
   var api = null;
   var state = null; // the last init payload
+  var lastChange = ''; // the last coded cell, in words, for the status line
   var statusEl = document.getElementById('aura-status');
 
   function setStatus(text) {
@@ -57,6 +61,224 @@
     return def;
   }
 
+  // ---------- The code list editor (a typeahead combobox) ----------
+  //
+  // A coding column with allowed values edits like a spreadsheet cell with a validation list:
+  // typing a letter on the cell opens this editor already filtered to the codes that start with
+  // the typed letters (case-insensitive), the first match chosen. Backspace takes letters back off;
+  // with none left the choice is a blank, which clears the cell. Up and Down move the choice. The
+  // grid commits on Enter (then moves down) and cancels on Escape; Tab is handled in
+  // codingKeyboard below. F2 or a double-click opens it with no letters: the whole list, on the
+  // cell's current code. It is a popup so the list can hang below the cell.
+  //
+  // For screen readers the input is an ARIA combobox whose aria-activedescendant follows the
+  // chosen option, and a polite live region inside the popup says the choice in words.
+
+  var editorSeq = 0;
+
+  function CodeListEditor() {}
+
+  CodeListEditor.prototype.init = function (params) {
+    var self = this;
+    this.params = params;
+    this.codes = params.codes || [];
+    this.original = params.value == null ? '' : String(params.value);
+    this.columnName = params.colDef.headerName || params.colDef.field;
+    var key = params.eventKey;
+    var typedKey = typeof key === 'string' && key.length === 1 ? key : '';
+    // Opened by F2, Enter, or a double-click: the whole list, on the current code
+    this.browse = !typedKey && key !== 'Backspace' && key !== 'Delete';
+    this.options = [];
+    this.active = -1;
+    this.noMatch = false;
+
+    var id = 'aura-code-' + (++editorSeq);
+    this.gui = document.createElement('div');
+    this.gui.className = 'aura-code-editor';
+    this.input = document.createElement('input');
+    this.input.type = 'text';
+    this.input.className = 'aura-code-input';
+    this.input.setAttribute('role', 'combobox');
+    this.input.setAttribute('aria-autocomplete', 'list');
+    this.input.setAttribute('aria-expanded', 'true');
+    this.input.setAttribute('aria-controls', id + '-list');
+    this.input.setAttribute('autocomplete', 'off');
+    this.input.setAttribute('spellcheck', 'false');
+    this.input.setAttribute('aria-label', this.columnName + ', row ' + (params.rowIndex + 1) +
+      ': type the first letters of a code');
+    this.input.value = typedKey;
+    this.list = document.createElement('ul');
+    this.list.id = id + '-list';
+    this.list.className = 'aura-code-list';
+    this.list.setAttribute('role', 'listbox');
+    this.list.setAttribute('aria-label', this.columnName + ' codes');
+    this.live = document.createElement('div');
+    this.live.className = 'aura-sr-only';
+    this.live.setAttribute('aria-live', 'polite');
+    this.idBase = id;
+    this.gui.appendChild(this.input);
+    this.gui.appendChild(this.list);
+    this.gui.appendChild(this.live);
+
+    this.input.addEventListener('input', function () {
+      self.browse = false;
+      self.refresh();
+    });
+    this.input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        self.move(e.key === 'ArrowDown' ? 1 : -1);
+      }
+    });
+    // A click on an option chooses it and commits; mousedown keeps focus in the input
+    this.list.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      var li = e.target.closest ? e.target.closest('[role="option"]') : null;
+      if (!li || li.getAttribute('aria-disabled') === 'true') return;
+      self.active = Number(li.getAttribute('data-index'));
+      params.stopEditing();
+    });
+    this.refresh();
+  };
+
+  // Rebuild the option list from the typed letters
+  CodeListEditor.prototype.refresh = function () {
+    var typed = this.input.value.trim().toLowerCase();
+    var blank = { value: '', label: '(blank: clear the cell)' };
+    if (this.browse) {
+      this.options = [blank].concat(this.codes.map(function (c) { return { value: c, label: c }; }));
+      var at = this.codes.indexOf(this.original);
+      this.active = at >= 0 ? at + 1 : 0;
+      this.noMatch = false;
+    } else if (!typed) {
+      this.options = [blank].concat(this.codes.map(function (c) { return { value: c, label: c }; }));
+      this.active = 0;
+      this.noMatch = false;
+    } else {
+      this.options = this.codes
+        .filter(function (c) { return c.toLowerCase().indexOf(typed) === 0; })
+        .map(function (c) { return { value: c, label: c }; });
+      this.active = this.options.length ? 0 : -1;
+      this.noMatch = !this.options.length;
+    }
+    this.render();
+  };
+
+  CodeListEditor.prototype.move = function (step) {
+    if (!this.options.length) return;
+    this.active = Math.max(0, Math.min(this.options.length - 1, this.active + step));
+    this.render();
+  };
+
+  CodeListEditor.prototype.render = function () {
+    var self = this;
+    this.list.textContent = '';
+    if (this.noMatch) {
+      var none = document.createElement('li');
+      none.setAttribute('role', 'option');
+      none.setAttribute('aria-disabled', 'true');
+      none.className = 'aura-code-none';
+      none.id = this.idBase + '-none';
+      none.textContent = 'No code starts with "' + this.input.value.trim() + '"';
+      this.list.appendChild(none);
+      this.input.removeAttribute('aria-activedescendant');
+      this.say(none.textContent + '. Press Backspace to change the letters, or Escape to keep the cell as it was.');
+      return;
+    }
+    this.options.forEach(function (o, i) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.id = self.idBase + '-opt-' + i;
+      li.setAttribute('data-index', String(i));
+      li.setAttribute('aria-selected', i === self.active ? 'true' : 'false');
+      li.className = 'aura-code-option' + (i === self.active ? ' aura-code-active' : '') + (o.value === '' ? ' aura-code-blank' : '');
+      li.textContent = o.label;
+      self.list.appendChild(li);
+    });
+    var act = this.list.children[this.active];
+    if (act) {
+      this.input.setAttribute('aria-activedescendant', act.id);
+      if (act.scrollIntoView) act.scrollIntoView({ block: 'nearest' });
+      var o = this.options[this.active];
+      this.say((o.value === '' ? 'blank' : o.value) + ', ' + (this.active + 1) + ' of ' + this.options.length +
+        '. Enter saves it.');
+    }
+  };
+
+  CodeListEditor.prototype.say = function (text) {
+    this.live.textContent = text;
+  };
+
+  CodeListEditor.prototype.getGui = function () { return this.gui; };
+  CodeListEditor.prototype.isPopup = function () { return true; };
+  CodeListEditor.prototype.getPopupPosition = function () { return 'over'; };
+
+  CodeListEditor.prototype.afterGuiAttached = function () {
+    var w = this.params.eGridCell ? this.params.eGridCell.offsetWidth : 0;
+    if (w) this.gui.style.minWidth = w + 'px';
+    this.input.focus();
+    var n = this.input.value.length;
+    this.input.setSelectionRange(n, n);
+  };
+
+  CodeListEditor.prototype.focusIn = function () { this.input.focus(); };
+
+  CodeListEditor.prototype.getValue = function () {
+    var o = this.options[this.active];
+    return o ? o.value : this.original;
+  };
+
+  // Typed letters that match no code leave the cell as it was
+  CodeListEditor.prototype.isCancelAfterEnd = function () {
+    return this.noMatch || this.getValue() === this.original;
+  };
+
+  // ---------- Keys the grid handles differently in coding columns ----------
+  //
+  // Tab commits the edit and moves one cell right, as in a spreadsheet; AG Grid's own Tab would
+  // open the editor of the next editable cell instead. Delete clears a coding cell that is not
+  // being edited. Everything else (typing, Enter, F2, Escape, arrows) is the grid's own.
+  function codingKeyboard(p) {
+    var e = p.event;
+    if (e.type !== 'keydown') return false;
+    if (p.editing && (e.key === 'Enter' || e.key === 'Tab')) {
+      // Letters that match no code: stay in the editor rather than move on with nothing saved
+      var eds = p.api.getCellEditorInstances({ rowNodes: [p.node], columns: [p.column] });
+      var ed = eds && eds[0];
+      if (ed && ed.noMatch) {
+        e.preventDefault();
+        var why = 'No code starts with "' + ed.input.value.trim() + '". Press Backspace to change the letters, or Escape to keep the cell as it was.';
+        // Emptied first and refilled a moment later, so a screen reader hears a repeat too
+        ed.say('');
+        setTimeout(function () { ed.say(why); }, 60);
+        return true;
+      }
+    }
+    if (p.editing && e.key === 'Tab') {
+      e.preventDefault();
+      p.api.stopEditing();
+      if (e.shiftKey) p.api.tabToPreviousCell(); else p.api.tabToNextCell();
+      return true;
+    }
+    if (!p.editing && e.key === 'Delete' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      clearCell(p.api, p.node, p.column);
+      return true;
+    }
+    return false;
+  }
+
+  // Clear through the editor so the change lands on the undo stack like any edit: an editor
+  // opened by Backspace starts empty (a blank choice in a code list)
+  function clearCell(api, node, column) {
+    var field = column.getColDef().field;
+    if (node.data[field] == null || node.data[field] === '') return;
+    api.startEditingCell({ rowIndex: node.rowIndex, colKey: column, key: 'Backspace' });
+    api.stopEditing();
+    api.setFocusedCell(node.rowIndex, column);
+  }
+
   function codingColumnDef(coding) {
     var def = {
       field: coding.name,
@@ -69,12 +291,12 @@
       headerClass: 'aura-coding-header',
       cellClass: 'aura-coding-cell',
       singleClickEdit: false,
+      suppressKeyboardEvent: codingKeyboard,
     };
     if (coding.kind === 'list' && coding.values && coding.values.length) {
-      def.cellEditor = 'agSelectCellEditor';
-      // A blank choice lets a student clear a cell with the keyboard
-      def.cellEditorParams = { values: [''].concat(coding.values) };
-      def.headerTooltip = coding.name + ' (choose one of: ' + coding.values.join(', ') + ')';
+      def.cellEditor = CodeListEditor;
+      def.cellEditorParams = { codes: coding.values.slice() };
+      def.headerTooltip = coding.name + ' (type the first letters of: ' + coding.values.join(', ') + ')';
     } else {
       def.cellEditor = 'agTextCellEditor';
       def.headerTooltip = coding.name + ' (free text)';
@@ -146,7 +368,10 @@
         var isCoding = (init.codingColumns || []).some(function (c) { return c.name === field; });
         if (!isCoding) return;
         var value = e.newValue == null ? '' : String(e.newValue);
-        setStatus('Saving ' + field + '...');
+        // The status line is a polite live region: it names the code just entered, so a screen
+        // reader hears it after Enter moves the focus down
+        lastChange = field + ', row ' + (e.rowIndex + 1) + ': ' + (value === '' ? 'blank' : value) + '.';
+        setStatus(lastChange + ' Saving...');
         post({ type: 'codeChange', rowId: String(e.data[init.rowIdField]), column: field, value: value });
       },
     };
@@ -167,7 +392,8 @@
     if (!state) return;
     state.codingColumns = (state.codingColumns || []).concat([coding]);
     api.setGridOption('columnDefs', buildColumnDefs(state));
-    setStatus('Added the coding column "' + coding.name + '". Click its first cell and start typing.');
+    setStatus('Added the coding column "' + coding.name + '". Its first cell is selected: ' +
+      (coding.kind === 'list' ? 'type the first letters of a code, then press Enter.' : 'type, then press Enter.'));
     api.ensureColumnVisible(coding.name);
     api.setFocusedCell(0, coding.name);
   }
@@ -176,7 +402,7 @@
     var msg = ev.data || {};
     if (msg.type === 'init') build(msg.init);
     else if (msg.type === 'columnAdded') addCodingColumn(msg.column);
-    else if (msg.type === 'saved') setStatus('Saved ' + (msg.at || '') + '. ' + (msg.count || 0) + ' coded cell(s).');
+    else if (msg.type === 'saved') setStatus((lastChange ? lastChange + ' ' : '') + 'Saved ' + (msg.at || '') + '. ' + (msg.count || 0) + ' coded cell(s).');
     else if (msg.type === 'status') setStatus(msg.text);
   });
 

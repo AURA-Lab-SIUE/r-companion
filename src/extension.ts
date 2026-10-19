@@ -158,7 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
     pickCourse,
     runRscript: (rscript, args, timeoutMs) => runRscript(rscript, args, { timeoutMs }),
     rscriptPath: () => findR()[0]?.rscript,
-    runInSession: (code) => pickAdapter(setting('runWith', 'auto'), terminalAdapter).runCode(code),
+    runInSession: (code) => runInSession(code),
     requireTrust,
     resourcePath,
     storageDir: context.globalStorageUri.fsPath,
@@ -713,6 +713,35 @@ async function openRTerminal() {
     }
     terminalAdapter.open().show();
   }
+}
+
+/**
+ * "Run it" on an inserted block. With no R session running, a block sent through vscode-R never
+ * reached R: in the 0.4.0 R2 video the first block's text was lost, and on Pythia (2026-10-19,
+ * vscode-R 3.3.20261018) r.runCommand first asked where to run, then its new "R Interactive"
+ * terminal showed R's banner but no prompt and never ran the block (why is not known). So when no
+ * R terminal is open, the block goes to this extension's own R terminal, which waits for R to
+ * start before sending (the same wait the setup script uses). With an R terminal already open,
+ * the block goes where it went before: vscode-R's terminal through r.runCommand, else the
+ * companion's terminal.
+ */
+async function runInSession(code: string): Promise<void> {
+  const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
+  if (adapter.id === 'positron') return adapter.runCode(code);
+  if (adapter.id === 'vscode-r' && vscodeRTerminalOpen()) return adapter.runCode(code);
+  if (adapter.id === 'vscode-r' && !terminalAdapter.isOpen()) {
+    if (!findR()[0]?.rterm) {
+      vscode.window.showErrorMessage('R was not found. Run AURA: Check my setup to see why.');
+      return;
+    }
+    output.appendLine('No R terminal was open: opened the R (AURA) terminal and waited for R before running the block.');
+  }
+  return terminalAdapter.runCode(code);
+}
+
+/** A live terminal vscode-R made ("R Interactive") or one its commands send to ("R"). */
+function vscodeRTerminalOpen(): boolean {
+  return vscode.window.terminals.some((t) => t.exitStatus === undefined && (t.name === 'R Interactive' || t.name === 'R'));
 }
 
 async function runCourseSetupCheck() {

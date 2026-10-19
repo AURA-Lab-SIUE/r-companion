@@ -316,7 +316,7 @@ class DataViewerPanel {
     if (!name) return;
     const kindPick = await vscode.window.showQuickPick(
       [
-        { label: 'Allowed values (a dropdown)', detail: 'Type or paste your codebook values; the cell becomes a menu', colKind: 'list' as const },
+        { label: 'Allowed values (a dropdown)', detail: 'Type or paste your codebook values; in a cell, type the first letters of a code', colKind: 'list' as const },
         { label: 'Free text', detail: 'Any text, no menu', colKind: 'free' as const },
       ],
       { title: `Coding column "${name.trim()}": what kind?`, placeHolder: 'Choose how you will enter values' },

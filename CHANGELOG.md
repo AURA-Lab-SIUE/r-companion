@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 (spreadsheet keys in the coding sheet, Run it with no R open, lm.beta for MC 501)
+
+- **The coding sheet's keys work like a spreadsheet.** In a column with a list of codes, typing on a cell picks the first code that starts with the typed letters (capitals or not), with the matching codes listed under the cell; Backspace takes letters back off, and with none left the choice is a blank, which clears the cell. Enter saves and moves down a row, Tab saves and moves right (Shift+Tab left), and Escape cancels. F2 or a double-click shows the whole list on the cell's current code, where Up and Down choose and a click saves. Delete clears a coding cell. Letters that match no code say so and stay in the cell instead of moving on with nothing saved. In a free-text column, typing starts the edit and Enter saves and moves down. In 0.4.0, Enter only moved down and typing opened the list without choosing anything, so only F2, then Down, Down, Enter, worked. Autosave, undo (Ctrl+Z), the codes file, and the rebuild code are unchanged.
+- Screen readers: the list editor is an ARIA combobox named for the column and row, its chosen option is announced through `aria-activedescendant` and a polite live region, and the status line (a polite live region) now names the code just saved, for example "tone, row 3: negative. Saved".
+- The viewer's hint, its status after Add coding column, and the Add coding column prompt describe these keys.
+- The header icons of the data viewer (sort and filter) drew as empty boxes: the webview's content security policy blocked the icon font AG Grid embeds as a `data:` URI. It is allowed now.
+- **Run it with no R open.** A block run with the notification's **Run it** before any R terminal was open never reached R: the R extension (vscode-R 3.3) first asked where to run the code, and the R Interactive terminal it then opened showed R's banner but never ran the block. Run it now opens the companion's own R terminal when no R terminal is open, waits for R to start (the wait the course setup script uses), and then sends the block. With an R terminal already open, Run it sends where it did before (the R extension's terminal when there is one).
+- **MC 501 requires `lm.beta`.** The regression block's standardized slope calls `lm.beta::lm.beta()`, so **Check my setup** reports it for MC 501 and **Install what is missing** installs it from CRAN like the other packages (owner decision q-20261019-0009).
+
 ## 0.4.0 (R2, R3, and R4 together: every menu on)
 
 - Every release is on by default. The `auraR.previewReleases` setting is gone: **AURA: Write R code** lists the R2 Data, R3 Describe, and R4 Test tasks for every course, and the reliability grid and the data viewer and coding sheet stay on.

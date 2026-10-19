@@ -48,6 +48,19 @@ fs.writeFileSync(
     2,
   ),
 );
+// AURA_IT_PREINSTALL_VSIX: install an extension (the R extension's Open VSX .vsix) into the scratch
+// profile before launch, so it is there at startup the way a student has it (runit.js)
+if (process.env.AURA_IT_PREINSTALL_VSIX) {
+  const cli = process.platform === 'win32' ? path.join(path.dirname(code), 'bin', 'code.cmd') : path.join(path.dirname(code), 'bin', 'code');
+  // shell: true runs a .cmd on Windows, so every path is quoted (the install folder has spaces)
+  const q = (s) => (process.platform === 'win32' ? `"${s}"` : s);
+  const pre = spawnSync(q(cli), [q(`--extensions-dir=${dirs.extensions}`), '--install-extension', q(process.env.AURA_IT_PREINSTALL_VSIX)], {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+    windowsHide: true,
+  });
+  console.log(`Pre-install exited with ${pre.status}`);
+}
 // Screenshots of the test window only (Windows): the suite asks, capture-window.ps1 answers
 const shots = path.join(scratch, 'shots');
 fs.mkdirSync(shots, { recursive: true });

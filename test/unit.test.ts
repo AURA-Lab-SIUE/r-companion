@@ -17,6 +17,7 @@ import { chooseRowId, ROW_ID } from '../src/dataTypes';
 import { buildLoaded, stringifyCell } from '../src/dataSource';
 import { serializeCodes, parseCodes, CodeStore, CODES_HEADER } from '../src/codesStore';
 import { rebuildChunk } from '../src/rebuild';
+import { webviewHtml } from '../src/gridHtml';
 
 function fakeEnv(files: string[], over: Partial<DiscoveryEnv> = {}): DiscoveryEnv {
   const set = new Set(files.map((f) => f.toLowerCase()));
@@ -500,4 +501,40 @@ test('rebuildChunk follows the house style and adds row_number only when needed'
   });
   assert.ok(existing.includes('mutate(row_id = as.character(row_id))'));
   assert.ok(!existing.includes('row_number()'));
+});
+
+// ---------- coding sheet keys (0.4.1) ----------
+
+test('data viewer: the hint names the real keys, and the CSP lets AG Grid load its icon font', () => {
+  const html = webviewHtml({ nonce: 'n', cspSource: 'vscode-resource:', agGridJs: 'a.js', agGridCss: 'a.css', themeCss: 't.css', gridCss: 'g.css', gridJs: 'g.js', title: 'T' });
+  const help = html.slice(html.indexOf('id="aura-help"')).split('</p>')[0].replace(/\s+/g, ' ');
+  assert.match(help, /type the first letters of a code and press Enter to save it and move down/);
+  assert.match(help, /Tab to save it and move right/);
+  assert.match(help, /Escape cancels, F2 or a double-click shows the whole list, and Delete clears a cell/);
+  assert.match(html, /font-src vscode-resource: data:/);
+});
+
+test('coding sheet: code list columns use the typeahead editor, not the AG Grid select', () => {
+  const js = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'grid', 'grid.js'), 'utf8');
+  assert.match(js, /def\.cellEditor = CodeListEditor;/);
+  assert.doesNotMatch(js, /agSelectCellEditor/);
+  assert.match(js, /suppressKeyboardEvent: codingKeyboard/);
+});
+
+test('MC 501: lm.beta is required, reported missing by Check my setup, and installed from CRAN', () => {
+  const spec = PROFILES.mc501.packages.find((p) => p.name === 'lm.beta');
+  assert.equal(spec?.level, 'required');
+  assert.equal(spec?.source, 'cran');
+  const items = buildChecklist(
+    PROFILES.mc501,
+    probe({ packages: [{ name: 'lm.beta', installed: false, version: null, loads: false, error: null }], quarto: 'q' }),
+    { rscript: 'R', rSource: 'PATH', vscodeRInstalled: true, inPositron: false },
+  );
+  assert.equal(items.find((i) => i.name === 'lm.beta')?.status, 'missing');
+  const plan = installPlan(items, false);
+  assert.ok(plan.some((p) => p.name === 'lm.beta' && p.source === 'cran'));
+  assert.ok(installScript(plan, 'https://cloud.r-project.org').includes('"lm.beta"'));
+  // Only MC 501's regression writes the standardized slope
+  assert.ok(!PROFILES.mc451.packages.some((p) => p.name === 'lm.beta'));
+  assert.ok(!PROFILES.mc427.packages.some((p) => p.name === 'lm.beta'));
 });

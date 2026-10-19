@@ -64,6 +64,11 @@ export class TerminalAdapter implements RunAdapter {
   private terminal: vscode.Terminal | undefined;
   constructor(private rterm: () => string | undefined, private storageDir: string) {}
 
+  /** True while the companion's own R terminal is open. */
+  isOpen(): boolean {
+    return this.terminal !== undefined && this.terminal.exitStatus === undefined;
+  }
+
   /** The terminal, created on first use. */
   open(): vscode.Terminal {
     if (this.terminal && this.terminal.exitStatus === undefined) return this.terminal;

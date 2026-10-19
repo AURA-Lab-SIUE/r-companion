@@ -147,6 +147,70 @@ body.vscode-dark .aura-btn:hover {
   outline-offset: -2px;
 }
 
+/* The code list editor: an input over the cell with the matching codes below it. */
+.aura-code-editor {
+  box-sizing: border-box;
+  background: var(--aura-input-bg);
+  color: var(--aura-input-fg);
+  border: 2px solid var(--aura-accent);
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.aura-code-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--aura-input-border);
+  background: var(--aura-input-bg);
+  color: var(--aura-input-fg);
+  font: inherit;
+}
+.aura-code-input:focus {
+  outline: none;
+}
+.aura-code-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  max-height: 14em;
+  overflow-y: auto;
+}
+.aura-code-option,
+.aura-code-none {
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.aura-code-option:hover {
+  background: var(--aura-hover);
+}
+.aura-code-option.aura-code-active {
+  background: var(--aura-selected);
+  color: var(--aura-selected-fg);
+  outline: 1px solid var(--aura-accent);
+  outline-offset: -1px;
+}
+.aura-code-blank,
+.aura-code-none {
+  font-style: italic;
+}
+.aura-code-none {
+  cursor: default;
+}
+.aura-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* High contrast: force visible cell and header borders. */
 body.vscode-high-contrast .ag-theme-quartz,
 body.vscode-high-contrast-light .ag-theme-quartz {

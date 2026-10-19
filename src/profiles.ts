@@ -137,6 +137,8 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
       ...V2V_PACKAGES,
       // Required from 0.4.0 on: the plain tests the Test menu writes call it
       { name: 'effectsize', why: 'confidence intervals on effect sizes (Inferencing Data)', level: 'required', source: 'cran' },
+      // The regression block's standardized slope calls lm.beta::lm.beta() (owner q-20261019-0009 = install)
+      { name: 'lm.beta', why: 'the standardized slope in the regression (Inferencing Data)', level: 'required', source: 'cran' },
       // w05 and chapter06 (power analysis), w02 and chapter02 (renv)
       { name: 'pwr', why: 'power analysis for your sample size', level: 'recommended', source: 'cran' },
       { name: 'renv', why: 'records the package versions your project used', level: 'recommended', source: 'cran' },

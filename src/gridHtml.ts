@@ -40,8 +40,11 @@ function body(title: string): string {
   <p id="aura-status" class="aura-status" role="status" aria-live="polite"></p>
   <div id="grid" class="ag-theme-quartz aura-grid" aria-label="${escapeHtml(title)}"></div>
   <p id="aura-help" class="aura-help">
-    Data values are read only. Coding columns are on the right: type a value and press Enter to move down.
-    Your work saves by itself to the codes file. Press Ctrl+Z (Cmd+Z on a Mac) to undo.
+    Data values are read only. Coding columns are on the right. In a column with a list of codes, type
+    the first letters of a code and press Enter to save it and move down, or Tab to save it and move right.
+    Escape cancels, F2 or a double-click shows the whole list, and Delete clears a cell. In a free-text
+    column, type and press Enter. Your work saves by itself to the codes file. Press Ctrl+Z (Cmd+Z on a
+    Mac) to undo.
   </p>
   <span id="aura-loadtime" aria-hidden="true" hidden></span>`;
 }
@@ -55,7 +58,9 @@ export function webviewHtml(u: WebviewUris): string {
     `default-src 'none'`,
     `img-src ${u.cspSource} data:`,
     `style-src ${u.cspSource} 'unsafe-inline'`,
-    `font-src ${u.cspSource}`,
+    // AG Grid's quartz theme embeds its icon font as a data: URI; without it the header icons
+    // drew as empty boxes
+    `font-src ${u.cspSource} data:`,
     `script-src 'nonce-${u.nonce}'`,
   ].join('; ');
   return `<!doctype html>
