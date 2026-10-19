@@ -463,6 +463,24 @@ const mc501Regression: Template = () =>
     '  select(r.squared, nobs)',
   );
 
+// Power analysis (MC 501 only): the sample size the design needs, from w05 and the rubric's
+// "power statistics behind the design" row. A plain pwr.t.test() call, one comment per argument.
+const mc501Power: Template = () =>
+  lines(
+    banner('Power analysis: the sample size your design needs'),
+    '# How many messages per group would it take to detect your effect? pwr.t.test() answers that for',
+    '# a two-group t-test. Give it three of the four quantities and it solves for the one you leave',
+    '# out; n is left out here, so it returns the sample size needed in each group.',
+    'library(pwr)',
+    '',
+    'pwr.t.test(',
+    "  d = 0.5,              # the effect size you want to be able to detect (0.5 is a medium Cohen's d)",
+    '  sig.level = 0.05,     # alpha: the false-positive rate you will accept',
+    '  power = 0.80,         # the chance of finding the effect if it is real (the 80% convention)',
+    '  type = "two.sample"   # two independent groups, the same shape as your Welch t-test',
+    ')',
+  );
+
 // ---------------- v2v-plain (proposed stepping-stone variants) ----------------
 
 const v2vPlainTTest: Template = () =>
@@ -520,6 +538,7 @@ export const MC501_R4: Record<string, Template> = {
   anova: mc501Anova,
   regression: mc501Regression,
   correlation: correlationPredictorOutcome,
+  power: mc501Power,
 };
 
 export const V2V_PLAIN_R4: Record<string, Template> = {

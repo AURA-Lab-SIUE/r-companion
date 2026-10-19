@@ -38,10 +38,11 @@ const norm = (s: string) => s.replace(/\r\n/g, '\n');
 const generated = manifest.entries.filter((e) => e.generated);
 
 // 84 from workstream B, plus the four MC 451 and MC 501 plain-call test defaults (q-20261018-0044 = A),
-// plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19)
-test('the golden manifest has 90 entries, 84 generated', () => {
-  assert.equal(manifest.entries.length, 90);
-  assert.equal(generated.length, 84);
+// plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19).
+// Phase 2 charts (#rgui, 2026-10-19) add 5: mc451/mc501 line, mc451/mc501 grouped histogram, mc501 power.
+test('the golden manifest has 95 entries, 89 generated', () => {
+  assert.equal(manifest.entries.length, 95);
+  assert.equal(generated.length, 89);
 });
 
 for (const e of generated) {
@@ -115,6 +116,45 @@ test('plainCalls on the MC 451 and MC 501 tests writes t.test() and chisq.test()
   }
   // MC 427 has no wrappers, so the option changes nothing there
   assert.equal(generate('mc427', 't-test', {}, { plainCalls: true }), generate('mc427', 't-test'));
+});
+
+// Phase 2 charts (#rgui, 2026-10-19). The line chart and grouped histogram are MC 451 and MC 501
+// only (the v2v profiles); MC 427 does not grade them, so they must not appear there.
+test('the line chart is a v2v (MC 451/MC 501) task only, in house style', () => {
+  for (const course of ['mc451', 'mc501'] as const) {
+    const code = generate(course, 'line');
+    assert.ok(code.includes('geom_line(linewidth = 0.9)'), 'draws a line');
+    assert.ok(code.includes('v2v::scale_colour_v2v()') && code.includes('v2v::theme_v2v()'), 'house theme');
+    assert.ok(code.includes('ggsave("figures/viewers-over-time-line.png"'), 'saves to figures/');
+    assert.ok(code.includes('alt = "YOUR TURN'), 'the YOUR TURN alt line');
+    // one verb per line after each pipe
+    for (const line of code.split('\n')) assert.ok((line.match(/%>%/g) || []).length <= 1, line);
+  }
+  assert.ok(!hasTask('mc427', 'line'), 'MC 427 does not offer the line chart');
+});
+
+test('the grouped histogram overlays two groups and is MC 451/MC 501 only', () => {
+  for (const course of ['mc451', 'mc501'] as const) {
+    const code = generate(course, 'histogram-grouped');
+    assert.ok(code.includes('position = "identity"'), 'overlaid, not stacked');
+    assert.ok(code.includes('fill = is_gaming'), 'fill by the group');
+    assert.ok(code.includes('geom_histogram(binwidth = 5'), 'a histogram');
+    assert.ok(code.includes('ggsave("figures/message-length-grouped-histogram.png"'), 'saves to figures/');
+    assert.ok(code.includes('alt = "YOUR TURN'), 'the YOUR TURN alt line');
+  }
+  assert.ok(!hasTask('mc427', 'histogram-grouped'), 'MC 427 does not offer the grouped histogram');
+});
+
+test('the power analysis is MC 501 only and writes a plain, commented pwr.t.test() call', () => {
+  const code = generate('mc501', 'power');
+  assert.ok(code.includes('library(pwr)'), 'loads pwr');
+  assert.ok(code.includes('pwr.t.test('), 'the plain pwr call');
+  assert.ok(code.includes('d = 0.5,') && code.includes('sig.level = 0.05,') && code.includes('power = 0.80,') && code.includes('type = "two.sample"'), 'every argument');
+  // a comment explaining each of the four arguments
+  assert.equal((code.match(/# .+$/gm) || []).length >= 7, true);
+  assert.ok(!hasTask('mc451', 'power'), 'MC 451 (undergraduate) does not offer power analysis');
+  assert.ok(!hasTask('mc427', 'power'), 'MC 427 does not offer power analysis');
+  assert.throws(() => generate('mc451', 'power'), 'MC 451 has no power template');
 });
 
 // Wizard overrides still produce well-formed, parameterized code.

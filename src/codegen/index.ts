@@ -22,10 +22,11 @@ export const TASK_RELEASE: Record<string, Release> = {
   'convert-timestamp': 'R2', 'label-from-snapshot': 'R2',
   'export-csv': 'R2', 'export-rds': 'R2', reliability: 'R2',
   // R3 Describe and plots
-  frequency: 'R3', crosstab: 'R3', 'grouped-summary': 'R3', bar: 'R3', histogram: 'R3', boxplot: 'R3',
+  frequency: 'R3', crosstab: 'R3', 'grouped-summary': 'R3', bar: 'R3', histogram: 'R3',
+  'histogram-grouped': 'R3', line: 'R3', boxplot: 'R3',
   // R4 Test
   't-test': 'R4', 't-test-missing': 'R4', 'chi-square': 'R4', anova: 'R4',
-  regression: 'R4', correlation: 'R4', 'settings-block': 'R4',
+  regression: 'R4', correlation: 'R4', power: 'R4', 'settings-block': 'R4',
   // R4 APA numbers to check the student's sentence (0.4.0; owner decision U4)
   'apa-t-test': 'R4', 'apa-chi-square': 'R4', 'apa-anova': 'R4', 'apa-regression': 'R4', 'apa-correlation': 'R4',
 };

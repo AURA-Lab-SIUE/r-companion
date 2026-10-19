@@ -48,3 +48,14 @@ export function prepareInsert(code: string, isQuarto: boolean, insideChunk: bool
 export function isQuartoFile(fileName: string): boolean {
   return /\.(qmd|rmd)$/i.test(fileName);
 }
+
+/**
+ * The file path a generated chart block saves to, read from its first ggsave("...png") call, or
+ * undefined if the block saves no PNG. The extension opens this file in an editor tab after the
+ * chart runs, so the saved picture appears in front of the student even when the R graphics window
+ * opens behind VS Code (Windows, seen on testbench 2026-10-19).
+ */
+export function savedChartPath(code: string): string | undefined {
+  const m = code.match(/ggsave\(\s*["']([^"']+\.png)["']/i);
+  return m ? m[1] : undefined;
+}

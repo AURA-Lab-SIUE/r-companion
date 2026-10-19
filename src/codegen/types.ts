@@ -44,5 +44,9 @@ export const DEFAULT_OPTIONS: Required<GenOptions> = {
   plainCalls: false,
 };
 
-/** The R4 test tasks that MC 451 and MC 501 each render in their own rubric's form. */
-export const PER_PROFILE_R4 = new Set(['t-test', 't-test-missing', 'chi-square', 'anova', 'regression', 'correlation']);
+/**
+ * The R4 test tasks resolved from the per-course table (MC451_R4 / MC501_R4) rather than the
+ * shared V2V_R4. Most render each rubric's form in both courses; `power` lives only in MC501_R4,
+ * so routing through here makes MC 501 offer it and MC 451 (no MC451_R4['power']) not.
+ */
+export const PER_PROFILE_R4 = new Set(['t-test', 't-test-missing', 'chi-square', 'anova', 'regression', 'correlation', 'power']);

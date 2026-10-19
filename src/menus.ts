@@ -12,7 +12,7 @@ import { CourseId } from './profiles';
 import { generate, hasTask, GenProfile, GenParams, GenOptions, APA_TESTS, ApaTest, apaTask } from './codegen';
 import { TEST_LABEL } from './testChoice';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint } from './columnProbe';
-import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
+import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION, savedChartPath } from './insert';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES } from './tables';
 
@@ -74,6 +74,8 @@ const CATALOG: TaskDef[] = [
   { task: 'grouped-summary', label: 'Summary by group', category: 'R3 Describe' },
   { task: 'bar', label: 'Bar chart', category: 'R3 Describe' },
   { task: 'histogram', label: 'Histogram', category: 'R3 Describe' },
+  { task: 'histogram-grouped', label: 'Histogram comparing two groups', category: 'R3 Describe', alternative: true },
+  { task: 'line', label: 'Line chart over time', category: 'R3 Describe' },
   { task: 'boxplot', label: 'Boxplot', category: 'R3 Describe' },
   { task: 'settings-block', label: 'Settings block (name the test variables)', category: 'R4 Test' },
   { task: 't-test', label: 'Welch t-test with Cohen\'s d', category: 'R4 Test' },
@@ -82,6 +84,7 @@ const CATALOG: TaskDef[] = [
   { task: 'anova', label: 'One-way ANOVA with eta squared', category: 'R4 Test' },
   { task: 'regression', label: 'Linear regression', category: 'R4 Test' },
   { task: 'correlation', label: 'Correlation', category: 'R4 Test' },
+  { task: 'power', label: 'Power analysis for your sample size', category: 'R4 Test' },
   { task: 'check-test-choice', label: 'Check my test choice', category: 'R4 Test' },
   { task: 'apa-check', label: 'APA numbers to check your sentence', category: 'R4 Test' },
 ];
@@ -325,8 +328,53 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
   return probe;
 }
 
-// The chart tasks: each writes alt text, and gets a fig-alt chunk option in Quarto
-const CHART_TASKS = new Set(['bar', 'histogram', 'boxplot']);
+// The chart tasks: each writes alt text, gets a fig-alt chunk option in Quarto, and ggsave()s to a
+// known file the extension opens in an editor tab after it runs (revealSavedChart).
+const CHART_TASKS = new Set(['bar', 'histogram', 'histogram-grouped', 'line', 'boxplot']);
+
+// After a chart block runs, the saved PNG opens in a VS Code editor tab. On Windows the R graphics
+// window opens BEHIND VS Code (seen on testbench, 2026-10-19), so the student never sees the chart;
+// opening the file the block already ggsave()d puts it in front of them without depending on the R
+// graphics device, and leaves vscode-R's own plot viewer (httpgd) untouched. The block saves a
+// relative path; R's working directory is normally the workspace folder, so that and the open
+// script's folder are the two places checked. Only a file written AFTER the run is opened, so a
+// stale PNG from a previous run is never shown.
+async function revealSavedChart(deps: MenuDeps, code: string): Promise<void> {
+  const rel = savedChartPath(code);
+  if (!rel) return;
+  const bases: string[] = [];
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (folder) bases.push(folder.uri.fsPath);
+  const editor = vscode.window.activeTextEditor;
+  if (editor && editor.document.uri.scheme === 'file') bases.push(path.dirname(editor.document.uri.fsPath));
+  const candidates = path.isAbsolute(rel) ? [rel] : bases.map((b) => path.join(b, rel));
+  if (candidates.length === 0) return;
+
+  const before = new Map<string, number>();
+  for (const c of candidates) {
+    try { before.set(c, fs.statSync(c).mtimeMs); } catch { before.set(c, 0); }
+  }
+  const deadline = Date.now() + 12000;
+  while (Date.now() < deadline) {
+    for (const c of candidates) {
+      let m = 0;
+      try { m = fs.statSync(c).mtimeMs; } catch { m = 0; }
+      if (m > (before.get(c) ?? 0)) {
+        await vscode.commands.executeCommand('vscode.open', vscode.Uri.file(c), {
+          viewColumn: vscode.ViewColumn.Beside,
+          preserveFocus: false,
+          preview: false,
+        });
+        deps.output.appendLine(`Chart saved and opened: ${c}`);
+        return;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  deps.output.appendLine(
+    `Chart: waited for ${rel} but it did not appear. If your R session runs in a different folder, open the figures folder to see it.`,
+  );
+}
 
 // Insert the generated code at the cursor, then offer to run it.
 async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string): Promise<void> {
@@ -356,6 +404,7 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
     const runIt = async () => {
       await deps.runInSession(code);
       for (const name of MAKES[task ?? ''] ?? []) ranTables.add(name);
+      if (CHART_TASKS.has(task ?? '')) await revealSavedChart(deps, code);
     };
     if (!(await deps.requireTrust('running R code', runIt))) return;
     await runIt();
