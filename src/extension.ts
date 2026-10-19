@@ -558,7 +558,8 @@ async function openRTerminal() {
   if (!(await requireTrust('opening an R terminal'))) return;
   const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
   if (adapter.id === 'vscode-r') {
-    await vscode.commands.executeCommand('r.createRTerm');
+    // Not awaited: vscode-R's command can stay pending while its first-run step waits
+    void vscode.commands.executeCommand('r.createRTerm');
   } else if (adapter.id === 'positron') {
     await vscode.commands.executeCommand('workbench.action.positronConsole.focusConsole');
   } else {
@@ -580,12 +581,12 @@ async function runCourseSetupCheck() {
     vscode.window.showWarningMessage(`${script} is not in the open folder. Open your course folder with File, then Open Folder.`);
     return;
   }
-  const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
-  if (adapter.id === 'vscode-r') {
-    // vscode-R starts its terminal on first use; give it a moment so the line is not lost
-    await vscode.commands.executeCommand('r.createRTerm');
-    await new Promise((r) => setTimeout(r, 1500));
-  }
+  // The setup script always runs in this extension's own plain R terminal (or Positron's
+  // console). In a fresh profile vscode-R's first terminal waited on its own first-run step and
+  // never showed a prompt (2026-10-18, vscode-R 3.2.0), so the graded SETUP OK line could not
+  // depend on it. The plain terminal was verified to run the script on Windows.
+  const chosen = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
+  const adapter = chosen.id === 'positron' ? chosen : terminalAdapter;
   await adapter.runCode(code);
 }
 
