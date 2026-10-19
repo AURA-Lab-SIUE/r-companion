@@ -57,7 +57,7 @@ function materialize(relFile, destDir) {
   // Find the manifest entry whose file is relFile to know how to generate it.
   const owner = manifest.entries.find((e) => e.file === relFile);
   if (owner && owner.generated) {
-    fs.writeFileSync(dest, generate(profileFor(owner), owner.task, {}, { v2vVersion }));
+    fs.writeFileSync(dest, generate(profileFor(owner), owner.task, {}, { ...owner.options, v2vVersion }));
   } else {
     fs.copyFileSync(path.join(GOLDEN, relFile), dest);
   }

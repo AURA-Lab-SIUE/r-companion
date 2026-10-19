@@ -167,10 +167,10 @@
           "default": false,
           "markdownDescription": "Show the **R3** (Describe and plots) and **R4** (Tests) menu tasks before their release dates. **R2** (Data, wrangling, and the reliability grid) is always on. Each release is published for students on its date; this only reveals the later menus early for testing."
         },
-        "auraR.reliabilityPlainCalls": {
+        "auraR.plainCalls": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Write the plain `irr::kappa2()` and `irr::kripp.alpha()` calls instead of the v2v `reliability()` wrapper. Pending owner decision q-20261018-0044; the default keeps the rubric-named wrapper."
+          "default": true,
+          "markdownDescription": "MC 451 and MC 501: write the plain R calls (`t.test()`, `chisq.test()`, `effectsize`, `irr::kappa2()`, `irr::kripp.alpha()`) for the tests and the reliability grid, with the v2v wrapper last as a check that prints the same numbers. Turn it off to write only the v2v wrappers (`run_t_test()`, `run_chi_square()`, `reliability()`). MC 427 always writes plain tidyverse."
         }
       }
     },

@@ -33,7 +33,7 @@ export interface MenuDeps {
   storageDir: string;
   /** auraR.previewReleases: unlock R3 and R4 before their release dates. */
   previewReleases: () => boolean;
-  /** auraR.reliabilityPlainCalls: write plain irr calls instead of the v2v wrapper (q-0044). */
+  /** auraR.plainCalls: the plain calls instead of the v2v wrappers (q-20261018-0044 = A). */
   plainCalls: () => boolean;
 }
 
@@ -283,8 +283,8 @@ async function saveGridAndGenerate(deps: MenuDeps, course: CourseId, result: Gri
 
   // The generated block loads the saved pilot CSV into `pilot`, then runs the statistic. The golden
   // reliability code shows both Cohen's kappa and Krippendorff's alpha, so the student can compare;
-  // the grid's statistic choice is recorded in the write-up. plainCalls (q-0044) writes the irr
-  // calls instead of the v2v wrapper.
+  // the grid's statistic choice is recorded in the write-up. plainCalls (q-20261018-0044 = A, the
+  // default) writes the irr calls, with the v2v wrapper last as a check.
   const importBlock = generate(profileOf(course), 'import-csv', { file: csvRel });
   const relBlock = generate(profileOf(course), 'reliability', {}, { plainCalls: deps.plainCalls() });
   const code = importBlock + '\n' + relBlock;

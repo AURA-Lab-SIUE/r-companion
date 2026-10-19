@@ -1484,8 +1484,8 @@
       "task": "chi-square",
       "profile": "mc451",
       "generated": true,
-      "role": "default",
-      "alternative_to": null,
+      "role": "alternative",
+      "alternative_to": "mc451.chi-square.plain",
       "file": "fixtures/mc451/r4-chi-square.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
@@ -1501,13 +1501,38 @@
       "sentence_template": "chi-square"
     },
     {
+      "id": "mc451.chi-square.plain",
+      "release": "R4",
+      "task": "chi-square",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc451/r4-chi-square-plain.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r4-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "p\\.value",
+        "Cramer's V",
+        "Chi-square test of independence",
+        "expected|cat_b"
+      ],
+      "sentence_template": "chi-square",
+      "options": {
+        "plainCalls": true
+      }
+    },
+    {
       "id": "mc451.t-test",
       "release": "R4",
       "task": "t-test",
       "profile": "mc451",
       "generated": true,
-      "role": "default",
-      "alternative_to": null,
+      "role": "alternative",
+      "alternative_to": "mc451.t-test.plain",
       "file": "fixtures/mc451/r4-t-test.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
@@ -1521,6 +1546,31 @@
         "\\bsd\\b"
       ],
       "sentence_template": "t-test"
+    },
+    {
+      "id": "mc451.t-test.plain",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc451/r4-t-test-plain.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r4-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d",
+        "Welch two-sample t-test",
+        "\\bsd\\b"
+      ],
+      "sentence_template": "t-test",
+      "options": {
+        "plainCalls": true
+      }
     },
     {
       "id": "mc451.anova",
@@ -1592,8 +1642,8 @@
       "task": "chi-square",
       "profile": "mc501",
       "generated": true,
-      "role": "default",
-      "alternative_to": null,
+      "role": "alternative",
+      "alternative_to": "mc501.chi-square.plain",
       "file": "fixtures/mc501/r4-chi-square.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
@@ -1609,13 +1659,38 @@
       "sentence_template": "chi-square"
     },
     {
+      "id": "mc501.chi-square.plain",
+      "release": "R4",
+      "task": "chi-square",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc501/r4-chi-square-plain.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r4-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "p\\.value",
+        "Cramer's V",
+        "Chi-square test of independence",
+        "expected|cat_b"
+      ],
+      "sentence_template": "chi-square",
+      "options": {
+        "plainCalls": true
+      }
+    },
+    {
       "id": "mc501.t-test",
       "release": "R4",
       "task": "t-test",
       "profile": "mc501",
       "generated": true,
-      "role": "default",
-      "alternative_to": null,
+      "role": "alternative",
+      "alternative_to": "mc501.t-test.plain",
       "file": "fixtures/mc501/r4-t-test.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
@@ -1629,6 +1704,31 @@
         "\\bsd\\b"
       ],
       "sentence_template": "t-test"
+    },
+    {
+      "id": "mc501.t-test.plain",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc501/r4-t-test-plain.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r4-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d",
+        "Welch two-sample t-test",
+        "\\bsd\\b"
+      ],
+      "sentence_template": "t-test",
+      "options": {
+        "plainCalls": true
+      }
     },
     {
       "id": "mc501.anova",
@@ -1753,7 +1853,8 @@
       "data": [],
       "must_print": [
         "Kappa",
-        "Krippendorff"
+        "Krippendorff",
+        "alpha = "
       ],
       "sentence_template": "reliability"
     }

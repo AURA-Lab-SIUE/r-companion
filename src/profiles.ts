@@ -102,7 +102,11 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
     label: 'MC 451 Research Methods',
     short: 'MC 451',
     minR: '4.2.0',
-    packages: V2V_PACKAGES,
+    packages: [
+      ...V2V_PACKAGES,
+      // The plain t-test and chi-square the Test menu writes (owner q-20261018-0044 = A)
+      { name: 'effectsize', why: "Cohen's d and Cramer's V in the tests (Inferencing Data)", level: 'recommended', source: 'cran' },
+    ],
     copilotInstructions: 'copilot-instructions-v2v.md',
     needsQuarto: true,
     needsGit: true,

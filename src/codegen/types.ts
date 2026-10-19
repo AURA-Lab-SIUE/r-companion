@@ -31,9 +31,10 @@ export interface GenOptions {
   /** The installed v2v version. Default 0.3.2 (the golden baseline). */
   v2vVersion?: V2vVersion;
   /**
-   * Write the plain calls the v2v wrappers stand for instead of the wrappers themselves
-   * (q-20261018-0044, recommended A; pending the owner). Keyed to the course profile, so the
-   * default for mc451/mc501 stays the rubric-named wrapper until the owner answers.
+   * Write the plain calls the v2v wrappers stand for (t.test, chisq.test, effectsize,
+   * irr::kappa2) instead of the wrappers, with the wrapper last as a check. Owner
+   * q-20261018-0044 = A: the extension's auraR.plainCalls setting defaults to true. The generator
+   * default stays false so the golden wrapper fixtures keep reproducing byte for byte.
    */
   plainCalls?: boolean;
 }

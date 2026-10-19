@@ -409,26 +409,51 @@ const v2vReliability: Template = (p, opts) => {
   );
 };
 
-// v2v-plain reliability: the proposal variant (fixtures/v2v-plain/r2-reliability.R).
+// Reliability with the irr calls reliability() wraps: the MC 451 and MC 501 default since owner
+// q-20261018-0044 = A (fixtures/v2v-plain/r2-reliability.R). The codes are numbered from the data,
+// never from a fixed list, so any codebook works; the wrapper runs last as a check.
 const v2vReliabilityPlain: Template = (p) => {
   const data = d(p, 'pilot');
   const a = p.columns?.[0] ?? 'pass_1';
   const b = p.columns?.[1] ?? 'pass_2';
   return lines(
-    banner('Reliability with the functions reliability() wraps'),
-    '# PROPOSED for the stepping-stone audit; not a course dialect.',
+    banner('Reliability: compare your two coding passes'),
+    '# The share of items where pass 1 and pass 2 gave the same code.',
+    `${data} %>%`,
+    '  summarize(',
+    '    items = n(),',
+    `    share_agree = mean(${a} == ${b})`,
+    '  )',
+    '',
+    '# Every pair of codes, and how many items got it. The n column adds up to the items.',
+    `${data} %>%`,
+    `  count(${a}, ${b})`,
+    '',
     "# Cohen's kappa, from the irr package: give it the two code columns.",
     `${data} %>%`,
     `  select(${a}, ${b}) %>%`,
     '  irr::kappa2()',
     '',
-    "# Krippendorff's alpha: irr wants one row per pass and numbers, so turn the two columns on",
-    '# their side and number the codes first.',
+    '# Every code either pass used, in one list, so both passes number the codes the same way.',
+    `codes <- ${data} %>%`,
+    `  pivot_longer(c(${a}, ${b}), values_to = "code") %>%`,
+    '  distinct(code) %>%',
+    '  pull(code)',
+    '',
+    "# Krippendorff's alpha: irr wants numbers and one row per pass, so number the codes, then",
+    '# turn the two columns on their side.',
     `${data} %>%`,
-    `  mutate(across(c(${a}, ${b}), ~ as.integer(factor(.x, levels = c("calm", "high-energy"))))) %>%`,
+    `  mutate(across(c(${a}, ${b}), ~ as.integer(factor(.x, levels = codes)))) %>%`,
     `  select(${a}, ${b}) %>%`,
     '  t() %>%',
     '  irr::kripp.alpha(method = "nominal")',
+    '',
+    '# Check: the v2v wrapper prints the same kappa.',
+    'reliability(',
+    `  pull(${data}, ${a}),`,
+    `  pull(${data}, ${b}),`,
+    '  method = "kappa"',
+    ')',
   );
 };
 

@@ -152,7 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
     resourcePath,
     storageDir: context.globalStorageUri.fsPath,
     previewReleases: () => setting<boolean>('previewReleases', false),
-    plainCalls: () => setting<boolean>('reliabilityPlainCalls', false),
+    plainCalls: () => setting<boolean>('plainCalls', true),
   });
 
   // A course found in the folder or remembered is not a pick: "Pick your course" ticks only when the
