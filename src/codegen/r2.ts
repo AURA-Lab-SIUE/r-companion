@@ -5,6 +5,8 @@ import { lines, banner } from './house';
 import { GenParams, Template } from './types';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
+/** A filter value as R reads it: quoted text, or TRUE, FALSE, and numbers as they are. */
+const shown = (p: GenParams, value: string) => (p.rawValue ? value : `"${value}"`);
 
 // ---------------- MC 427 (plain tidyverse) ----------------
 
@@ -32,10 +34,10 @@ const mc427Filter: Template = (p) => {
   const value = p.value ?? 'NEXT';
   return lines(
     banner('Keep the rows you want: filter()'),
-    `# Keep the posts where ${column} is "${value}" and name the result ${result}.`,
-    '# Text values go in quotation marks. This line prints nothing.',
+    `# Keep the posts where ${column} is ${shown(p, value)} and name the result ${result}.`,
+    p.rawValue ? '# TRUE, FALSE, and numbers go without quotation marks. This line prints nothing.' : '# Text values go in quotation marks. This line prints nothing.',
     `${result} <- ${data} %>%`,
-    `  filter(${column} == "${value}")`,
+    `  filter(${column} == ${shown(p, value)})`,
     '',
     '# Count the rows that are left.',
     `nrow(${result})`,
@@ -166,12 +168,16 @@ const v2vFilter: Template = (p) => {
   const result = p.result ?? 'gaming';
   const column = p.column ?? 'channel_type';
   const value = p.value ?? 'gaming';
+  const what =
+    column === 'channel_type' && value === 'gaming'
+      ? 'the messages from gaming channels'
+      : `the rows where ${column} is ${shown(p, value)}`;
   return lines(
     banner('Keep the rows you want: filter()'),
-    `# Keep the messages from gaming channels and name the result ${result}.`,
-    '# Text values go in quotation marks. This line prints nothing.',
+    `# Keep ${what} and name the result ${result}.`,
+    p.rawValue ? '# TRUE, FALSE, and numbers go without quotation marks. This line prints nothing.' : '# Text values go in quotation marks. This line prints nothing.',
     `${result} <- ${data} %>%`,
-    `  filter(${column} == "${value}")`,
+    `  filter(${column} == ${shown(p, value)})`,
     '',
     '# Count the rows that are left.',
     `nrow(${result})`,
@@ -205,12 +211,14 @@ const v2vMutate: Template = (p) => {
   );
 };
 
+// Count reads chat, the table Load the course Twitch corpus makes, so it runs in the order the
+// menu lists it (R2 card step 7, 2026-10-19). The menu offers analysis once that table exists.
 const v2vCount: Template = (p) => {
-  const data = d(p, 'analysis');
-  const column = p.column ?? 'channel_type';
+  const data = d(p, 'chat');
+  const column = p.column ?? 'channel';
   return lines(
     banner('Count the rows in each group: count()'),
-    `# One row per channel type, largest first. The n column adds up to the rows in ${data}.`,
+    `# One row per value of ${column}, largest first. The n column adds up to the rows in ${data}.`,
     `${data} %>%`,
     `  count(${column}, sort = TRUE)`,
   );
@@ -234,26 +242,23 @@ const v2vCleanDates: Template = () =>
     '  slice_head(n = 3)',
   );
 
-// join_chat_streams(): on v2v 0.3.2 the wrapper returns ts.x/ts.y, so the golden adds a rename()
-// line to give the two times plain names. The proposed 0.3.3 returns ts and snapshot_ts itself,
-// so that line is dropped (PACKAGE-CHANGES.md; golden.py GOLDEN_V2V=0.3.3). Keyed to the version.
-const v2vJoinChatStreams: Template = (_p, opts) => {
-  const renameSuffix =
-    opts.v2vVersion === '0.3.3' ? '' : ' %>%\n  rename(ts = ts.x, snapshot_ts = ts.y)';
-  return lines(
+// join_chat_streams(): v2v 0.3.3, which the courses require from R2 on, returns the two times as
+// ts and snapshot_ts itself, so the rename() line 0.3.2 needed is gone (on 0.3.3 that line errors:
+// column ts.x does not exist).
+const v2vJoinChatStreams: Template = () =>
+  lines(
     banner('Match each message to its stream: join_chat_streams()'),
     '# Attaches the game and viewer count of the latest stream snapshot taken at or before each',
     '# message, on the same channel. Both tables need the ts column from clean_dates(). The same',
     '# join without v2v: left_join(chat, streams, by = join_by(channel, closest(ts >= ts))).',
-    '# v2v 0.3.2 returns the two times as ts.x (the message) and ts.y (the snapshot), so rename()',
-    '# gives them plain names again. Prints nothing.',
-    `chat_streams <- join_chat_streams(chat, streams)${renameSuffix}`,
+    '# The message keeps its time as ts, and the snapshot time comes back as snapshot_ts.',
+    '# Prints nothing.',
+    'chat_streams <- join_chat_streams(chat, streams)',
     '',
     '# Count the messages that found a snapshot (FALSE) and those that did not (TRUE).',
     'chat_streams %>%',
     '  count(no_snapshot = is.na(viewers))',
   );
-};
 
 const v2vChannelLookup: Template = () =>
   lines(

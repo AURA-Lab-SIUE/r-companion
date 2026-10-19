@@ -13,6 +13,7 @@ import {
 } from '../src/columnProbe';
 import { isInsideRChunk, wrapChunk, prepareInsert, isQuartoFile } from '../src/insert';
 import { buildGridHtml, gridCsv, DEFAULT_GRID, GridResult } from '../src/grid';
+import { assignedNames, tableChoices, MAKES } from '../src/tables';
 
 // A probe like the one probe/column-probe.R writes (shape from PACKAGE-COMPAT.md).
 const PROBE_JSON = JSON.stringify({
@@ -113,4 +114,45 @@ test('the standalone grid copy (for axe) fills theme variables and drops the liv
   const html = buildGridHtml(DEFAULT_GRID, { standalone: true });
   assert.ok(html.includes('--vscode-editor-background: #ffffff'));
   assert.ok(!html.includes('Content-Security-Policy'));
+});
+
+// The Data menu's table choice (tables.ts): R2 card step 7, 2026-10-19, wrote a count of analysis
+// right after Load the course Twitch corpus, and R stopped with "object 'analysis' not found".
+
+test('assignedNames reads the tables a script assigns, not the ones it only uses', () => {
+  const script = [
+    'chat <- twitch_chat()',
+    '  streams <- twitch_streams()',
+    'chat %>%',
+    '  count(channel)',
+    '# analysis <- read_rds("data/twitch_analysis.RDS")',
+    'x = 1',
+  ].join('\n');
+  assert.deepEqual([...assignedNames(script)].sort(), ['chat', 'streams']);
+});
+
+test('count offers only chat until analysis exists, then chat first and analysis after it', () => {
+  assert.deepEqual(tableChoices('count', new Set(['chat', 'streams'])).map((c) => c.name), ['chat']);
+  const both = tableChoices('count', new Set(['chat', 'analysis']));
+  assert.deepEqual(both.map((c) => c.name), ['chat', 'analysis']);
+  assert.equal(both[0].defaultColumn, 'channel');
+  assert.equal(both[1].defaultColumn, 'channel_type');
+  assert.ok(both[0].templateDefault && !both[1].templateDefault);
+});
+
+test('filter and select keep the course default analysis once it exists, and never offer it before', () => {
+  for (const task of ['filter', 'select']) {
+    const before = tableChoices(task, new Set(['chat']));
+    assert.deepEqual(before.map((c) => c.name), ['chat']);
+    assert.ok(!before[0].templateDefault && before[0].defaultColumn === undefined, 'chat has no course default here');
+    const after = tableChoices(task, new Set(['chat', 'analysis', 'chat_streams']), 'C:/w/data/twitch_analysis.RDS');
+    assert.deepEqual(after.map((c) => c.name), ['analysis', 'chat', 'chat_streams']);
+    assert.ok(after[0].templateDefault);
+    assert.equal(after[0].probe, 'readRDS("C:/w/data/twitch_analysis.RDS")');
+  }
+});
+
+test('the menu blocks that make tables are the ones the choice looks for', () => {
+  assert.deepEqual(MAKES['import-course-dataset'], ['chat', 'streams']);
+  assert.deepEqual(MAKES['import-rds'], ['analysis']);
 });

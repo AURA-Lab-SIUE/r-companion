@@ -20,7 +20,6 @@ streams <- twitch_streams() %>%
   mutate(ts = clean_dates(date))
 
 analysis <- join_chat_streams(chat, streams) %>%
-  rename(ts = ts.x, snapshot_ts = ts.y) %>%
   mutate(
     is_gaming = if_else(is.na(game), NA, !(game %in% nongaming_categories)),
     channel_type = factor(if_else(is_gaming, "gaming", "non-gaming")),

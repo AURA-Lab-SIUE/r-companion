@@ -37,7 +37,6 @@ channel_size <- streams %>%
                            labels = c("small", "medium", "large")))
 
 analysis <- join_chat_streams(chat, streams) %>%
-  rename(ts = ts.x, snapshot_ts = ts.y) %>%
   left_join(channel_type, by = "channel") %>%
   left_join(channel_size, by = "channel") %>%
   mutate(channel_type = factor(if_else(is_gaming, "gaming", "non-gaming")))

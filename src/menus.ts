@@ -7,13 +7,13 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { CourseId } from './profiles';
 import { generate, hasTask, GenProfile, GenParams, GenOptions, TASK_RELEASE, Release } from './codegen';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint } from './columnProbe';
 import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
+import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES } from './tables';
 
 /** What the menus need from the host extension. */
 export interface MenuDeps {
@@ -127,19 +127,73 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
   if (def.task === 'reliability') return vscode.commands.executeCommand('auraR.openReliabilityGrid');
 
   const params: GenParams = {};
-  try {
-    if (def.outFile) {
-      const name = await vscode.window.showInputBox({ title: def.label, prompt: 'File name to save', value: defaultOutFile(profile, def.task) });
-      if (name) params.file = name;
+  if (course !== 'mc427' && TABLE_TASKS.has(def.task)) {
+    // MC 451 and MC 501: count, filter, and select read a table the script already has (tables.ts)
+    if (!(await collectTableAndColumns(deps, def, params))) return;
+  } else {
+    try {
+      if (def.outFile) {
+        const name = await vscode.window.showInputBox({ title: def.label, prompt: 'File name to save', value: defaultOutFile(profile, def.task) });
+        if (name) params.file = name;
+      }
+      if (def.columns) await collectColumns(deps, def, params);
+    } catch (e: any) {
+      deps.output.appendLine(`Column pick skipped: ${e?.message ?? e}. Using the course defaults.`);
     }
-    if (def.columns) await collectColumns(deps, course, def, params);
-  } catch (e: any) {
-    deps.output.appendLine(`Column pick skipped: ${e?.message ?? e}. Using the course defaults.`);
   }
 
   const opts: GenOptions = { plainCalls: deps.plainCalls() };
   const code = generate(profile, def.task, params, opts);
-  await insertAndMaybeRun(deps, code, def.label);
+  await insertAndMaybeRun(deps, code, def.label, def.task);
+}
+
+// The tables a menu block made when the student ran it in this window (MAKES in tables.ts)
+const ranTables = new Set<string>();
+
+// Pick the table, then its column. The tables offered are the ones the script assigns above the
+// cursor or a run block made, so the code never reads a table that does not exist yet. Returns
+// false when nothing should be written.
+async function collectTableAndColumns(deps: MenuDeps, def: TaskDef, params: GenParams): Promise<boolean> {
+  const editor = vscode.window.activeTextEditor;
+  const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
+  const has = new Set([...assignedNames(above), ...ranTables]);
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  const rds = folder ? path.join(folder.uri.fsPath, 'data', 'twitch_analysis.RDS') : undefined;
+  const choices = tableChoices(def.task, has, rds && fs.existsSync(rds) ? rds.replace(/\\/g, '/') : undefined);
+
+  let table = choices[0];
+  if (choices.length > 1) {
+    const picked = await vscode.window.showQuickPick(
+      choices.map((c, i) => ({ label: c.name, description: i === 0 ? 'default' : undefined, detail: c.detail, c })),
+      { title: def.label, placeHolder: 'Which table? These are the tables your script has made so far.' },
+    );
+    if (!picked) return false;
+    table = picked.c;
+  }
+  params.data = table.name;
+
+  if (table.templateDefault || table.defaultColumn !== undefined) {
+    if (table.defaultColumn) params.column = table.defaultColumn;
+    try {
+      await collectColumns(deps, def, params, table);
+    } catch (e: any) {
+      deps.output.appendLine(`Column pick skipped: ${e?.message ?? e}. Using the course defaults.`);
+    }
+    return true;
+  }
+
+  // No course default for this table: the column comes from the probe, or nothing is written
+  try {
+    if (!table.probe) throw new Error(`${table.name} lives only in your R session`);
+    await pickFromProbe(await runColumnProbe(deps, table.probe), def, params);
+  } catch (e: any) {
+    deps.output.appendLine(`Column pick for ${table.name} failed: ${e?.message ?? e}.`);
+  }
+  if (params.column === undefined && params.columns === undefined) {
+    vscode.window.showWarningMessage(`${def.label}: no column was chosen for ${table.name}, so nothing was written.`);
+    return false;
+  }
+  return true;
 }
 
 function defaultOutFile(profile: GenProfile, task: string): string {
@@ -147,41 +201,61 @@ function defaultOutFile(profile: GenProfile, task: string): string {
   return profile === 'mc427' ? 'practice-tweets.RDS' : 'data/twitch_analysis.RDS';
 }
 
-// Probe a data source the student points at, then let them choose the column(s). Any failure
-// throws so the caller falls back to the course defaults.
-async function collectColumns(deps: MenuDeps, course: CourseId, def: TaskDef, params: GenParams): Promise<void> {
+// Probe a data source, then let the student choose the column(s). The source is the table's own
+// probe expression when it has one (the course corpus, the saved analysis file), or a data file
+// the student points at. Any failure throws so the caller falls back to the course defaults.
+async function collectColumns(deps: MenuDeps, def: TaskDef, params: GenParams, table?: TableChoice): Promise<void> {
+  const what = def.columns === 'many' ? 'columns' : 'the column';
   const useDefaults = await vscode.window.showQuickPick(
     [
-      { label: 'Use the course default columns', pick: 'default' as const },
-      { label: 'Choose columns from a data file', pick: 'choose' as const },
+      { label: 'Use the course default columns', description: params.column, pick: 'default' as const },
+      { label: table?.probe ? `Choose ${what} from ${table.name}` : 'Choose columns from a data file', pick: 'choose' as const },
     ],
     { title: def.label, placeHolder: 'The default matches the course pages exactly.' },
   );
   if (!useDefaults || useDefaults.pick === 'default') return;
 
-  const file = await vscode.window.showOpenDialog({
-    title: 'Pick the data file to read its columns',
-    canSelectMany: false,
-    filters: { Data: ['csv', 'CSV', 'rds', 'RDS'] },
-  });
-  if (!file || file.length === 0) return;
-  const probe = await runColumnProbe(deps, file[0].fsPath);
+  let source = table?.probe;
+  if (!source) {
+    const file = await vscode.window.showOpenDialog({
+      title: 'Pick the data file to read its columns',
+      canSelectMany: false,
+      filters: { Data: ['csv', 'CSV', 'rds', 'RDS'] },
+    });
+    if (!file || file.length === 0) return;
+    source = dataExprFor(file[0].fsPath);
+  }
+  await pickFromProbe(await runColumnProbe(deps, source), def, params);
+}
 
+// Let the student choose from the probe: one grouping column (and, for filter, its value), or
+// several columns to keep.
+async function pickFromProbe(probe: ColumnProbe, def: TaskDef, params: GenParams): Promise<void> {
   if (def.columns === 'one') {
     const cols = categoryColumns(probe).length ? categoryColumns(probe) : probe.columns;
     const col = await pickColumn(cols, probe, def.label);
-    if (col) {
-      params.column = col.name;
-      if ((def.task === 'filter') && col.values && col.values.length) {
-        const v = await vscode.window.showQuickPick(col.values, { title: `Keep rows where ${col.name} is` });
-        if (v) params.value = v;
-      }
-    }
+    if (!col) return;
+    params.column = col.name;
+    if (def.task !== 'filter') return;
+    // TRUE, FALSE, and numbers are written without quotation marks
+    params.rawValue = col.type === 'lgl' || col.type === 'dbl' || col.type === 'int';
+    const v = col.values && col.values.length
+      ? await vscode.window.showQuickPick(col.values, { title: `Keep rows where ${col.name} is` })
+      : await vscode.window.showInputBox({ title: `Keep rows where ${col.name} is`, prompt: `Type the value to keep (${col.n_distinct} different values in ${col.name})` });
+    if (v) params.value = v;
+    else params.column = undefined;
   } else {
     const items = probe.columns.map((c) => ({ label: c.name, description: c.type, picked: false, col: c }));
     const chosen = await vscode.window.showQuickPick(items, { title: def.label, canPickMany: true, placeHolder: 'Pick the columns to keep' });
     if (chosen && chosen.length) params.columns = chosen.map((c) => c.col.name);
   }
+}
+
+/** The R expression the column probe reads a data file with. */
+function dataExprFor(dataPath: string): string {
+  return /\.rds$/i.test(dataPath)
+    ? `readRDS(${JSON.stringify(dataPath)})`
+    : `readr::read_csv(${JSON.stringify(dataPath)}, show_col_types = FALSE)`;
 }
 
 async function pickColumn(cols: ProbeColumn[], probe: ColumnProbe, title: string): Promise<ProbeColumn | undefined> {
@@ -191,13 +265,9 @@ async function pickColumn(cols: ProbeColumn[], probe: ColumnProbe, title: string
 }
 
 /** Substitute the probe tokens, run Rscript, and parse the JSON it wrote (never console text). */
-async function runColumnProbe(deps: MenuDeps, dataPath: string): Promise<ColumnProbe> {
+async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnProbe> {
   const rscript = deps.rscriptPath();
   if (!rscript) throw new Error('R was not found. Run Check my setup first.');
-  const isRds = /\.rds$/i.test(dataPath);
-  const dataExpr = isRds
-    ? `readRDS(${JSON.stringify(dataPath)})`
-    : `readr::read_csv(${JSON.stringify(dataPath)}, show_col_types = FALSE)`;
   fs.mkdirSync(deps.storageDir, { recursive: true });
   const outPath = path.join(deps.storageDir, `probe-${Date.now()}.json`);
   const tpl = fs.readFileSync(deps.resourcePath('column-probe.R'), 'utf8');
@@ -217,7 +287,7 @@ async function runColumnProbe(deps: MenuDeps, dataPath: string): Promise<ColumnP
 }
 
 // Insert the generated code at the cursor, then offer to run it.
-async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string): Promise<void> {
+async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     const doc = await vscode.workspace.openTextDocument({ language: 'r', content: code });
@@ -233,8 +303,12 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string): P
   deps.output.appendLine(`Inserted: ${label}.`);
   const run = await vscode.window.showInformationMessage(`Inserted the ${label} code. Run it now?`, 'Run it');
   if (run) {
-    if (!(await deps.requireTrust('running R code', () => deps.runInSession(code)))) return;
-    await deps.runInSession(code);
+    const runIt = async () => {
+      await deps.runInSession(code);
+      for (const name of MAKES[task ?? ''] ?? []) ranTables.add(name);
+    };
+    if (!(await deps.requireTrust('running R code', runIt))) return;
+    await runIt();
   }
 }
 

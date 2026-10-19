@@ -61,7 +61,9 @@ const V2V_PACKAGES: PackageSpec[] = [
     level: 'required',
     source: 'github',
     repo: 'AURA-Lab-SIUE/v2v-r',
-    minVersion: '0.3.2',
+    // 0.3.3 from R2 on (owner q-20261018-0047 = A): its join_chat_streams() returns ts and
+    // snapshot_ts, which the generated wrangling code reads
+    minVersion: '0.3.3',
   },
   { name: 'quarto', why: 'the R side of Quarto, used to publish your portfolio', level: 'recommended', source: 'cran' },
 ];

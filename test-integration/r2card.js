@@ -194,10 +194,11 @@ async function run() {
     await w7b;
     const t7 = editor.document.getText();
     log('7 banners', t7.split('\n').filter((l) => l.startsWith('# ----')));
+    log('7 count reads', t7.split(/\r?\n/).filter((l) => /^\w+ %>%$/.test(l)).pop());
     await sleep(12000);
     await shot('7 mutate and count blocks, the count table in the terminal', out);
     const r7 = runR(ws, t7, 'count');
-    log('7 R: last lines', r7.trim().split('\n').slice(-12));
+    log('7 R: count table', r7.split(/\r?\n/).filter((l) => /^\s*\d+ \S+\s+\d+\s*$|more rows/.test(l)).slice(-4));
     log('7 R: errors', r7.split('\n').filter((l) => /^Error/.test(l)));
 
     // 8. The reliability grid (sixteenth R2 item)
@@ -318,6 +319,24 @@ async function run() {
     // Every block kept its comment header
     const all = [wrangle, tweets].map((f) => vscode.workspace.textDocuments.find((d) => d.fileName === f)?.getText() ?? '').join('\n');
     log('13 banner count in wrangle.R and tweets.R', (all.match(/^# ---- /gm) || []).length);
+
+    // Not a card step: once the script has made analysis, Count asks which table and offers it
+    // second, after chat (the default). Back to MC 451, a scratch script, nothing run.
+    const pBack = vscode.commands.executeCommand('auraR.pickCourse');
+    await choose(1);
+    log('T pick returned', (await pBack) ?? null);
+    const pick = path.join(ws, 'pick.R');
+    fs.writeFileSync(pick, 'analysis <- read_rds("data/twitch_analysis.RDS")\n');
+    editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(pick));
+    end();
+    const wT = vscode.commands.executeCommand('auraR.writeCode');
+    await choose(6); // Count rows per group
+    await choose(1); // the table list: chat (the default), then analysis
+    await choose(0); // Use the course default columns
+    await sleep(1500);
+    await vscode.commands.executeCommand('notifications.clearAll');
+    await wT;
+    log('T count block after analysis', editor.document.getText().split('\n').filter((l) => /%>%|count\(/.test(l)));
   } catch (e) {
     out.error = String((e && e.stack) || e);
   }

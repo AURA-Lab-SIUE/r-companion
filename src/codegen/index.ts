@@ -10,7 +10,6 @@ import { MC427_R3, V2V_R3 } from './r3';
 import { MC427_R4, V2V_R4, MC451_R4, MC501_R4, V2V_PLAIN_R4 } from './r4';
 
 export { GenParams, GenOptions, GenProfile, Release } from './types';
-export { V2vVersion } from './house';
 
 /** What release a task belongs to, for the quick-pick menus and the "behind a setting" gate. */
 export const TASK_RELEASE: Record<string, Release> = {

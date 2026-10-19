@@ -1,7 +1,7 @@
 {
   "version": 1,
   "r": "4.6.1",
-  "v2v": "0.3.2 (b0aa330)",
+  "v2v": "0.3.3 (v0.3.3, 5227867)",
   "entries": [
     {
       "id": "mc427.import-csv",
@@ -354,6 +354,25 @@
       "alternative_to": null,
       "file": "fixtures/v2v/r2-count.R",
       "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [
+        "channel\\s+n",
+        "animeilluminati\\s+1000"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.count.analysis",
+      "release": "R2",
+      "task": "count",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.count",
+      "file": "fixtures/v2v/r2-count-analysis.R",
+      "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r2-import-rds.R"
       ],
@@ -361,7 +380,11 @@
       "must_print": [
         "gaming"
       ],
-      "sentence_template": null
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "column": "channel_type"
+      }
     },
     {
       "id": "mc501.count",
@@ -373,6 +396,25 @@
       "alternative_to": null,
       "file": "fixtures/v2v/r2-count.R",
       "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [
+        "channel\\s+n",
+        "animeilluminati\\s+1000"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.count.analysis",
+      "release": "R2",
+      "task": "count",
+      "profile": "mc501",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc501.count",
+      "file": "fixtures/v2v/r2-count-analysis.R",
+      "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r2-import-rds.R"
       ],
@@ -380,7 +422,11 @@
       "must_print": [
         "gaming"
       ],
-      "sentence_template": null
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "column": "channel_type"
+      }
     },
     {
       "id": "mc451.clean-dates",

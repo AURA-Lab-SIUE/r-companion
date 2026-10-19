@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (fixes from the R2 card run of 2026-10-19)
+
+- MC 451 and MC 501 need v2v 0.3.3 or newer. **Check my setup** marks an older v2v **NEEDS UPDATE**, and **Install what is missing** installs the current release from GitHub with `upgrade = "never"`.
+- **Count rows per group** reads `chat`, the table **Load the course Twitch corpus** makes, and counts by `channel`, so it runs in the order the menu lists it. It used to read `analysis` and stopped with `object 'analysis' not found` unless **Load your saved analysis** had run first.
+- Count, filter, and select offer only the tables the script has already made: `analysis` once the script assigns it above the cursor or **Load your saved analysis** has been run, and `chat_streams` after the join. When there is more than one, the menu asks which. **Choose the column** reads the columns of that table directly, with no file to pick.
+- A filter on a `TRUE`, `FALSE`, or number value writes it without quotation marks, and a column with many values asks for the value to keep.
+- **Match each message to its stream** writes `join_chat_streams(chat, streams)` alone. The `rename(ts = ts.x, snapshot_ts = ts.y)` line v2v 0.3.2 needed stops with an error on 0.3.3, which returns `ts` and `snapshot_ts` itself.
+
 ## 0.2.0 (R2 Data, wrangling, and the reliability grid)
 
 - **AURA: Write R code** quick-pick wizard. It writes a commented tidyverse block for each task, matching what the course pages show line for line, and inserts it at the cursor in a `.R` file or a `.qmd` chunk, then offers to run it. Every block keeps its comment header (owner decision U1).

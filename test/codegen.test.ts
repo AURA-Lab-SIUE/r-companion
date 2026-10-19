@@ -3,13 +3,13 @@
 // For every entry the golden manifest marks generated, generate() for its (profile, task) must
 // reproduce the golden fixture file exactly, after normalizing line endings. The golden manifest
 // and fixtures are vendored under golden/ (copied from
-// O:\20-research\aura-lab\r-companion-golden\, workstream B, v2v 0.3.2).
+// O:\20-research\aura-lab\r-companion-golden\, workstream B; moved to v2v 0.3.3 for R2).
 
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
 import * as path from 'path';
 import * as fs from 'fs';
-import { generate, hasTask, GenProfile, TASK_RELEASE } from '../src/codegen';
+import { generate, hasTask, GenParams, GenProfile, TASK_RELEASE } from '../src/codegen';
 
 const GOLDEN = path.join(__dirname, '..', '..', 'golden');
 
@@ -24,6 +24,9 @@ interface Entry {
   file: string;
   /** Generator options for this entry (the plain-call defaults set plainCalls). */
   options?: { plainCalls?: boolean };
+  /** Wizard choices for an alternative entry (the count of the saved analysis). */
+  params?: GenParams;
+  requires: string[];
 }
 
 const manifest = JSON.parse(fs.readFileSync(path.join(GOLDEN, 'manifest.json'), 'utf8')) as {
@@ -34,17 +37,17 @@ const norm = (s: string) => s.replace(/\r\n/g, '\n');
 
 const generated = manifest.entries.filter((e) => e.generated);
 
-// 84 from workstream B, plus the four MC 451 and MC 501 plain-call test defaults (q-20261018-0044 = A)
-test('the golden manifest has 88 entries, 82 generated', () => {
-  assert.equal(manifest.entries.length, 88);
-  assert.equal(generated.length, 82);
+// 84 from workstream B, plus the four MC 451 and MC 501 plain-call test defaults (q-20261018-0044 = A),
+// plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19)
+test('the golden manifest has 90 entries, 84 generated', () => {
+  assert.equal(manifest.entries.length, 90);
+  assert.equal(generated.length, 84);
 });
 
 for (const e of generated) {
   test(`${e.id} (${e.release}, ${e.role}) is byte-identical to ${e.file}`, () => {
     const golden = norm(fs.readFileSync(path.join(GOLDEN, e.file), 'utf8'));
-    // Default v2v version 0.3.2, matching the golden manifest.
-    const got = norm(generate(e.profile as GenProfile, e.task, {}, e.options ?? {}));
+    const got = norm(generate(e.profile as GenProfile, e.task, e.params ?? {}, e.options ?? {}));
     assert.equal(got, golden);
   });
 }
@@ -61,21 +64,32 @@ test('hasTask agrees with the manifest for each generated entry', () => {
   }
 });
 
-// The 0.3.3 switch: the only generated file that differs on v2v 0.3.3 is the v2v join, which
-// drops the rename() line (PACKAGE-CHANGES.md). Everything else is identical on both versions.
-test('v2v 0.3.3 drops only the join rename line', () => {
-  const join032 = generate('mc451', 'join-chat-streams', {}, { v2vVersion: '0.3.2' });
-  const join033 = generate('mc451', 'join-chat-streams', {}, { v2vVersion: '0.3.3' });
-  assert.ok(join032.includes('rename(ts = ts.x, snapshot_ts = ts.y)'));
-  assert.ok(!join033.includes('rename(ts = ts.x, snapshot_ts = ts.y)'));
-  assert.equal(join032.replace(' %>%\n  rename(ts = ts.x, snapshot_ts = ts.y)', ''), join033);
-
+// v2v 0.3.3 from R2 on (owner q-20261018-0047 = A): its join returns ts and snapshot_ts, and the
+// rename(ts = ts.x, ...) line 0.3.2 needed errors on 0.3.3, so no block or preamble may write it.
+test('no generated block or runner preamble renames ts.x', () => {
   for (const e of generated) {
-    if (e.task === 'join-chat-streams') continue;
-    const a = generate(e.profile as GenProfile, e.task, {}, { ...e.options, v2vVersion: '0.3.2' });
-    const b = generate(e.profile as GenProfile, e.task, {}, { ...e.options, v2vVersion: '0.3.3' });
-    assert.equal(a, b, `${e.id} should not change between v2v versions`);
+    assert.ok(!generate(e.profile as GenProfile, e.task, e.params ?? {}, e.options ?? {}).includes('ts.x'), e.id);
+    for (const r of e.requires) {
+      assert.ok(!fs.readFileSync(path.join(GOLDEN, r), 'utf8').includes('ts.x'), r);
+    }
   }
+});
+
+// Count runs in the order the menu lists it: Load the course Twitch corpus makes chat, and the
+// default count reads chat. The saved analysis is an alternative the menu offers once it exists.
+test('the MC 451 and MC 501 count reads chat by default, analysis on request', () => {
+  for (const course of ['mc451', 'mc501'] as const) {
+    assert.ok(generate(course, 'count').includes('chat %>%\n  count(channel, sort = TRUE)'));
+    const a = generate(course, 'count', { data: 'analysis', column: 'channel_type' });
+    assert.ok(a.includes('analysis %>%\n  count(channel_type, sort = TRUE)'));
+  }
+});
+
+test('a filter on a TRUE or FALSE value writes it without quotation marks', () => {
+  const f = generate('mc451', 'filter', { data: 'chat_streams', column: 'is_gaming', value: 'TRUE', rawValue: true });
+  assert.ok(f.includes('  filter(is_gaming == TRUE)'));
+  assert.ok(f.includes('# Keep the rows where is_gaming is TRUE and name the result gaming.'));
+  assert.ok(generate('mc451', 'filter').includes('# Keep the messages from gaming channels'));
 });
 
 // plainCalls (owner q-20261018-0044 = A, the extension default): MC 451 and MC 501 reliability

@@ -1,7 +1,5 @@
 // Code-generation types shared across the R2/R3/R4 templates (workstream E, #rgui).
 
-import { V2vVersion } from './house';
-
 /** The code profile. v2v-plain holds the proposed plain-call variants (q-20261018-0044). */
 export type GenProfile = 'mc427' | 'mc451' | 'mc501' | 'v2v-plain';
 
@@ -23,13 +21,13 @@ export interface GenParams {
   column?: string;
   /** Several columns (select, summarize). */
   columns?: string[];
-  /** A text value for a filter predicate. */
+  /** A value for a filter predicate. */
   value?: string;
+  /** Write value as it is (TRUE, FALSE, a number), not in quotation marks. */
+  rawValue?: boolean;
 }
 
 export interface GenOptions {
-  /** The installed v2v version. Default 0.3.2 (the golden baseline). */
-  v2vVersion?: V2vVersion;
   /**
    * Write the plain calls the v2v wrappers stand for (t.test, chisq.test, effectsize,
    * irr::kappa2) instead of the wrappers, with the wrapper last as a check. Owner
@@ -43,7 +41,6 @@ export interface GenOptions {
 export type Template = (params: GenParams, opts: Required<GenOptions>) => string;
 
 export const DEFAULT_OPTIONS: Required<GenOptions> = {
-  v2vVersion: '0.3.2',
   plainCalls: false,
 };
 

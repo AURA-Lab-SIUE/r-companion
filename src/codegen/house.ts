@@ -11,9 +11,6 @@
 // The comment header is kept on every block on purpose: owner decision U1 (q-20261018-0035 = A)
 // says menu output is not AI use as long as that header stays and the student can explain each line.
 
-/** The v2v package version the generated code targets. Governs the join_chat_streams() output. */
-export type V2vVersion = '0.3.2' | '0.3.3';
-
 /** Join lines into one R block: LF endings, exactly one trailing newline, no trailing spaces. */
 export function lines(...rows: string[]): string {
   return rows.join('\n') + '\n';

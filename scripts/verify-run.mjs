@@ -5,7 +5,7 @@
 // (out/src/codegen), writes the prerequisite chain and data into a fresh temp folder, runs it at
 // console width 80, and checks exit code, Error lines, and every must_print regex.
 //
-// usage: node scripts/verify-run.mjs [--v2v 0.3.2|0.3.3] [idFilter...]
+// usage: node scripts/verify-run.mjs [idFilter...]   (the blocks target v2v 0.3.3, required from R2 on)
 // env:   RSCRIPT (default /opt/homebrew/bin/Rscript), R_COMPANION_LIB (extra library),
 //        ONE_TOUCH (default /Volumes/One Touch) maps the manifest's O:/ data paths.
 
@@ -23,13 +23,7 @@ const RSCRIPT = process.env.RSCRIPT || '/opt/homebrew/bin/Rscript';
 const LIB = process.env.R_COMPANION_LIB || path.join(ROOT, '.rlib');
 const ONE_TOUCH = process.env.ONE_TOUCH || '/Volumes/One Touch';
 
-const args = process.argv.slice(2);
-let v2vVersion = '0.3.2';
-const ids = [];
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--v2v') v2vVersion = args[++i];
-  else ids.push(args[i]);
-}
+const ids = process.argv.slice(2);
 
 const manifest = JSON.parse(fs.readFileSync(path.join(GOLDEN, 'manifest.json'), 'utf8'));
 
@@ -57,7 +51,7 @@ function materialize(relFile, destDir) {
   // Find the manifest entry whose file is relFile to know how to generate it.
   const owner = manifest.entries.find((e) => e.file === relFile);
   if (owner && owner.generated) {
-    fs.writeFileSync(dest, generate(profileFor(owner), owner.task, {}, { ...owner.options, v2vVersion }));
+    fs.writeFileSync(dest, generate(profileFor(owner), owner.task, owner.params ?? {}, owner.options ?? {}));
   } else {
     fs.copyFileSync(path.join(GOLDEN, relFile), dest);
   }
@@ -108,6 +102,6 @@ for (const e of manifest.entries) {
 }
 
 const clean = results.filter((r) => r.clean).length;
-fs.writeFileSync(path.join(ROOT, `verify-run-${v2vVersion}.json`), JSON.stringify(results, null, 2));
-console.log(`\n${clean} clean of ${results.length} (v2v ${v2vVersion})`);
+fs.writeFileSync(path.join(ROOT, 'verify-run-0.3.3.json'), JSON.stringify(results, null, 2));
+console.log(`\n${clean} clean of ${results.length} (v2v 0.3.3)`);
 process.exit(clean === results.length ? 0 : 2);
