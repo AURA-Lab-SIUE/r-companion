@@ -10,6 +10,8 @@
 // entries (year-50,888 dates, all-NA joins, low kappa, row count grew, NA mean) match the
 // distinctive output a student pastes.
 // Links use the canonical aura-lab.siue.edu domain, never the github.io mirror.
+// An entry links only to a section that discusses its message. No public page covers object or
+// column not found, the \U path, = for ==, or log of zero, so those entries carry their fix steps alone.
 // Pure: no VS Code API, so the unit tests load it directly.
 
 import { CourseId } from './profiles';
@@ -237,7 +239,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Check the spelling and capital letters against the name you assigned with <-.',
       'If it is a word that should be text, put it in quotation marks, for example share_button == "yes".',
     ],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
   {
     id: 'column-not-found',
@@ -248,7 +249,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Run glimpse(df) or names(df) and compare the column name letter for letter.',
       'Copy the name from that list instead of retyping it; watch for capital letters and underscores.',
     ],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
 
   // Priority 2: the other MC 427 Module 5 R00 messages.
@@ -261,7 +261,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Do not paste a path from File Explorer. Open the folder in VS Code (File, then Open Folder), put the data file inside it, and read it by name: read_csv("data.csv").',
       'If you must write a path, use forward slashes: "C:/Users/data.csv".',
     ],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
   {
     id: 'named-input-equals',
@@ -269,7 +268,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
     title: 'We detected a named input (= where == belongs)',
     why: 'Inside filter() one equals sign names an argument; two equals signs ask a question. You wrote one where you meant to compare, so the tidyverse stops and asks.',
     fix: ['Change the single = to == inside filter(), for example filter(update == "Beyond").'],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
   {
     id: 'log-of-zero',
@@ -280,7 +278,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Use log1p() instead of log() for skewed counts: it computes log(1 + x), so a zero becomes 0 rather than -Inf.',
       'In MC 427 the Module 5 pages write mutate(log_likes = log1p(like_count)).',
     ],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
   {
     id: 'chisq-approximation',
@@ -301,7 +298,6 @@ export const ERROR_TABLE: ErrorEntry[] = [
     title: "unexpected '='",
     why: 'R could not parse the line. This is almost always a single = where two were needed to compare, or a stray = in the wrong place.',
     fix: ['Look for = where you meant ==, and fix the line.', 'If the line looks right, check the one above it for a missing comma or bracket.'],
-    link: { label: 'Install R for VS Code: common issues', url: `${HUB}/install-r.html#common-first-time-issues` },
   },
   {
     id: 'slice-max-order-by',

@@ -126,3 +126,12 @@ test('every new entry links to the canonical domain with numbered fix steps', ()
     if (e.link) assert.ok(/^https:\/\/aura-lab\.siue\.edu\//.test(e.link.url), `${e.id} link is not canonical: ${e.link.url}`);
   }
 });
+
+// The Install R page's "Common first-time issues" section covers only R off the PATH, the R
+// extension path, a stuck install, and bracketed paste (read live 2026-10-19), so an entry for any
+// other message must not send a student there.
+test('no entry links to the generic Install R common-issues section', () => {
+  for (const e of ERROR_TABLE) {
+    if (e.link) assert.ok(!/#common-first-time-issues$/.test(e.link.url), `${e.id} links to a section that does not discuss it`);
+  }
+});
