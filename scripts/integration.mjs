@@ -53,7 +53,8 @@ const r = spawnSync(
     dirs.workspace,
     `--user-data-dir=${dirs['user-data']}`,
     `--extensions-dir=${dirs.extensions}`,
-    `--extensionDevelopmentPath=${repo}`,
+    // AURA_IT_EXT_PATH: the unpacked extension/ folder of a built .vsix, to test what ships
+    `--extensionDevelopmentPath=${process.env.AURA_IT_EXT_PATH || repo}`,
     `--extensionTestsPath=${path.join(repo, 'test-integration', 'suite.js')}`,
     '--disable-workspace-trust',
     '--skip-release-notes',

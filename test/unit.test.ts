@@ -333,8 +333,8 @@ test('the course-set notification fits on one line', () => {
   }
 });
 
-test('media/icon.png is a 128x128 PNG', () => {
-  const b = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'icon.png'));
+test('assets/icon.png is a 128x128 PNG', () => {
+  const b = fs.readFileSync(path.join(__dirname, '..', '..', 'assets', 'icon.png'));
   assert.equal(b.subarray(1, 4).toString('latin1'), 'PNG');
   assert.equal(b.readUInt32BE(16), 128);
   assert.equal(b.readUInt32BE(20), 128);

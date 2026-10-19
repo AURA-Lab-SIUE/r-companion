@@ -1,5 +1,7 @@
-# Builds media/icon.png (128x128) from shapes and text with Pillow: a bold "R" with a check mark.
+# Builds assets/icon.png (128x128) from shapes and text with Pillow: a bold "R" with a check mark.
 # No SIUE marks or colors and no generated image. Run: python scripts/make-icon.py
+# Not shipped yet (SIUE brand policy question q-20261019-0001). To ship it: add "icon": "assets/icon.png"
+# to package.json and the line !assets/icon.png to .vscodeignore.
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -19,6 +21,6 @@ d.line([(S * 0.66, S * 0.77), (S * 0.75, S * 0.86), (S * 0.90, S * 0.65)], fill=
 for x, y in [(S * 0.66, S * 0.77), (S * 0.90, S * 0.65)]:
     d.ellipse([x - w / 2, y - w / 2, x + w / 2, y + w / 2], fill=CHECK)
 
-out = Path(__file__).resolve().parent.parent / "media" / "icon.png"
+out = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
 img.resize((SIZE, SIZE), Image.Resampling.LANCZOS).save(out)
 print(out)

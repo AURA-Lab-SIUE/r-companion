@@ -212,7 +212,7 @@
     "watch": "tsc -watch -p ./",
     "check:separation": "node scripts/check-separation.mjs",
     "test": "npm run compile && node --test out/test/unit.test.js",
-    "package": "npm run check:separation && npm run test && vsce package --out dist/"
+    "package": "npm run check:separation && npm run test && node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && vsce package --out dist/"
   },
   "devDependencies": {
     "@types/node": "^20.19.0",
