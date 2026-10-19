@@ -1903,6 +1903,90 @@
         "alpha = "
       ],
       "sentence_template": "reliability"
+    },
+    {
+      "id": "mc451.line",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r3-line.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.line",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r3-line.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.histogram-grouped",
+      "release": "R3",
+      "task": "histogram-grouped",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "histogram",
+      "file": "fixtures/v2v/r3-histogram-grouped.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.histogram-grouped",
+      "release": "R3",
+      "task": "histogram-grouped",
+      "profile": "mc501",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "histogram",
+      "file": "fixtures/v2v/r3-histogram-grouped.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.power",
+      "release": "R4",
+      "task": "power",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc501/r4-power.R",
+      "requires": [],
+      "data": [],
+      "must_print": [
+        "Two-sample t test power calculation",
+        "n = 63\\.",
+        "number in"
+      ],
+      "sentence_template": null
     }
   ]
 }

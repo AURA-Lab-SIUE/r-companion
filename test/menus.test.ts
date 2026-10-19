@@ -11,7 +11,8 @@ import {
   emptyCodedColumns,
   pickerHint,
 } from '../src/columnProbe';
-import { isInsideRChunk, wrapChunk, prepareInsert, isQuartoFile } from '../src/insert';
+import { isInsideRChunk, wrapChunk, prepareInsert, isQuartoFile, savedChartPath } from '../src/insert';
+import { generate } from '../src/codegen';
 import { buildGridHtml, gridCsv, DEFAULT_GRID, GridResult } from '../src/grid';
 import { assignedNames, tableChoices, MAKES } from '../src/tables';
 
@@ -70,6 +71,19 @@ test('prepareInsert wraps a chunk only in Quarto outside a chunk', () => {
   assert.equal(wrapped.wrappedInChunk, true);
   assert.ok(wrapped.text.includes('```{r}'));
   assert.ok(wrapped.text.trimEnd().endsWith('```'));
+});
+
+// The chart-window fix (#rgui Phase 2): after a chart runs, the extension opens the PNG it saved.
+// savedChartPath reads that path from the generated block's ggsave() call.
+test('savedChartPath reads the ggsave path from every chart the menus generate', () => {
+  assert.equal(savedChartPath(generate('mc451', 'line')), 'figures/viewers-over-time-line.png');
+  assert.equal(savedChartPath(generate('mc501', 'histogram-grouped')), 'figures/message-length-grouped-histogram.png');
+  assert.equal(savedChartPath(generate('mc451', 'bar')), 'figures/top-games-bar.png');
+  assert.equal(savedChartPath(generate('mc451', 'histogram')), 'figures/message-length-histogram.png');
+  assert.equal(savedChartPath(generate('mc451', 'boxplot')), 'figures/message-length-boxplot.png');
+  assert.equal(savedChartPath(generate('mc427', 'bar')), 'posted-from-bar.png');
+  // a non-chart block saves nothing, so there is no file to open
+  assert.equal(savedChartPath(generate('mc451', 'frequency')), undefined);
 });
 
 test('isQuartoFile matches qmd and rmd', () => {

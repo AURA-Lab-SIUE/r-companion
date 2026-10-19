@@ -253,6 +253,76 @@ const v2vBoxplot: Template = (p) => {
   );
 };
 
+const v2vLine: Template = () =>
+  lines(
+    banner('Line chart: a total over time'),
+    '# Bucket the stream snapshots into six-hour blocks, keep the five biggest game categories and',
+    '# lump the rest into "Other", then add up the viewers in each block. as.POSIXct turns the raw',
+    '# millisecond date into a time, floor_date rounds it down to its six-hour block, and fct_lump_n',
+    '# keeps the top five games. This line prints nothing.',
+    'viewers_over_time <- streams %>%',
+    '  filter(!is.na(game)) %>%',
+    '  mutate(',
+    '    timestamp = as.POSIXct(date / 1000, origin = "1970-01-01", tz = "UTC"),',
+    '    six_hour = floor_date(timestamp, "6 hours"),',
+    '    category = fct_lump_n(game, n = 5)',
+    '  ) %>%',
+    '  group_by(six_hour, category) %>%',
+    '  summarize(total_viewers = sum(viewers), .groups = "drop")',
+    '',
+    '# One line per game category: time on the x axis, summed viewers on the y, color by category.',
+    '# A line implies order, so it is right for time and wrong for unordered groups. Inside ggplot()',
+    '# the pieces join with +, not the pipe.',
+    'viewers_over_time %>%',
+    '  ggplot(aes(x = six_hour, y = total_viewers, color = category)) +',
+    '  geom_line(linewidth = 0.9) +',
+    '  labs(',
+    '    title = "Concurrent viewers by game category",',
+    '    x = "Date (UTC, six-hour buckets)",',
+    '    y = "Total viewers in bucket",',
+    '    color = "Category",',
+    '    caption = "Source: v2v package, November 2018 Twitch collection",',
+    '    alt = "YOUR TURN: one sentence saying what the chart shows, for a reader who cannot see it."',
+    '  ) +',
+    '  v2v::scale_colour_v2v() +',
+    '  v2v::theme_v2v()',
+    '',
+    '# Save the chart to a picture file in your figures folder.',
+    'dir.create("figures", showWarnings = FALSE)',
+    'ggsave("figures/viewers-over-time-line.png", width = 7, height = 5)',
+  );
+
+const v2vHistogramGrouped: Template = (p) => {
+  const data = d(p, 'analysis');
+  return lines(
+    banner('Grouped histogram: two groups overlaid'),
+    '# Each bar counts the messages whose length falls in a 5-character band, drawn once per group so',
+    '# the two shapes overlay. Rows with no channel label or no message length are dropped first, and',
+    '# lengths are capped at 120 for the picture only. position = "identity" puts both groups on the',
+    '# same baseline, and alpha makes each one see-through so the overlap shows.',
+    `${data} %>%`,
+    '  filter(!is.na(is_gaming), !is.na(message_length)) %>%',
+    '  mutate(length_shown = pmin(message_length, 120)) %>%',
+    '  ggplot(aes(x = length_shown, fill = is_gaming)) +',
+    '  geom_histogram(binwidth = 5, position = "identity", alpha = 0.55) +',
+    '  v2v::scale_fill_v2v() +',
+    '  labs(',
+    '    title = "Message length by channel type",',
+    '    subtitle = "Two groups overlaid, lengths capped at 120 characters",',
+    '    x = "Message length (characters, capped at 120)",',
+    '    y = "Messages",',
+    '    fill = "Gaming channel",',
+    '    caption = "Source: v2v package, November 2018 Twitch collection",',
+    '    alt = "YOUR TURN: one sentence saying what the chart shows, for a reader who cannot see it."',
+    '  ) +',
+    '  v2v::theme_v2v()',
+    '',
+    '# Save the chart to a picture file in your figures folder.',
+    'dir.create("figures", showWarnings = FALSE)',
+    'ggsave("figures/message-length-grouped-histogram.png", width = 7, height = 5)',
+  );
+};
+
 export const MC427_R3: Record<string, Template> = {
   frequency: mc427Frequency,
   crosstab: mc427Crosstab,
@@ -268,5 +338,7 @@ export const V2V_R3: Record<string, Template> = {
   'grouped-summary': v2vGroupedSummary,
   bar: v2vBar,
   histogram: v2vHistogram,
+  'histogram-grouped': v2vHistogramGrouped,
+  line: v2vLine,
   boxplot: v2vBoxplot,
 };
