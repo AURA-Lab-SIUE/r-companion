@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- The data viewer and coding sheet of 0.3.0, built on 0.2.1: v2v 0.3.3 or newer for MC 451 and MC 501, and the Count, filter, and select fixes listed under 0.2.1.
+
 ## 0.3.0 (R3: the data viewer and coding sheet)
 
 - **AURA: Open the data viewer** opens a CSV file, or an R data frame through an Rscript JSON bridge, in an AG Grid Community webview. Data values are read only, with scroll, sort, filter, and column types. Measured on m4: the 35,267-row Twitch sample parses in about 65 ms and renders in about 64 ms.
