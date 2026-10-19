@@ -4,6 +4,18 @@ A Visual Studio Code extension that gets students new to R to a working setup, b
 
 R stays visible. The extension finds R, checks what your course needs, installs what is missing, and explains the messages students meet most often. A student whose setup already works does not have to change anything.
 
+## Part of From Vibes to Variables
+
+[From Vibes to Variables (V2V)](https://aura-lab.siue.edu/v2v/) is the AURA Lab's open methods package for teaching media research at Southern Illinois University Edwardsville. Its parts are built to be used together:
+
+- [Textbook](https://aura-lab.siue.edu/v2v/) ([source](https://github.com/AURA-Lab-SIUE/v2v)): the open textbook that carries the arc from research question to published report.
+- [Course hub](https://aura-lab.siue.edu/v2v-hub/) ([source](https://github.com/AURA-Lab-SIUE/v2v-hub)): the course website for MC 451 and MC 501 that sequences the textbook, the labs, and the setup guides.
+- [v2v R package](https://github.com/AURA-Lab-SIUE/v2v-r): the companion package with the Twitch practice corpus and the helpers the textbook introduces chapter by chapter.
+- [Course workspace](https://github.com/AURA-Lab-SIUE/v2v-workspace): the VS Code template students copy for journals, reading notes, and project work.
+- [R Companion](https://github.com/AURA-Lab-SIUE/r-companion) (this repository): the VS Code extension that checks each student's R setup, installs what is missing, and explains common R errors.
+
+A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-codespace), gives MC 427 Social Media Analytics the same VS Code and R toolchain in a GitHub Codespace; the R Companion serves MC 427 as well, and the v2v package is not used there.
+
 ## What it does (release 0.1, "R1 Setup")
 
 - **AURA: Check my setup.** Finds R on your computer and reports, line by line, whether each package your course needs is installed, plus Quarto and Git where the course uses them, and the R extension for VS Code, which every course's setup guide installs. `SETUP OK` and the walkthrough tick appear only when every required line is OK. For MC 451 and MC 501 it also shows the course package's own check, `v2v::setup()`, as a checklist. Every line carries a status word (OK, MISSING, NEEDS UPDATE, BROKEN, CHECK, NOTE), so nothing depends on color.
@@ -54,6 +66,19 @@ npm run package             # all of the above, then builds dist/r-companion-<ve
 ```
 
 This is an AURA Lab project. It contains no SIM DAD LLC or TASS source, and `scripts/check-separation.mjs` fails the build if any appears.
+
+## Adapting this for your course
+
+The extension is built so another course, or another campus, can adopt it by editing a small set of files. All of them are plain TypeScript or Markdown, and `npm test` exercises each one.
+
+1. **Add a course profile** in `src/profiles.ts`. A profile names the course, the minimum R version, and the package list (CRAN or GitHub, required or recommended, with a plain-English "why" shown beside each package). It also declares whether the course needs Quarto and Git, the workspace template students copy, and the help links shown when a check fails. Register the new id in the `CourseId` type and the `COURSE_IDS` list in the same file.
+2. **Point the checks at your course's setup script and result line.** If your course grades a setup screenshot, set `setupScript` and `resultLines` in the profile. The `ok` string must match what your script prints character for character; MC 427's `SETUP OK: R and the course packages are working.` line and its `mc427-setup-check.R` script in [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-codespace) show the shape.
+3. **Extend the error explainer** in `src/errors.ts`. Each entry is a regular expression matched against the pasted message, a plain-English "why," fix steps, a help link, and optionally the courses it applies to.
+4. **Generated install code** comes from `src/installScript.ts`, which writes the `install.packages()` script from the profile's package list (CRAN mirror set, binary-only installs on Windows and macOS, a personal library when the system one is not writable). A new profile usually needs no change here.
+5. **Copilot instructions** your course hands to students live in `resources/course-files/`; add a file there and name it in the profile's `copilotInstructions` field.
+6. **Build a VSIX** with `npm run package`. It runs the separation check and the unit tests, then writes `dist/r-companion-<version>.vsix`, which installs through VS Code's **Install from VSIX** command without any marketplace.
+
+If you publish an adapted build, change `name`, `displayName`, and `publisher` in `package.json` so it does not collide with this extension on the Visual Studio Marketplace or Open VSX.
 
 ## License and citation
 
