@@ -4,6 +4,8 @@
 // AURA_IT_SUITE picks another suite (test-integration/walkthrough.js); AURA_IT_SEED=mc427 puts
 // mc427-setup-check.R in the workspace; with AURA_IT_INSTALL_VSIX the window starts on an empty
 // stub extension and the suite installs the .vsix into it, as a student installs from the Marketplace.
+// AURA_IT_CDP_PORT opens the window's DevTools port so a suite can drive a webview (r2card.js);
+// AURA_IT_SHOT_COUNT raises how many screenshots the capture script answers (default 10).
 import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -53,7 +55,7 @@ let capture;
 if (process.platform === 'win32') {
   capture = spawn(
     'powershell',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repo, 'scripts', 'capture-window.ps1'), '-Dir', shots, '-Count', '10'],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repo, 'scripts', 'capture-window.ps1'), '-Dir', shots, '-Count', process.env.AURA_IT_SHOT_COUNT || '10'],
     { stdio: 'ignore', windowsHide: true },
   );
 }
@@ -72,6 +74,7 @@ const r = spawnSync(
     '--disable-workspace-trust',
     '--skip-release-notes',
     '--new-window',
+    ...(process.env.AURA_IT_CDP_PORT ? [`--remote-debugging-port=${process.env.AURA_IT_CDP_PORT}`] : []),
   ],
   { env, stdio: 'inherit', timeout: 15 * 60 * 1000 },
 );

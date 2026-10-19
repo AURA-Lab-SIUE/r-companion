@@ -247,6 +247,9 @@ async function openReliabilityGrid(context: vscode.ExtensionContext, deps: MenuD
     vscode.window.showInformationMessage('The reliability grid is for MC 451 and MC 501. MC 427 does not use it.');
     return;
   }
+  // The script the student was in: the panel takes focus, so without this the code would land in
+  // a new Untitled file instead (seen in the R2 card run, 2026-10-19)
+  const script = vscode.window.activeTextEditor;
   const panel = vscode.window.createWebviewPanel('auraReliabilityGrid', 'Reliability grid', vscode.ViewColumn.Active, {
     enableScripts: true,
     retainContextWhenHidden: true,
@@ -263,11 +266,17 @@ async function openReliabilityGrid(context: vscode.ExtensionContext, deps: MenuD
       pass_1_date: String(msg.pass_1_date ?? ''),
       pass_2_date: String(msg.pass_2_date ?? ''),
     };
-    await saveGridAndGenerate(deps, course as CourseId, result, panel);
+    await saveGridAndGenerate(deps, course as CourseId, result, panel, script);
   }, undefined, context.subscriptions);
 }
 
-async function saveGridAndGenerate(deps: MenuDeps, course: CourseId, result: GridResult, panel: vscode.WebviewPanel): Promise<void> {
+async function saveGridAndGenerate(
+  deps: MenuDeps,
+  course: CourseId,
+  result: GridResult,
+  panel: vscode.WebviewPanel,
+  script?: vscode.TextEditor,
+): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   const csvRel = 'data/reliability-pilot.csv';
   let target: vscode.Uri;
@@ -289,6 +298,10 @@ async function saveGridAndGenerate(deps: MenuDeps, course: CourseId, result: Gri
   const relBlock = generate(profileOf(course), 'reliability', {}, { plainCalls: deps.plainCalls() });
   const code = importBlock + '\n' + relBlock;
   panel.dispose();
+  // Back to that script, with its cursor where the student left it
+  if (script && !script.document.isClosed) {
+    await vscode.window.showTextDocument(script.document, { viewColumn: script.viewColumn, selection: script.selection });
+  }
   await insertAndMaybeRun(deps, code, 'reliability');
 }
 
