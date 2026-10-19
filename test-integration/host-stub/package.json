@@ -1,0 +1,9 @@
+{
+  "name": "aura-it-host-stub",
+  "displayName": "Integration host stub (not shipped)",
+  "description": "An empty extension the integration window starts on, so a suite can install the R Companion into the running window.",
+  "version": "0.0.0",
+  "publisher": "aura-lab-siue",
+  "license": "MIT",
+  "engines": { "vscode": "^1.90.0" }
+}

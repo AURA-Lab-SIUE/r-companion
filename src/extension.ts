@@ -48,11 +48,26 @@ export const DONE = {
   workspace: 'auraR.done.workspace',
   help: 'auraR.done.help',
 } as const;
+type DoneKey = (typeof DONE)[keyof typeof DONE];
+// The step each key completes, as package.json names it
+const DONE_STEP: Record<DoneKey, string> = {
+  [DONE.course]: 'pickCourse',
+  [DONE.setup]: 'checkSetup',
+  [DONE.workspace]: 'openWorkspace',
+  [DONE.help]: 'getHelp',
+};
 const doneKeys = new Set<string>();
 
-function markDone(key: string) {
+// The context key alone is not enough: VS Code records a key that is already true when it registers
+// the walkthrough as seen, with no tick, and ignores it from then on. It registers late whenever
+// nothing opens the Welcome page at startup, so a key set before that never ticks its step
+// (toggled 2026-10-19 with workbench.startupEditor). welcome.markStepComplete records the tick
+// itself, before or after the walkthrough registers; it reports an error in the "before" case
+// after recording it, so the error is ignored.
+function markDone(key: DoneKey) {
   doneKeys.add(key);
   void vscode.commands.executeCommand('setContext', key, true);
+  void Promise.resolve(vscode.commands.executeCommand('welcome.markStepComplete', `${WALKTHROUGH}#${DONE_STEP[key]}`)).catch(() => undefined);
 }
 
 export interface CheckResult {
@@ -124,8 +139,8 @@ export function activate(context: vscode.ExtensionContext) {
     walkthroughDone: [...doneKeys],
     waitingForTrust: trustGate.waiting,
   }));
-  if (currentCourse()) markDone(DONE.course);
-  // A folder already open counts: VS Code does not re-check its own workspaceFolderCount key
+  // A course found in the folder or remembered is not a pick: "Pick your course" ticks only when the
+  // student picks one, even the one already found. A folder already open does count as opened.
   if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
 
   // First run: open the Get Started walkthrough once

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Get Started: **Pick your course** ticks when the student picks a course, including the one the extension already found, and never before. It used to tick on its own when the folder held a course file, or, when VS Code opened no Welcome page at startup, never tick at all; **Open your course workspace** had the same fault. Steps now record their tick through VS Code's own walkthrough command as well as the context key.
+
 ## 0.1.2
 
 - Listing image: a plain gold tile from the SIUE palette, with no mark, letter, or symbol, until UMC settles an approved identity for AURA Lab.
