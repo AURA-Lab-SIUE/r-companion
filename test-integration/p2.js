@@ -212,6 +212,21 @@ async function run() {
       log(`1 ${c.task}: active editor tab`, vscode.window.tabGroups.activeTabGroup.activeTab && vscode.window.tabGroups.activeTabGroup.activeTab.label);
       await shot(`${c.task} chart saved and opened in a tab beside analysis.R`, out);
     }
+    // 0.5.2: the chart tab is in front and no text editor is active. The next block must go into
+    // analysis.R, not a new Untitled file (seen in the 0.5.1 video run, 2026-10-19).
+    log('1 after chart: active text editor', vscode.window.activeTextEditor ? path.basename(vscode.window.activeTextEditor.document.fileName) : null);
+    const linesBefore = editor.document.lineCount;
+    const untitledBefore = vscode.workspace.textDocuments.filter((d) => d.isUntitled).length;
+    const pAfter = vscode.commands.executeCommand('auraR.writeCode');
+    await choose(m451.indexOf('import-rds'));
+    await acceptToast();
+    await pAfter;
+    await sleep(3000);
+    log('1 after chart: block landed in', {
+      activeFile: vscode.window.activeTextEditor ? path.basename(vscode.window.activeTextEditor.document.fileName) : null,
+      analysisRGrewBy: editor.document.lineCount - linesBefore,
+      newUntitled: vscode.workspace.textDocuments.filter((d) => d.isUntitled).length - untitledBefore,
+    });
     log('1 inserted banners', editor.document.getText().split(/\r?\n/).filter((l) => l.startsWith('# ---- ')));
 
     // A stale PNG is never shown: re-open analysis.R, write the line chart again but answer the

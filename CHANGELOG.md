@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2 (the next block goes into your script after a chart opens)
+
+- **Write R code keeps writing into your script after a chart opens.** A saved chart opens in a tab beside your code and takes focus, so the next Write R code found no open script and put its block in a new Untitled file. The Companion now remembers the script you last worked in, brings it back to the front with the cursor where you left it, and writes there. The same applies after the data viewer or an error explanation takes focus.
+
 ## 0.5.1 (full error explanations, two more MC 427 messages, line chart dates from clean_dates(), chart tab waits for the file)
 
 - **Explain an R error shows the whole explanation.** The quick pick showed each Why and Step on one line and cut it off with an ellipsis, so the instructions could not be read. Now the full explanation opens as a read-only Markdown preview beside your code: the title, the part of your message it explains, why it happens, the numbered steps, and the help link. When one explanation matches it opens straight away; when several match, the quick pick lists them and the one you pick opens. The preview stays open while you follow the steps in the editor and terminal, a screen reader reads it as headings, a paragraph, and a numbered list, Tab reaches the link, and Ctrl+W closes it. Nothing is written to your folder.

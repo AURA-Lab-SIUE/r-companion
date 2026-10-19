@@ -108,7 +108,38 @@ export function menuTasks(profile: GenProfile, apaCheck: boolean): string[] {
   return CATALOG.filter((t) => offers(profile, t.task, apaCheck)).map((t) => t.task);
 }
 
+// The last text editor the student worked in. A chart tab, the data viewer, or the error
+// explanation takes focus and leaves no active text editor, and without this the next block would
+// land in a new Untitled file instead of the student's script (seen in the 0.5.1 video run, 2026-10-19).
+let lastTextDoc: { doc: vscode.TextDocument; selection: vscode.Selection; column?: vscode.ViewColumn } | undefined;
+
+function rememberEditor(e: vscode.TextEditor | undefined): void {
+  if (e && (e.document.uri.scheme === 'file' || e.document.uri.scheme === 'untitled')) {
+    lastTextDoc = { doc: e.document, selection: e.selection, column: e.viewColumn };
+  }
+}
+
+// The editor to write into: the active one, or else the script the student last worked in, brought
+// back to the front with its cursor where it was.
+async function scriptEditor(): Promise<vscode.TextEditor | undefined> {
+  const active = vscode.window.activeTextEditor;
+  if (active) return active;
+  if (!lastTextDoc || lastTextDoc.doc.isClosed) return undefined;
+  const editor = await vscode.window.showTextDocument(lastTextDoc.doc, {
+    viewColumn: lastTextDoc.column,
+    selection: lastTextDoc.selection,
+    preserveFocus: false,
+    preview: false,
+  });
+  return editor;
+}
+
 export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps): void {
+  rememberEditor(vscode.window.activeTextEditor);
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(rememberEditor),
+    vscode.window.onDidChangeTextEditorSelection((e) => rememberEditor(e.textEditor)),
+  );
   const reg = (id: string, fn: (...a: any[]) => any) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
   reg('auraR.writeCode', () => writeCodeCommand(deps));
@@ -196,7 +227,7 @@ const ranTables = new Set<string>();
 // cursor or a run block made, so the code never reads a table that does not exist yet. Returns
 // false when nothing should be written.
 async function collectTableAndColumns(deps: MenuDeps, def: TaskDef, params: GenParams): Promise<boolean> {
-  const editor = vscode.window.activeTextEditor;
+  const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
   const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
   const has = new Set([...assignedNames(above), ...ranTables]);
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -456,7 +487,7 @@ function watchSavedChart(deps: MenuDeps, code: string, waitMs = CHART_WAIT_MS): 
 
 // Insert the generated code at the cursor, then offer to run it.
 async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
+  const editor = await scriptEditor();
   if (!editor) {
     const doc = await vscode.workspace.openTextDocument({ language: 'r', content: code });
     await vscode.window.showTextDocument(doc);
