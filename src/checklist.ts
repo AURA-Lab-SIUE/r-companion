@@ -34,7 +34,12 @@ export interface CheckItem {
   group: 'R' | 'Required R packages' | 'Recommended R packages' | 'Programs' | 'VS Code' | 'v2v::setup()';
   /** The package this item can install, when "Install what is missing" can fix it. */
   installable?: PackageSpec;
+  /** The VS Code extension this item can install, when "Install what is missing" can fix it. */
+  installableExtension?: string;
 }
+
+/** vscode-R. Every course's setup guide installs it (v2v-hub install-r Step 2; the MC 427 software list). */
+export const VSCODE_R_ID = 'REditorSupport.r';
 
 export interface ExtraFacts {
   rscript: string;
@@ -135,14 +140,16 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
     });
   }
 
+  // Required in VS Code for every course; Positron replaces it with its own R support
   if (!extra.inPositron) {
     items.push({
       name: 'R extension for VS Code',
       group: 'VS Code',
-      status: extra.vscodeRInstalled ? 'ok' : 'warn',
+      status: extra.vscodeRInstalled ? 'ok' : 'missing',
       detail: extra.vscodeRInstalled
         ? 'REditorSupport R extension is installed (Ctrl+Enter runs a line)'
-        : 'the R extension by REditorSupport is not installed. Open the Extensions view, search for R, and install the one by REditorSupport.',
+        : 'the R extension by REditorSupport is not installed. Install what is missing adds it.',
+      installableExtension: extra.vscodeRInstalled ? undefined : VSCODE_R_ID,
     });
   }
 
@@ -218,6 +225,11 @@ export function installPlan(items: CheckItem[], includeRecommended: boolean): Pa
     .map((i) => i.installable as PackageSpec);
   const seen = new Set<string>();
   return specs.filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+}
+
+/** The VS Code extensions "Install what is missing" adds. */
+export function extensionPlan(items: CheckItem[]): string[] {
+  return [...new Set(items.filter((i) => i.installableExtension && isFailing(i)).map((i) => i.installableExtension as string))];
 }
 
 /** The plain-text report written to the output channel and copied to the clipboard. */

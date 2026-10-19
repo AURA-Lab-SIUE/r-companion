@@ -27,6 +27,8 @@ export interface PackageSpec {
 export interface CourseProfile {
   id: CourseId;
   label: string;
+  /** The course number alone, for messages that must fit a notification on one line. */
+  short: string;
   minR: string;
   packages: PackageSpec[];
   needsQuarto: boolean;
@@ -68,6 +70,7 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
   mc427: {
     id: 'mc427',
     label: 'MC 427 Social Media Analytics',
+    short: 'MC 427',
     minR: '4.2.0',
     packages: [
       { name: 'tidyverse', why: 'every course script starts with it', level: 'required', source: 'cran' },
@@ -97,6 +100,7 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
   mc451: {
     id: 'mc451',
     label: 'MC 451 Research Methods',
+    short: 'MC 451',
     minR: '4.2.0',
     packages: V2V_PACKAGES,
     copilotInstructions: 'copilot-instructions-v2v.md',
@@ -120,6 +124,7 @@ export const PROFILES: Record<CourseId, CourseProfile> = {
   mc501: {
     id: 'mc501',
     label: 'MC 501 Research Methods (graduate)',
+    short: 'MC 501',
     minR: '4.2.0',
     packages: [
       ...V2V_PACKAGES,
@@ -169,4 +174,9 @@ export function compareVersions(a: string, b: string): number {
 /** Every package name the probe should look up for this course. */
 export function packageNames(profile: CourseProfile): string[] {
   return profile.packages.map((p) => p.name);
+}
+
+/** The notification after Pick my course. Short enough to show whole (the full label was cut off on leith-hp). */
+export function courseSetMessage(profile: CourseProfile): string {
+  return `Course set to ${profile.short}. Next: Check my setup.`;
 }

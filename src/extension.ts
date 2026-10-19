@@ -12,11 +12,12 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { CourseId, CourseProfile, PROFILES, COURSE_IDS, isCourseId, packageNames, PackageSpec } from './profiles';
+import { CourseId, CourseProfile, PROFILES, COURSE_IDS, courseSetMessage, isCourseId, packageNames, PackageSpec } from './profiles';
 import { discoverR, systemEnv, RCandidate } from './rDiscovery';
 import {
   buildChecklist,
   CheckItem,
+  extensionPlan,
   installPlan,
   isFailing,
   parseProbeOutput,
@@ -29,6 +30,7 @@ import { pickAdapter, TerminalAdapter, inPositron } from './adapters';
 import { checkForUpdate, installSource } from './update';
 import { installScript } from './installScript';
 import { mergeRecommendations } from './courseFiles';
+import { TrustGate } from './trustGate';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
 const WALKTHROUGH = `${EXT_ID}#getStarted`;
@@ -36,6 +38,22 @@ const WALKTHROUGH = `${EXT_ID}#getStarted`;
 let output: vscode.OutputChannel;
 let terminalAdapter: TerminalAdapter;
 let ctx: vscode.ExtensionContext;
+let trustGate: TrustGate;
+
+// Walkthrough steps complete on these context keys (package.json completionEvents), set only once
+// the step's action has succeeded, never when its button is selected
+export const DONE = {
+  course: 'auraR.done.course',
+  setup: 'auraR.done.setupOk',
+  workspace: 'auraR.done.workspace',
+  help: 'auraR.done.help',
+} as const;
+const doneKeys = new Set<string>();
+
+function markDone(key: string) {
+  doneKeys.add(key);
+  void vscode.commands.executeCommand('setContext', key, true);
+}
 
 export interface CheckResult {
   course: CourseId;
@@ -67,6 +85,21 @@ export function activate(context: vscode.ExtensionContext) {
   output = vscode.window.createOutputChannel('AURA Lab R Companion');
   terminalAdapter = new TerminalAdapter(() => findR()[0]?.rterm, context.globalStorageUri.fsPath);
   context.subscriptions.push(output, { dispose: () => terminalAdapter.dispose() });
+  trustGate = new TrustGate({
+    isTrusted: () => vscode.workspace.isTrusted,
+    askModal: (message, detail, button) => vscode.window.showWarningMessage(message, { modal: true, detail }, button),
+    openTrustPage: () => vscode.commands.executeCommand('workbench.trust.manage'),
+    now: () => Date.now(),
+  });
+  context.subscriptions.push(
+    vscode.workspace.onDidGrantWorkspaceTrust(() => void trustGate.granted()),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('auraR.course') && currentCourse()) markDone(DONE.course);
+    }),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
+    }),
+  );
 
   const reg = (id: string, fn: (...args: any[]) => any) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
@@ -88,7 +121,12 @@ export function activate(context: vscode.ExtensionContext) {
     installSource: installSource(context),
     r: findR(),
     course: currentCourse(),
+    walkthroughDone: [...doneKeys],
+    waitingForTrust: trustGate.waiting,
   }));
+  if (currentCourse()) markDone(DONE.course);
+  // A folder already open counts: VS Code does not re-check its own workspaceFolderCount key
+  if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
 
   // First run: open the Get Started walkthrough once
   if (!context.globalState.get<boolean>('auraR.walkthroughShown')) {
@@ -134,7 +172,8 @@ async function pickCourse(alwaysAsk: boolean): Promise<CourseId | undefined> {
   );
   if (!pick) return undefined;
   await rememberCourse(pick.id);
-  vscode.window.showInformationMessage(`Course set to ${PROFILES[pick.id].label}. Next: AURA: Check my setup.`);
+  markDone(DONE.course);
+  vscode.window.showInformationMessage(courseSetMessage(PROFILES[pick.id]));
   return pick.id;
 }
 
@@ -152,16 +191,11 @@ function trustedSetting(conf: vscode.WorkspaceConfiguration, key: string): strin
 
 /**
  * Restricted Mode: running R inside an untrusted folder would run that folder's .Rprofile, so
- * anything that starts R there asks for trust first. The checks run from a neutral folder instead.
+ * anything that starts R there asks for trust first, in one modal, and then resumes by itself
+ * (TrustGate). The checks run from a neutral folder instead.
  */
-async function requireTrust(what: string): Promise<boolean> {
-  if (vscode.workspace.isTrusted) return true;
-  const b = await vscode.window.showWarningMessage(
-    `VS Code opened this folder in Restricted Mode, so ${what} is paused. If this is your course folder, trust it.`,
-    'Trust this folder',
-  );
-  if (b) await vscode.commands.executeCommand('workbench.trust.manage');
-  return false;
+function requireTrust(what: string, rerun: () => unknown): Promise<boolean> {
+  return trustGate.require(what, rerun);
 }
 
 function findR(): RCandidate[] {
@@ -281,6 +315,7 @@ async function checkSetupCommand(opts?: SilentOpts): Promise<CheckResult | undef
   }
   output.appendLine(result.text);
   output.appendLine('');
+  if (result.failing.length === 0) markDone(DONE.setup);
   if (!opts?.silent) void showChecklist(result);
   return result;
 }
@@ -299,13 +334,15 @@ const ICON: Record<string, string> = {
 async function showChecklist(result: CheckResult): Promise<void> {
   const profile = PROFILES[result.course];
   const plan = installPlan(result.items, false);
+  const exts = result.items.filter((i) => i.installableExtension && isFailing(i)).map((i) => i.name);
   const recommended = installPlan(result.items, true).filter((p) => !plan.some((q) => q.name === p.name));
   const picks: ActionItem[] = [];
   picks.push({ label: 'What to do', kind: vscode.QuickPickItemKind.Separator });
-  if (plan.length > 0) {
+  if (plan.length + exts.length > 0) {
+    const names = [...plan.map((p) => p.name), ...exts];
     picks.push({
-      label: `$(cloud-download) Install what is missing (${plan.length})`,
-      detail: plan.map((p) => p.name).join(', '),
+      label: `$(cloud-download) Install what is missing (${names.length})`,
+      detail: names.join(', '),
       action: () => installMissingCommand({ course: result.course }),
     });
   }
@@ -368,10 +405,13 @@ async function installMissingCommand(opts?: SilentOpts): Promise<InstallResult |
   }
   let plan = installPlan(before.items, !!opts?.includeRecommended);
   if (opts?.packages) plan = plan.filter((p) => opts.packages!.includes(p.name));
-  if (plan.length === 0) {
-    if (!opts?.silent) vscode.window.showInformationMessage('Nothing to install: every package this course needs is already there.');
+  const exts = opts?.packages ? [] : extensionPlan(before.items);
+  if (plan.length === 0 && exts.length === 0) {
+    if (!opts?.silent) vscode.window.showInformationMessage('Nothing to install: everything this course needs is already there.');
     return { attempted: [], verified: [], stillFailing: before.failing, explanations: [], before, after: before };
   }
+  for (const id of exts) await installExtension(id);
+  if (plan.length === 0) return finishInstall(course, [], { code: 0, stdout: '', stderr: '' }, before, exts, opts);
 
   // Windows will not replace a package an open R session has loaded (install-v2v "file is in use")
   const rTerminals = vscode.window.terminals.filter((t) => /(^|\s)R(\s|$)|R Interactive|R \(AURA\)/.test(t.name));
@@ -410,11 +450,40 @@ async function installMissingCommand(opts?: SilentOpts): Promise<InstallResult |
       }),
   );
   output.appendLine(`R finished (exit code ${res.code}). Checking the library now; the exit code alone proves nothing.`);
+  return finishInstall(course, plan, res, before, exts, opts);
+}
 
+/** Installs a VS Code extension and waits until VS Code reports it, so the re-check can see it. */
+async function installExtension(id: string): Promise<void> {
+  output.appendLine(`Installing the VS Code extension ${id}`);
+  try {
+    await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: `AURA: Installing the VS Code extension ${id}` },
+      async () => {
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', id);
+        for (let i = 0; i < 40 && !vscode.extensions.getExtension(id); i++) {
+          await new Promise((r) => setTimeout(r, 250));
+        }
+      },
+    );
+  } catch (e: any) {
+    output.appendLine(`Could not install ${id}: ${e?.message ?? e}`);
+  }
+}
+
+async function finishInstall(
+  course: CourseId,
+  plan: PackageSpec[],
+  res: RunResult,
+  before: CheckResult,
+  exts: string[],
+  opts?: SilentOpts,
+): Promise<InstallResult | undefined> {
   const explanations = explain(res.stdout + '\n' + res.stderr, course);
   const after = await checkSetupCommand({ course, silent: true });
   if (!after) return undefined;
-  const attempted = plan.map((p) => p.name);
+  const extNames = before.items.filter((i) => i.installableExtension && exts.includes(i.installableExtension)).map((i) => i.name);
+  const attempted = [...plan.map((p) => p.name), ...extNames];
   const failingAfter = new Set(after.items.filter(isFailing).map((i) => i.name));
   const missingAfter = new Set(after.items.filter((i) => i.installable && i.status !== 'ok').map((i) => i.name));
   const verified = attempted.filter((n) => !failingAfter.has(n) && !missingAfter.has(n));
@@ -424,9 +493,23 @@ async function installMissingCommand(opts?: SilentOpts): Promise<InstallResult |
   for (const e of explanations) output.appendLine(`Possible cause: ${e.entry.title}. ${e.entry.fix.join(' ')}`);
 
   if (!opts?.silent) {
+    const pkgs = verified.filter((n) => !extNames.includes(n));
+    const extsOk = verified.filter((n) => extNames.includes(n));
     if (stillFailing.length === 0) {
-      vscode.window.showInformationMessage(`Installed and confirmed from your R library: ${verified.join(', ')}.`);
+      const parts = [
+        pkgs.length ? `Installed and confirmed from your R library: ${pkgs.join(', ')}.` : '',
+        extsOk.length ? `Added the ${extsOk.join(', ')}.` : '',
+      ];
+      vscode.window.showInformationMessage(parts.filter(Boolean).join(' '));
       void showChecklist(after);
+    } else if (stillFailing.every((n) => extNames.includes(n))) {
+      // VS Code asks the student to trust the extension's publisher; Cancel there lands here
+      void vscode.window
+        .showWarningMessage(
+          `The ${stillFailing.join(', ')} is not installed yet. Select Install again, then Trust Publisher & Install.`,
+          'Install again',
+        )
+        .then((b) => b && installMissingCommand({ course }));
     } else {
       void showExplanations(explanations, `Still not installed: ${stillFailing.join(', ')}`);
     }
@@ -496,7 +579,9 @@ async function getHelp() {
     label: '$(mail) Still stuck after 15 minutes? Email your instructor or come to office hours',
     detail: 'Send the exact wording of the message, or a screenshot of the whole console. Office hours are on your syllabus.',
   });
-  const choice = await vscode.window.showQuickPick(picks, { title: 'Where to get help', matchOnDetail: true });
+  const shown = vscode.window.showQuickPick(picks, { title: 'Where to get help', matchOnDetail: true });
+  markDone(DONE.help);
+  const choice = await shown;
   await choice?.action?.();
 }
 
@@ -544,18 +629,20 @@ async function showExplanations(found: Explanation[], heading?: string, original
     });
     picks.push({ label: '$(question) Where to get help', action: () => getHelp() });
   }
-  const choice = await vscode.window.showQuickPick(picks, {
+  const shown = vscode.window.showQuickPick(picks, {
     title: heading ?? (found.length ? `What this message means (${found.length} match${found.length > 1 ? 'es' : ''})` : 'No match for this message'),
     matchOnDetail: true,
     ignoreFocusOut: true,
   });
+  if (!heading) markDone(DONE.help);
+  const choice = await shown;
   await choice?.action?.();
 }
 
 // ---------- R terminal and the course script ----------
 
 async function openRTerminal() {
-  if (!(await requireTrust('opening an R terminal'))) return;
+  if (!(await requireTrust('opening an R terminal', openRTerminal))) return;
   const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
   if (adapter.id === 'vscode-r') {
     // Not awaited: vscode-R's command can stay pending while its first-run step waits
@@ -572,7 +659,7 @@ async function openRTerminal() {
 }
 
 async function runCourseSetupCheck() {
-  if (!(await requireTrust('running the course setup script'))) return;
+  if (!(await requireTrust('running the course setup script', runCourseSetupCheck))) return;
   const course = currentCourse() ?? (await pickCourse(false));
   if (!course) return;
   const script = PROFILES[course].setupScript;

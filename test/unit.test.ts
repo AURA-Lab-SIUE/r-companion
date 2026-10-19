@@ -2,9 +2,11 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
 import * as path from 'path';
-import { PROFILES, compareVersions } from '../src/profiles';
+import * as fs from 'fs';
+import { PROFILES, compareVersions, courseSetMessage } from '../src/profiles';
 import { discoverR, newestRFolder, rscriptBeside, DiscoveryEnv } from '../src/rDiscovery';
-import { buildChecklist, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems } from '../src/checklist';
+import { buildChecklist, extensionPlan, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems, VSCODE_R_ID } from '../src/checklist';
+import { TrustGate, TrustHost, TRUST_BUTTON, PENDING_MS } from '../src/trustGate';
 import { explain, ERROR_TABLE } from '../src/errors';
 import { parseRelease } from '../src/update';
 import { installScript } from '../src/installScript';
@@ -231,4 +233,109 @@ test('MC 427 report ends with the exact graded SETUP OK line', () => {
   const bad = renderText(PROFILES.mc427, probe(), buildChecklist(PROFILES.mc427, probe(), extra), new Date());
   assert.match(bad.split('\n').pop() as string, /^SETUP NOT READY/);
   assert.ok(!renderText(PROFILES.mc451, ok, buildChecklist(PROFILES.mc451, ok, extra), new Date()).includes('SETUP OK'));
+});
+
+test('SETUP OK only when every required item is OK: a missing R extension makes MC 427 NOT READY', () => {
+  const ok = probe({ packages: [
+    { name: 'tidyverse', installed: true, version: '2.0.0', loads: true, error: null },
+    { name: 'effectsize', installed: true, version: '1.0.3', loads: true, error: null },
+  ] });
+  const extra = { rscript: 'R', rSource: 'PATH', vscodeRInstalled: false, inPositron: false };
+  const items = buildChecklist(PROFILES.mc427, ok, extra);
+  const ext = items.find((i) => i.name === 'R extension for VS Code');
+  assert.equal(ext?.status, 'missing');
+  assert.deepEqual(extensionPlan(items), [VSCODE_R_ID]);
+  const text = renderText(PROFILES.mc427, ok, items, new Date());
+  assert.ok(!text.includes('SETUP OK'), 'never SETUP OK while a required line is not OK');
+  assert.match(text, /RESULT: 1 item\(s\) to fix: R extension for VS Code\./);
+  assert.match(text.split('\n').pop() as string, /^SETUP NOT READY/);
+  // In Positron the R extension is replaced by Positron's own R support, so it is not checked
+  const pos = buildChecklist(PROFILES.mc427, ok, { ...extra, inPositron: true });
+  assert.ok(!pos.some((i) => i.name === 'R extension for VS Code'));
+  assert.equal(renderText(PROFILES.mc427, ok, pos, new Date()).split('\n').pop(), 'SETUP OK: R and the course packages are working.');
+  // MC 451 and MC 501 need it too (v2v-hub Install R, Step 2)
+  for (const c of ['mc451', 'mc501'] as const) {
+    assert.equal(buildChecklist(PROFILES[c], ok, extra).find((i) => i.name === 'R extension for VS Code')?.status, 'missing', c);
+  }
+});
+
+function fakeTrust(trusted: boolean, answer: string | undefined) {
+  const calls: string[] = [];
+  let t = 0;
+  const host: TrustHost & { trusted: boolean; tick(ms: number): void } = {
+    trusted,
+    isTrusted() { return this.trusted; },
+    askModal: async (message, detail, button) => {
+      calls.push(`modal:${button}`);
+      assert.match(detail, /then select Trust/);
+      return answer;
+    },
+    openTrustPage: async () => { calls.push('trust-page'); },
+    now: () => t,
+    tick(ms) { t += ms; },
+  };
+  return { host, calls };
+}
+
+test('Restricted Mode: one modal with one button, and the paused action resumes once trust is granted', async () => {
+  const { host, calls } = fakeTrust(false, TRUST_BUTTON);
+  const gate = new TrustGate(host);
+  let ran = 0;
+  assert.equal(await gate.require('opening an R terminal', () => ran++), false);
+  assert.deepEqual(calls, [`modal:${TRUST_BUTTON}`, 'trust-page']);
+  assert.equal(ran, 0, 'nothing runs before trust');
+  host.trusted = true;
+  gate.granted();
+  assert.equal(ran, 1, 'resumes by itself after trust');
+  gate.granted();
+  assert.equal(ran, 1, 'runs once');
+  assert.equal(await gate.require('x', () => ran++), true, 'a trusted folder asks nothing');
+  assert.equal(calls.length, 2);
+});
+
+test('Restricted Mode: closing the modal drops the action, and a stale one never starts by surprise', async () => {
+  const closed = fakeTrust(false, undefined);
+  const g1 = new TrustGate(closed.host);
+  let ran = 0;
+  await g1.require('x', () => ran++);
+  assert.deepEqual(closed.calls, [`modal:${TRUST_BUTTON}`], 'no trust page when the student closes the modal');
+  g1.granted();
+  assert.equal(ran, 0);
+  const late = fakeTrust(false, TRUST_BUTTON);
+  const g2 = new TrustGate(late.host);
+  await g2.require('x', () => ran++);
+  late.host.tick(PENDING_MS + 1);
+  g2.granted();
+  assert.equal(ran, 0);
+});
+
+test('walkthrough steps complete on success context keys, never on a button press', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+  const steps = pkg.contributes.walkthroughs[0].steps as { id: string; completionEvents: string[] }[];
+  for (const st of steps) {
+    assert.ok(st.completionEvents.length > 0, st.id);
+    for (const ev of st.completionEvents) {
+      assert.ok(ev.startsWith('onContext:'), `${st.id}: ${ev}`);
+    }
+  }
+  const src = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'extension.ts'), 'utf8');
+  for (const key of ['auraR.done.course', 'auraR.done.setupOk', 'auraR.done.workspace', 'auraR.done.help']) {
+    assert.ok(steps.some((st) => st.completionEvents.includes(`onContext:${key}`)), key);
+    assert.ok(src.includes(`'${key}'`), `${key} is set by the extension`);
+  }
+});
+
+test('the course-set notification fits on one line', () => {
+  for (const p of Object.values(PROFILES)) {
+    const m = courseSetMessage(p);
+    assert.ok(m.length <= 45, `${m.length}: ${m}`);
+    assert.ok(m.includes(p.short));
+  }
+});
+
+test('media/icon.png is a 128x128 PNG', () => {
+  const b = fs.readFileSync(path.join(__dirname, '..', '..', 'media', 'icon.png'));
+  assert.equal(b.subarray(1, 4).toString('latin1'), 'PNG');
+  assert.equal(b.readUInt32BE(16), 128);
+  assert.equal(b.readUInt32BE(20), 128);
 });

@@ -7,3 +7,5 @@
 !out/src/**
 !resources/**
 !media/**
+# Built and ready, but not shipped until the owner rules on SIUE's no-unit-icons policy
+media/icon.png

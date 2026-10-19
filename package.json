@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code: finds R, checks the packages each course needs, installs what is missing, and explains the errors students meet most often.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "aura-lab-siue",
   "license": "MIT",
   "author": {
@@ -167,8 +167,7 @@
               "markdown": "media/walkthrough/1-pick-course.md"
             },
             "completionEvents": [
-              "onCommand:auraR.pickCourse",
-              "onSettingChanged:auraR.course"
+              "onContext:auraR.done.course"
             ]
           },
           {
@@ -179,7 +178,7 @@
               "markdown": "media/walkthrough/2-check-setup.md"
             },
             "completionEvents": [
-              "onCommand:auraR.checkSetup"
+              "onContext:auraR.done.setupOk"
             ]
           },
           {
@@ -190,7 +189,7 @@
               "markdown": "media/walkthrough/3-open-workspace.md"
             },
             "completionEvents": [
-              "onCommand:auraR.openCourseWorkspace"
+              "onContext:auraR.done.workspace"
             ]
           },
           {
@@ -201,8 +200,7 @@
               "markdown": "media/walkthrough/4-get-help.md"
             },
             "completionEvents": [
-              "onCommand:auraR.getHelp",
-              "onCommand:auraR.explainError"
+              "onContext:auraR.done.help"
             ]
           }
         ]

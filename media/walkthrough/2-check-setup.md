@@ -9,9 +9,12 @@ If anything is missing, choose **Install what is missing** at the top of the lis
 1. sets the download site for you, so R never shows the long list of countries and cities,
 2. installs into your personal R library, so R never asks about a personal library,
 3. installs the course package **v2v** from GitHub for MC 451 and MC 501, the same way the hub's install page does,
-4. then checks again, by looking in your R library. It only says a package installed if R can find it there.
+4. adds the R extension for VS Code (by REditorSupport) if it is missing,
+5. then checks again, by looking in your R library. It only says a package installed if R can find it there.
 
 The install can take several minutes. You can watch R's own messages in the **Output** panel.
+
+This step gets its tick once every line your course needs says **OK**.
 
 **For MC 427:** when everything says OK, choose **Run mc427-setup-check.R in an R terminal**. The last line should read `SETUP OK: R and the course packages are working.` That is the line your Tools Stack Setup screenshot needs.
 
