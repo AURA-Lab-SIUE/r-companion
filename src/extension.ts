@@ -32,6 +32,7 @@ import { installScript } from './installScript';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus } from './menus';
+import { openDataViewer, ViewerDeps } from './dataViewer';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
 const WALKTHROUGH = `${EXT_ID}#getStarted`;
@@ -131,6 +132,13 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.checkForUpdates', () => checkForUpdatesCommand(false));
   reg('auraR.openWalkthrough', () => openWalkthrough());
   reg('auraR.addCourseFiles', (opts?: SilentOpts) => addCourseFiles(opts));
+  const viewerDeps: ViewerDeps = {
+    rscript: () => findR()[0]?.rscript,
+    bridgeScript: resourcePath('bridge.R'),
+    mediaRoot: path.join(context.extensionPath, 'media', 'grid'),
+    output,
+  };
+  reg('auraR.openDataViewer', () => openDataViewer(context, viewerDeps));
   // For tests and support: which run adapter and install source this copy sees
   reg('auraR.diagnostics', () => ({
     adapter: pickAdapter(setting('runWith', 'auto'), terminalAdapter).id,

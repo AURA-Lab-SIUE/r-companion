@@ -1,0 +1,148 @@
+/*
+ * Theme and layout for the AURA Lab data viewer.
+ *
+ * AG Grid's quartz theme is driven by --ag-* variables, so we point those at VS Code's own
+ * --vscode-* theme variables: the grid then follows the editor's light, dark, and high-contrast
+ * themes without a second color scheme. Every variable carries a light-theme fallback so the
+ * exported self-contained HTML (which has no --vscode-* variables) still renders with real colors
+ * for the axe contrast check.
+ */
+
+:root {
+  --aura-fg: var(--vscode-foreground, #1f1f1f);
+  --aura-bg: var(--vscode-editor-background, #ffffff);
+  --aura-border: var(--vscode-panel-border, #c8c8c8);
+  --aura-accent: var(--vscode-focusBorder, #005fb8);
+  --aura-header-bg: var(--vscode-sideBarSectionHeader-background, #f3f3f3);
+  --aura-hover: var(--vscode-list-hoverBackground, #e8e8e8);
+  --aura-selected: var(--vscode-list-activeSelectionBackground, #cfe3fb);
+  --aura-selected-fg: var(--vscode-list-activeSelectionForeground, #1f1f1f);
+  --aura-input-bg: var(--vscode-input-background, #ffffff);
+  --aura-input-fg: var(--vscode-input-foreground, #1f1f1f);
+  --aura-input-border: var(--vscode-input-border, #8a8a8a);
+  --aura-btn-bg: var(--vscode-button-background, #005fb8);
+  --aura-btn-fg: var(--vscode-button-foreground, #ffffff);
+  --aura-btn-hover: var(--vscode-button-hoverBackground, #0257a6);
+  --aura-coding-bg: var(--vscode-editorWidget-background, #eef4fb);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  color: var(--aura-fg);
+  background: var(--aura-bg);
+  font-family: var(--vscode-font-family, -apple-system, "Segoe UI", system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.aura-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.aura-title {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0;
+}
+
+.aura-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.aura-btn {
+  color: var(--aura-btn-fg);
+  background: var(--aura-btn-bg);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.aura-btn:hover {
+  background: var(--aura-btn-hover);
+}
+
+.aura-btn:focus-visible {
+  outline: 2px solid var(--aura-accent);
+  outline-offset: 2px;
+}
+
+.aura-status {
+  margin: 0;
+  min-height: 1.2em;
+  color: var(--aura-fg);
+}
+
+.aura-help {
+  margin: 0;
+  color: var(--vscode-descriptionForeground, #4a4a4a);
+}
+
+.aura-grid {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 320px;
+}
+
+/* Map AG Grid (quartz) onto the VS Code theme. */
+.ag-theme-quartz {
+  --ag-background-color: var(--aura-bg);
+  --ag-foreground-color: var(--aura-fg);
+  --ag-header-background-color: var(--aura-header-bg);
+  --ag-header-foreground-color: var(--aura-fg);
+  --ag-border-color: var(--aura-border);
+  --ag-row-border-color: var(--aura-border);
+  --ag-odd-row-background-color: var(--aura-bg);
+  --ag-row-hover-color: var(--aura-hover);
+  --ag-selected-row-background-color: var(--aura-selected);
+  --ag-font-family: var(--vscode-font-family, system-ui, sans-serif);
+  --ag-font-size: var(--vscode-font-size, 13px);
+  --ag-input-focus-border-color: var(--aura-accent);
+  --ag-range-selection-border-color: var(--aura-accent);
+  --ag-input-background-color: var(--aura-input-bg);
+  --ag-input-foreground-color: var(--aura-input-fg);
+  --ag-input-border-color: var(--aura-input-border);
+}
+
+/* The student's own columns, visibly distinct from the read-only data. */
+.aura-coding-header {
+  background: var(--aura-coding-bg) !important;
+  font-style: italic;
+}
+.ag-theme-quartz .aura-coding-cell {
+  background: var(--aura-coding-bg);
+}
+
+/* A strong, always-visible focus ring for keyboard users, in every theme. */
+.ag-theme-quartz .ag-cell-focus,
+.ag-theme-quartz .ag-cell.ag-cell-focus:not(.ag-cell-range-selected) {
+  outline: 2px solid var(--aura-accent) !important;
+  outline-offset: -2px;
+}
+
+/* High contrast: force visible cell and header borders. */
+body.vscode-high-contrast .ag-theme-quartz,
+body.vscode-high-contrast-light .ag-theme-quartz {
+  --ag-border-color: var(--vscode-contrastBorder, #6fc3df);
+  --ag-row-border-color: var(--vscode-contrastBorder, #6fc3df);
+}
+body.vscode-high-contrast .ag-theme-quartz .ag-cell,
+body.vscode-high-contrast .ag-theme-quartz .ag-header-cell {
+  border: 1px solid var(--vscode-contrastBorder, #6fc3df);
+}

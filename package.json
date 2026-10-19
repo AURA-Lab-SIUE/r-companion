@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code: finds R, checks the packages each course needs, installs what is missing, and explains the errors students meet most often.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
@@ -113,6 +113,11 @@
       {
         "command": "auraR.openReliabilityGrid",
         "title": "Reliability grid",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openDataViewer",
+        "title": "Open the data viewer",
         "category": "AURA"
       }
     ],
@@ -239,6 +244,7 @@
     "@types/node": "^20.19.0",
     "@types/vscode": "1.90.0",
     "@vscode/vsce": "^3.6.0",
+    "ag-grid-community": "^36.2.0",
     "typescript": "^5.9.3"
   }
 }

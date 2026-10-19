@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (R3: the data viewer and coding sheet)
+
+- **AURA: Open the data viewer** opens a CSV file, or an R data frame through an Rscript JSON bridge, in an AG Grid Community webview. Data values are read only, with scroll, sort, filter, and column types. Measured on m4: the 35,267-row Twitch sample parses in about 65 ms and renders in about 64 ms.
+- **Coding sheet.** Add coding columns (a dropdown of allowed values typed or pasted from a codebook, or free text) and enter a value per row from the keyboard: type, Enter moves down. Autosave and undo. Codes are stored in a separate long file, `data/derived/<name>-codes.csv` (row_id, column, value, coded_at); the original file is never written. A `row_id` column is added only when the data has none.
+- **Insert rebuild code.** Inserts a commented plain-tidyverse chunk that rebuilds the coded data from the original plus the codes file (read_csv, pivot_wider, left_join by row_id), in house style. Proven in R to reproduce the coded grid exactly.
+- **Refresh** re-reads the data. **Export HTML for accessibility check** writes a self-contained grid for axe.
+- Accessibility: the ARIA grid pattern, keyboard-only entry, a visible focus ring, `--vscode-*` theme colors, and a high-contrast rule.
+- Safety: the codes file is written atomically on a debounce and flushed on close; a hard kill mid-entry loses no saved work. The original file is hashed on open and left untouched.
+
 ## 0.2.1 (fixes from the R2 card run of 2026-10-19)
 
 - MC 451 and MC 501 need v2v 0.3.3 or newer. **Check my setup** marks an older v2v **NEEDS UPDATE**, and **Install what is missing** installs the current release from GitHub with `upgrade = "never"`.

@@ -31,6 +31,13 @@ A sibling template, [mc427-codespace](https://github.com/AURA-Lab-SIUE/mc427-cod
 - **AURA: Reliability grid** (MC 451 and MC 501). Enter your two coding passes item by item: Pass 1 is hidden while you enter Pass 2, and the date of each pass is recorded. It saves the items as `data/reliability-pilot.csv` and writes the R that reads them: Cohen's kappa and Krippendorff's alpha with `irr::kappa2()` and `irr::kripp.alpha()`, followed by the `v2v` `reliability()` call as a check that prints the same kappa.
 - The Describe, plots, and Tests tasks arrive with later releases.
 
+## What it does (release 0.3, "the data viewer and coding sheet")
+
+- **AURA: Open the data viewer.** Opens a CSV file, or an R data frame through an Rscript JSON bridge, in a grid with scroll, sort, filter, and column types. Data values are read only. It handles the 35,000-row course Twitch sample smoothly (about 65 ms to parse and 64 ms to render on a desktop).
+- **Coding sheet.** Add your own coding columns (a dropdown of allowed values you type or paste from your codebook, or free text) and enter a value per row from the keyboard: type, then Enter to move down. Work saves by itself, and Ctrl+Z (Cmd+Z on a Mac) undoes. Codes are kept in a separate long file, `data/derived/<name>-codes.csv`, with one row per coded cell (row_id, column, value, coded_at). Your original data file is never written. The viewer adds a `row_id` column only when the data has none.
+- **Insert rebuild code.** Writes a commented tidyverse chunk that rebuilds the coded data from the original file plus your codes (read_csv, pivot_wider, left_join by row_id), so the result is reproducible and the original stays untouched.
+- **Refresh** re-reads the data file. **Export HTML for accessibility check** writes a self-contained copy of the grid.
+
 ## How it finds R
 
 In order: the `auraR.rPath` setting, the R extension's `r.rpath` and `r.rterm` settings, your PATH, then on Windows the registry and the standard install folders (the Windows R installer leaves R off the PATH on purpose), and on macOS the R.framework and Homebrew locations.
@@ -57,7 +64,9 @@ No telemetry. The only network traffic is the CRAN and GitHub downloads you star
 
 ## Accessibility
 
-R1 uses only native VS Code interface: the Command Palette, quick picks, notifications, the Output panel, and the Get Started walkthrough. All of it is keyboard-operable and read by screen readers, and it follows your color theme, including high contrast. There is no webview in this release.
+The setup features use only native VS Code interface: the Command Palette, quick picks, notifications, the Output panel, and the Get Started walkthrough. All of it is keyboard-operable and read by screen readers, and it follows your color theme, including high contrast.
+
+The data viewer is the one webview. It follows the WAI-ARIA grid pattern (role grid, rows, and cells, with row and column counts), is fully keyboard-operable (navigate, edit, Enter to move down, Ctrl+Z to undo), shows a visible focus ring, labels every control, takes its colors from your VS Code theme through the `--vscode-*` variables, and has a high-contrast rule. **Export HTML for accessibility check** writes a self-contained copy of the grid so it can be checked with axe.
 
 ## Course pages
 

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { PROFILES, compareVersions, courseSetMessage } from '../src/profiles';
 import { discoverR, newestRFolder, rscriptBeside, DiscoveryEnv } from '../src/rDiscovery';
 import { buildChecklist, extensionPlan, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems, VSCODE_R_ID } from '../src/checklist';
@@ -11,6 +12,11 @@ import { explain, ERROR_TABLE } from '../src/errors';
 import { parseRelease } from '../src/update';
 import { installScript } from '../src/installScript';
 import { mergeRecommendations, SELF_ID } from '../src/courseFiles';
+import { parseCsv, writeCsv, csvField, inferType } from '../src/csv';
+import { chooseRowId, ROW_ID } from '../src/dataTypes';
+import { buildLoaded, stringifyCell } from '../src/dataSource';
+import { serializeCodes, parseCodes, CodeStore, CODES_HEADER } from '../src/codesStore';
+import { rebuildChunk } from '../src/rebuild';
 
 function fakeEnv(files: string[], over: Partial<DiscoveryEnv> = {}): DiscoveryEnv {
   const set = new Set(files.map((f) => f.toLowerCase()));
@@ -355,4 +361,143 @@ test('media/icon.png (the listing image) is a 128x128 PNG', () => {
   assert.equal(b.subarray(1, 4).toString('latin1'), 'PNG');
   assert.equal(b.readUInt32BE(16), 128);
   assert.equal(b.readUInt32BE(20), 128);
+});
+
+// ---------- data viewer: CSV, types, row id, codes, rebuild ----------
+
+test('parseCsv handles quotes, embedded commas, newlines, and CRLF', () => {
+  const text = 'a,b,c\r\n1,"x,y","line\nbreak"\r\n2,"she said ""hi""",z\r\n';
+  const { header, rows } = parseCsv(text);
+  assert.deepEqual(header, ['a', 'b', 'c']);
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows[0], ['1', 'x,y', 'line\nbreak']);
+  assert.deepEqual(rows[1], ['2', 'she said "hi"', 'z']);
+});
+
+test('parseCsv drops a blank trailing line but keeps empty fields', () => {
+  const { header, rows } = parseCsv('a,b\n1,\n');
+  assert.deepEqual(header, ['a', 'b']);
+  assert.deepEqual(rows, [['1', '']]);
+});
+
+test('writeCsv round-trips through parseCsv', () => {
+  const header = ['id', 'note'];
+  const rows = [['1', 'has, comma'], ['2', 'has "quote"'], ['3', 'plain']];
+  const back = parseCsv(writeCsv(header, rows));
+  assert.deepEqual(back.header, header);
+  assert.deepEqual(back.rows, rows);
+});
+
+test('csvField quotes only when it must', () => {
+  assert.equal(csvField('plain'), 'plain');
+  assert.equal(csvField('a,b'), '"a,b"');
+  assert.equal(csvField('say "hi"'), '"say ""hi"""');
+  assert.equal(csvField(''), '');
+});
+
+test('inferType reads integer, number, date, logical, and text', () => {
+  assert.equal(inferType(['1', '2', '3']), 'integer');
+  assert.equal(inferType(['1.5', '2', '']), 'number');
+  assert.equal(inferType(['2026-10-19', '2026-01-01']), 'date');
+  assert.equal(inferType(['TRUE', 'false']), 'logical');
+  assert.equal(inferType(['1', 'two']), 'text');
+  assert.equal(inferType(['', '']), 'text');
+});
+
+test('chooseRowId reuses a unique row_id column, else synthesizes', () => {
+  assert.deepEqual(chooseRowId(['row_id', 'x'], [['1', 'a'], ['2', 'b']]), { field: ROW_ID, synthesize: false });
+  // duplicate -> synthesize
+  assert.deepEqual(chooseRowId(['row_id', 'x'], [['1', 'a'], ['1', 'b']]), { field: ROW_ID, synthesize: true });
+  // blank -> synthesize
+  assert.deepEqual(chooseRowId(['row_id'], [['1'], ['']]), { field: ROW_ID, synthesize: true });
+  // absent -> synthesize
+  assert.deepEqual(chooseRowId(['x', 'y'], [['a', 'b']]), { field: ROW_ID, synthesize: true });
+});
+
+test('buildLoaded synthesizes row_id as the first column with 1..n', () => {
+  const d = buildLoaded('sample', '/tmp/sample.csv', 'csv', { header: ['msg', 'n'], rows: [['hi', '5'], ['yo', '7']] });
+  assert.equal(d.addedRowId, true);
+  assert.equal(d.columns[0].field, ROW_ID);
+  assert.equal(d.columns[0].type, 'integer');
+  assert.deepEqual(d.rows[0], { row_id: '1', msg: 'hi', n: '5' });
+  assert.deepEqual(d.rows[1], { row_id: '2', msg: 'yo', n: '7' });
+});
+
+test('buildLoaded keeps an existing unique row_id and does not add one', () => {
+  const d = buildLoaded('s', '/tmp/s.csv', 'csv', { header: ['row_id', 'msg'], rows: [['7', 'a'], ['8', 'b']] });
+  assert.equal(d.addedRowId, false);
+  assert.equal(d.columns.length, 2);
+  assert.equal(d.columns[0].field, ROW_ID);
+  assert.equal(d.rows[0].row_id, '7');
+});
+
+test('stringifyCell matches read_csv printing for logicals and blanks', () => {
+  assert.equal(stringifyCell(true), 'TRUE');
+  assert.equal(stringifyCell(false), 'FALSE');
+  assert.equal(stringifyCell(null), '');
+  assert.equal(stringifyCell(undefined), '');
+  assert.equal(stringifyCell(42), '42');
+});
+
+test('serializeCodes writes the long header and sorts stably', () => {
+  const text = serializeCodes([
+    { rowId: '2', column: 'tone', value: 'neg', codedAt: 't2' },
+    { rowId: '10', column: 'tone', value: 'pos', codedAt: 't10' },
+    { rowId: '1', column: 'tone', value: 'pos', codedAt: 't1' },
+  ]);
+  const { header, rows } = parseCsv(text);
+  assert.deepEqual(header, CODES_HEADER);
+  assert.deepEqual(rows.map((r) => r[0]), ['1', '2', '10']); // numeric order, not lexical
+});
+
+test('parseCodes reads back what serializeCodes wrote', () => {
+  const recs = [{ rowId: '1', column: 'tone', value: 'pos, maybe', codedAt: '2026-10-19T00:00:00Z' }];
+  assert.deepEqual(parseCodes(serializeCodes(recs)), recs);
+});
+
+test('CodeStore set, clear, round-trip through an atomic save', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aura-codes-'));
+  const file = path.join(dir, 'x-codes.csv');
+  const store = new CodeStore(file);
+  store.set('1', 'tone', 'pos', 't1');
+  store.set('2', 'tone', 'neg', 't2');
+  store.set('1', 'topic', 'news', 't3');
+  store.save();
+  assert.ok(fs.existsSync(file));
+  const reloaded = CodeStore.load(file);
+  assert.deepEqual(reloaded.rowValues('1'), { tone: 'pos', topic: 'news' });
+  assert.deepEqual(reloaded.columnsWithData(), ['tone', 'topic']);
+  // clearing removes the record
+  reloaded.set('1', 'tone', '', 't4');
+  reloaded.save();
+  assert.deepEqual(CodeStore.load(file).rowValues('1'), { topic: 'news' });
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('rebuildChunk follows the house style and adds row_number only when needed', () => {
+  const added = rebuildChunk({
+    dataRelPath: 'data/sample.csv',
+    codesRelPath: 'data/derived/sample-codes.csv',
+    addedRowId: true,
+    origin: 'csv',
+    codingColumns: ['tone', 'topic'],
+  });
+  assert.ok(added.includes('library(tidyverse)'));
+  assert.ok(added.includes('read_csv("data/sample.csv")'));
+  assert.ok(added.includes('mutate(row_id = as.character(row_number()))'));
+  assert.ok(added.includes('pivot_wider('));
+  assert.ok(added.includes('left_join(wide_codes, by = "row_id")'));
+  assert.ok(added.includes('tone, topic'));
+  // one verb per line after each pipe: no two %>% on the same line
+  for (const line of added.split('\n')) assert.ok((line.match(/%>%/g) || []).length <= 1, line);
+
+  const existing = rebuildChunk({
+    dataRelPath: 'd.csv',
+    codesRelPath: 'c.csv',
+    addedRowId: false,
+    origin: 'csv',
+    codingColumns: [],
+  });
+  assert.ok(existing.includes('mutate(row_id = as.character(row_id))'));
+  assert.ok(!existing.includes('row_number()'));
 });
