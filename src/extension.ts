@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
     mediaRoot: path.join(context.extensionPath, 'media', 'grid'),
     output,
   };
-  reg('auraR.openDataViewer', () => openDataViewer(context, viewerDeps));
+  reg('auraR.openDataViewer', (file?: string) => openDataViewer(context, viewerDeps, typeof file === 'string' ? file : undefined));
   // For tests and support: which run adapter and install source this copy sees
   reg('auraR.diagnostics', () => ({
     adapter: pickAdapter(setting('runWith', 'auto'), terminalAdapter).id,

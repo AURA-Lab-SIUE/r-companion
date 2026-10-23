@@ -71,3 +71,13 @@ export function pickerHint(c: ProbeColumn, rows: number): string | undefined {
   if (c.n_missing > 0) return `${c.n_missing} missing`;
   return undefined;
 }
+
+/**
+ * The probe script with its two tokens filled in. Every occurrence is replaced: the template's own
+ * header comment names both tokens, and replacing only the first left the code line unfilled, so
+ * R stopped with "unexpected input" and every column pick fell back to the course defaults (found
+ * 2026-10-22; it had been so since the probe shipped).
+ */
+export function fillProbe(template: string, dataExpr: string, outPath: string): string {
+  return template.split('__DATA__').join(dataExpr).split('__OUT__').join(outPath.replace(/\\/g, '/'));
+}

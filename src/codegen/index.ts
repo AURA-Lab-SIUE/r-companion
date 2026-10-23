@@ -16,7 +16,7 @@ export { APA_TESTS, ApaTest, apaTask } from './apa';
 /** What release a task belongs to, for the quick-pick menus and the "behind a setting" gate. */
 export const TASK_RELEASE: Record<string, Release> = {
   // R2 Data, wrangling, reliability
-  'import-csv': 'R2', 'import-course-dataset': 'R2', 'import-rds': 'R2',
+  'import-csv': 'R2', 'import-xlsx': 'R2', 'import-course-dataset': 'R2', 'import-rds': 'R2',
   filter: 'R2', select: 'R2', mutate: 'R2', count: 'R2',
   'clean-dates': 'R2', 'join-chat-streams': 'R2', 'channel-lookup': 'R2', 'join-lookup': 'R2',
   'convert-timestamp': 'R2', 'label-from-snapshot': 'R2',

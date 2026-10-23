@@ -11,11 +11,12 @@ import * as path from 'path';
 import { CourseId } from './profiles';
 import { generate, hasTask, GenProfile, GenParams, GenOptions, APA_TESTS, ApaTest, apaTask } from './codegen';
 import { TEST_LABEL } from './testChoice';
-import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint } from './columnProbe';
+import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint, fillProbe } from './columnProbe';
 import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
 import { CHART_TASKS, watchSavedChart } from './chartWatch';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES } from './tables';
+import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
 /** What the menus need from the host extension. */
 export interface MenuDeps {
@@ -54,7 +55,7 @@ interface TaskDef {
 
 // The menu catalog. hasTask(profile, task) decides which of these a course actually offers.
 const CATALOG: TaskDef[] = [
-  { task: 'import-csv', label: 'Import a CSV file', category: 'R2 Data' },
+  { task: 'import-csv', label: 'Import a data file (CSV or Excel)', category: 'R2 Data' },
   { task: 'import-course-dataset', label: 'Load the course Twitch corpus', category: 'R2 Data' },
   { task: 'import-rds', label: 'Load your saved analysis (RDS)', category: 'R2 Data' },
   { task: 'filter', label: 'Keep some rows (filter)', category: 'R2 Data', columns: 'one' },
@@ -144,6 +145,10 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   const reg = (id: string, fn: (...a: any[]) => any) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
   reg('auraR.writeCode', () => writeCodeCommand(deps));
+  reg('auraR.importDataFile', async (preset?: ImportPreset) => {
+    const course = deps.currentCourse() ?? (await deps.pickCourse(false));
+    if (course) await importDataFile(deps, profileOf(course), 'Import a data file (CSV or Excel)', preset);
+  });
   reg('auraR.openReliabilityGrid', () => openReliabilityGrid(context, deps));
 }
 
@@ -177,6 +182,7 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
   // These open a webview, a command, or a second pick instead of writing one block directly
   if (def.task === 'reliability') return vscode.commands.executeCommand('auraR.openReliabilityGrid');
   if (def.task === 'check-test-choice') return vscode.commands.executeCommand('auraR.checkTestChoice');
+  if (def.task === 'import-csv') return importDataFile(deps, profile, def.label);
   let task = def.task;
   if (task === 'apa-check') {
     const test = await pickApaTest(profile);
@@ -209,6 +215,125 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
     ? 'Module 5: Copilot writes your analysis code. Use this block to check it, and log any difference as a Copilot error you caught.'
     : undefined;
   await insertAndMaybeRun(deps, code, def.label, task, note);
+}
+
+// ---------------- Import a data file (0.5.3) ----------------
+
+/** A file (and table name) chosen before the import starts: the AURA panel and the test suites. */
+export interface ImportPreset {
+  file?: string;
+  name?: string;
+}
+
+// Pick the file, name the table, choose the Excel sheet, and look at the columns before anything
+// is written (RStudio's import preview and JASP's CSV preview in one list). Esc at any step writes
+// nothing.
+async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string, preset: ImportPreset = {}): Promise<void> {
+  const picked = preset.file ? [vscode.Uri.file(preset.file)] : await vscode.window.showOpenDialog({
+    title: 'Pick the data file to import',
+    canSelectMany: false,
+    openLabel: 'Import',
+    filters: { 'Data files (CSV or Excel)': ['csv', 'xlsx', 'xls'], 'CSV files': ['csv'], 'Excel files': ['xlsx', 'xls'], 'All files': ['*'] },
+  });
+  const file = picked?.[0]?.fsPath;
+  if (!file) return;
+  const kind = dataFileKind(file);
+  if (kind !== 'csv' && kind !== 'excel') {
+    vscode.window.showWarningMessage(
+      kind === 'rds'
+        ? 'That is an RDS file. Use Load your saved analysis (RDS) for it, or pick a .csv, .xlsx, or .xls file here.'
+        : 'Pick a .csv, .xlsx, or .xls file.',
+    );
+    return;
+  }
+  const name = preset.name ?? await vscode.window.showInputBox({
+    title: label,
+    prompt: 'What do you want to call this table in R?',
+    value: tableNameFromFile(file),
+    validateInput: (v) => tableNameProblem(v.trim()),
+    ignoreFocusOut: true,
+  });
+  if (!name) return;
+
+  let sheet: string | undefined;
+  if (kind === 'excel') {
+    let sheets: string[];
+    try {
+      sheets = await listExcelSheets(deps, file);
+    } catch (e: any) {
+      deps.output.appendLine(`Could not list the sheets in ${file}: ${e?.message ?? e}`);
+      vscode.window.showErrorMessage('R could not read that Excel file. Run AURA: Check my setup, then try again.', 'Show output').then((b) => b && deps.output.show());
+      return;
+    }
+    if (sheets.length === 0) {
+      vscode.window.showWarningMessage('That Excel file has no sheets to read.');
+      return;
+    }
+    sheet = sheets[0];
+    if (sheets.length > 1) {
+      const pick = await vscode.window.showQuickPick(
+        sheets.map((s, i) => ({ label: s, description: i === 0 ? 'first sheet' : undefined })),
+        { title: label, placeHolder: 'Which sheet holds your data?' },
+      );
+      if (!pick) return;
+      sheet = pick.label;
+    }
+  }
+
+  // The peek: the columns R will read, with their types. A failed probe (no R yet) still writes
+  // the block, since the student may install R next and run it then.
+  let probe: ColumnProbe | undefined;
+  try {
+    probe = await runColumnProbe(deps, probeExpr(file, sheet));
+  } catch (e: any) {
+    deps.output.appendLine(`Peek skipped: ${e?.message ?? e}`);
+  }
+  if (probe) {
+    const items: (vscode.QuickPickItem & { accept?: boolean })[] = [
+      { label: '$(check) Write the code that loads this table', detail: `as ${name.trim()}`, accept: true },
+      { label: 'Columns', kind: vscode.QuickPickItemKind.Separator },
+      ...probe.columns.map((c) => ({ label: c.name, description: typeWord(c.type), detail: pickerHint(c, probe!.rows) })),
+    ];
+    const ok = await vscode.window.showQuickPick(items, {
+      title: peekSummary(probe),
+      placeHolder: 'Press Enter to write the code, or Esc to cancel',
+      matchOnDescription: true,
+    });
+    if (!ok) return;
+  }
+
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const where = scriptPath(file, folder);
+  if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE);
+  const params: GenParams = { data: name.trim(), file: where.path, sheet };
+  // janitor is required in MC 451 and MC 501 only
+  if (profile !== 'mc427' && probe && namesNeedCleaning(probe).length > 0) params.cleanNames = true;
+  const task = kind === 'excel' ? 'import-xlsx' : 'import-csv';
+  await insertAndMaybeRun(deps, generate(profile, task, params), label, task, undefined, [name.trim()]);
+}
+
+/** The sheet names in an Excel workbook, read by R into a JSON file (never console text). */
+async function listExcelSheets(deps: MenuDeps, file: string): Promise<string[]> {
+  const rscript = deps.rscriptPath();
+  if (!rscript) throw new Error('R was not found. Run Check my setup first.');
+  fs.mkdirSync(deps.storageDir, { recursive: true });
+  const stamp = Date.now();
+  const outPath = path.join(deps.storageDir, `sheets-${stamp}.json`);
+  const scriptPathR = path.join(deps.storageDir, `sheets-${stamp}.R`);
+  fs.writeFileSync(scriptPathR, `${sheetListExpr(file, outPath)}\n`);
+  try {
+    const res = await deps.runRscript(rscript, [scriptPathR], 60000);
+    if (!fs.existsSync(outPath)) {
+      deps.output.appendLine(res.stdout);
+      deps.output.appendLine(res.stderr);
+      throw new Error('R did not list the sheets.');
+    }
+    const sheets = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+    return Array.isArray(sheets) ? sheets.map(String) : [];
+  } finally {
+    fs.rmSync(outPath, { force: true });
+    fs.rmSync(scriptPathR, { force: true });
+  }
 }
 
 /** Which test the APA numbers block is for. */
@@ -294,10 +419,10 @@ async function collectColumns(deps: MenuDeps, def: TaskDef, params: GenParams, t
     const file = await vscode.window.showOpenDialog({
       title: 'Pick the data file to read its columns',
       canSelectMany: false,
-      filters: { Data: ['csv', 'CSV', 'rds', 'RDS'] },
+      filters: { Data: ['csv', 'CSV', 'xlsx', 'xls', 'rds', 'RDS'] },
     });
     if (!file || file.length === 0) return;
-    source = dataExprFor(file[0].fsPath);
+    source = probeExpr(file[0].fsPath);
   }
   await pickFromProbe(await runColumnProbe(deps, source), def, params);
 }
@@ -325,13 +450,6 @@ async function pickFromProbe(probe: ColumnProbe, def: TaskDef, params: GenParams
   }
 }
 
-/** The R expression the column probe reads a data file with. */
-function dataExprFor(dataPath: string): string {
-  return /\.rds$/i.test(dataPath)
-    ? `readRDS(${JSON.stringify(dataPath)})`
-    : `readr::read_csv(${JSON.stringify(dataPath)}, show_col_types = FALSE)`;
-}
-
 async function pickColumn(cols: ProbeColumn[], probe: ColumnProbe, title: string): Promise<ProbeColumn | undefined> {
   const items = cols.map((c) => ({ label: c.name, description: c.type, detail: pickerHint(c, probe.rows), col: c }));
   const chosen = await vscode.window.showQuickPick(items, { title, placeHolder: 'Pick a column', matchOnDetail: true });
@@ -345,7 +463,7 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
   fs.mkdirSync(deps.storageDir, { recursive: true });
   const outPath = path.join(deps.storageDir, `probe-${Date.now()}.json`);
   const tpl = fs.readFileSync(deps.resourcePath('column-probe.R'), 'utf8');
-  const script = tpl.replace('__DATA__', dataExpr).replace('__OUT__', outPath.replace(/\\/g, '/'));
+  const script = fillProbe(tpl, dataExpr, outPath);
   const scriptPath = path.join(deps.storageDir, `probe-${Date.now()}.R`);
   fs.writeFileSync(scriptPath, script);
   const res = await deps.runRscript(rscript, [scriptPath], 60000);
@@ -361,7 +479,7 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
 }
 
 // Insert the generated code at the cursor, then offer to run it.
-async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string): Promise<void> {
+async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string, makes: string[] = []): Promise<void> {
   const editor = await scriptEditor();
   if (!editor) {
     const doc = await vscode.workspace.openTextDocument({ language: 'r', content: code });
@@ -394,7 +512,7 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
         chart?.cancel();
         throw e;
       }
-      for (const name of MAKES[task ?? ''] ?? []) ranTables.add(name);
+      for (const name of [...(MAKES[task ?? ''] ?? []), ...makes]) ranTables.add(name);
     };
     if (!(await deps.requireTrust('running R code', runIt))) return;
     await runIt();

@@ -8,6 +8,37 @@ const d = (p: GenParams, def: string) => p.data ?? def;
 /** A filter value as R reads it: quoted text, or TRUE, FALSE, and numbers as they are. */
 const shown = (p: GenParams, value: string) => (p.rawValue ? value : `"${value}"`);
 
+/**
+ * The read step of a Load block: its comment, the read call, and janitor::clean_names() stacked on
+ * its own line when the import found column names with spaces or capitals (MC 451 and MC 501).
+ */
+function readStep(name: string, call: string, p: GenParams, comment: string[]): string[] {
+  if (!p.cleanNames) return [...comment, `${name} <- ${call}`];
+  return [
+    ...comment,
+    '# clean_names() then rewrites the column names in lower case with underscores (Pass 1 becomes',
+    '# pass_1), so you can type them without backticks.',
+    `${name} <- ${call} %>%`,
+    '  janitor::clean_names()',
+  ];
+}
+
+/** The Excel read call: readxl comes with the tidyverse but library(tidyverse) does not load it. */
+function excelCall(p: GenParams, file: string): string {
+  return `readxl::read_excel("${file}", sheet = "${p.sheet ?? 'Sheet1'}")`;
+}
+
+const EXCEL_COMMENT = (name: string) => [
+  `# Read the Excel sheet and name it ${name}. readxl comes with the tidyverse but is not`,
+  '# loaded by library(tidyverse), so it is named in full. Prints nothing.',
+];
+
+const SCIPEN = [
+  '# Print big numbers in full (20000000, not 2e+07) for the rest of this session. Very small',
+  "# p-values still print the usual way (< 2e-16), so test results look like the course pages.",
+  'options(scipen = 10)',
+];
+
 // ---------------- MC 427 (plain tidyverse) ----------------
 
 const mc427ImportCsv: Template = (p) => {
@@ -25,6 +56,25 @@ const mc427ImportCsv: Template = (p) => {
     '',
     `# Read the file and name it ${name}. Prints a report: rows, columns, and each column's type.`,
     `${name} <- read_csv("${file}")`,
+    '',
+    '# Look at every column: its name, its type, and its first values.',
+    `glimpse(${name})`,
+  );
+};
+
+const mc427ImportXlsx: Template = (p) => {
+  const name = d(p, 'df');
+  const file = p.file ?? 'coded-pilot.xlsx';
+  return lines(
+    banner('Load the tidyverse and your data file'),
+    '# Load the tidyverse once, at the top of the script. It prints a list of',
+    '# packages with check marks and two "masks" lines; both are normal.',
+    'library(tidyverse)',
+    '',
+    ...SCIPEN,
+    '',
+    ...EXCEL_COMMENT(name),
+    `${name} <- ${excelCall(p, file)}`,
     '',
     '# Look at every column: its name, its type, and its first values.',
     `glimpse(${name})`,
@@ -130,8 +180,26 @@ const v2vImportCsv: Template = (p) => {
     "# p-values still print the usual way (< 2e-16), so test results look like the course pages.",
     'options(scipen = 10)',
     '',
-    `# Read the file and name it ${name}. Prints a report: rows, columns, and each column's type.`,
-    `${name} <- read_csv("${file}")`,
+    ...readStep(name, `read_csv("${file}")`, p, [
+      `# Read the file and name it ${name}. Prints a report: rows, columns, and each column's type.`,
+    ]),
+    '',
+    '# Look at every column: its name, its type, and its first values.',
+    `glimpse(${name})`,
+  );
+};
+
+const v2vImportXlsx: Template = (p) => {
+  const name = d(p, 'coded_pilot');
+  const file = p.file ?? 'data/coded-pilot.xlsx';
+  return lines(
+    banner('Load the tidyverse, the course package, and your data file'),
+    'library(tidyverse)',
+    'library(v2v)',
+    '',
+    ...SCIPEN,
+    '',
+    ...readStep(name, excelCall(p, file), p, EXCEL_COMMENT(name)),
     '',
     '# Look at every column: its name, its type, and its first values.',
     `glimpse(${name})`,
@@ -479,6 +547,7 @@ const v2vReliabilityPlain: Template = (p) => {
 };
 
 export const MC427_R2: Record<string, Template> = {
+  'import-xlsx': mc427ImportXlsx,
   'import-csv': mc427ImportCsv,
   filter: mc427Filter,
   select: mc427Select,
@@ -489,6 +558,7 @@ export const MC427_R2: Record<string, Template> = {
 };
 
 export const V2V_R2: Record<string, Template> = {
+  'import-xlsx': v2vImportXlsx,
   'import-csv': v2vImportCsv,
   'import-course-dataset': v2vImportCourseDataset,
   'import-rds': v2vImportRds,

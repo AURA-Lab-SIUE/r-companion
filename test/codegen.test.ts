@@ -41,9 +41,9 @@ const generated = manifest.entries.filter((e) => e.generated);
 // plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19).
 // Phase 2 charts (#rgui, 2026-10-19) add 5: mc451/mc501 line, mc451/mc501 grouped histogram, mc501 power.
 // 0.5.1 adds 2 checks: the mc451/mc501 line chart run after the R2 clean_dates() step as well as fresh.
-test('the golden manifest has 97 entries, 91 generated', () => {
-  assert.equal(manifest.entries.length, 97);
-  assert.equal(generated.length, 91);
+test('the golden manifest has 100 entries, 94 generated', () => {
+  assert.equal(manifest.entries.length, 100);
+  assert.equal(generated.length, 94);
 });
 
 for (const e of generated) {

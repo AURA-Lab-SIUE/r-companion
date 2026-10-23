@@ -10,12 +10,14 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as os from 'os';
 import { LoadedData, CodingColumn } from './dataTypes';
 import { loadCsvFile, loadRDataFrame, runRscriptSync } from './dataSource';
 import { CodeStore } from './codesStore';
 import { rebuildChunk } from './rebuild';
 import { webviewHtml, standaloneHtml } from './gridHtml';
 import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
+import { dataFileKind, probeExpr, sheetListExpr, tableNameFromFile } from './importFile';
 
 export interface ViewerDeps {
   /** Path to Rscript, or undefined when R was not found. */
@@ -51,8 +53,9 @@ function relForward(folder: string, target: string): string {
 
 // ---------- the open command ----------
 
-export async function openDataViewer(context: vscode.ExtensionContext, deps: ViewerDeps): Promise<void> {
-  const source = await pickSource(deps);
+export async function openDataViewer(context: vscode.ExtensionContext, deps: ViewerDeps, file?: string): Promise<void> {
+  // A file given by the caller (the test suites) skips the first pick
+  const source = file ? (dataFileKind(file) === 'excel' ? await excelSource(deps, file) : { kind: 'csv' as const, path: file }) : await pickSource(deps);
   if (!source) return;
   let data: LoadedData;
   try {
@@ -91,15 +94,17 @@ async function pickSource(deps: ViewerDeps): Promise<Source | undefined> {
     });
   }
   items.push({
-    label: '$(folder-opened) Pick a CSV file',
-    detail: 'Choose a .csv file from this computer',
+    label: '$(folder-opened) Pick a data file (CSV or Excel)',
+    detail: 'Choose a .csv, .xlsx, or .xls file from this computer',
     run: async () => {
       const picked = await vscode.window.showOpenDialog({
         canSelectMany: false,
-        filters: { 'CSV files': ['csv'], 'All files': ['*'] },
+        filters: { 'Data files (CSV or Excel)': ['csv', 'xlsx', 'xls'], 'All files': ['*'] },
         openLabel: 'Open in the data viewer',
       });
-      return picked?.[0] ? { kind: 'csv', path: picked[0].fsPath } : undefined;
+      const file = picked?.[0]?.fsPath;
+      if (!file) return undefined;
+      return dataFileKind(file) === 'excel' ? excelSource(deps, file) : { kind: 'csv', path: file };
     },
   });
   if (deps.rscript()) {
@@ -131,6 +136,44 @@ async function pickSource(deps: ViewerDeps): Promise<Source | undefined> {
     placeHolder: 'What do you want to view or code?',
   });
   return choice ? choice.run() : undefined;
+}
+
+// An Excel sheet opens through the R bridge (readxl::read_excel), like any R data frame, so the
+// viewer needs no reader of its own. With more than one sheet the student picks one, and the sheet
+// name goes into the derived file names so each sheet keeps its own codes.
+async function excelSource(deps: ViewerDeps, file: string): Promise<Source | undefined> {
+  const rscript = deps.rscript();
+  if (!rscript) {
+    vscode.window.showErrorMessage('Opening an Excel file needs R. Run AURA: Check my setup.');
+    return undefined;
+  }
+  const stamp = Date.now();
+  const out = path.join(os.tmpdir(), `aura-sheets-${stamp}.json`);
+  const script = path.join(os.tmpdir(), `aura-sheets-${stamp}.R`);
+  let sheets: string[] = [];
+  try {
+    fs.writeFileSync(script, `${sheetListExpr(file, out)}\n`);
+    const res = runRscriptSync(rscript, [script]);
+    if (!fs.existsSync(out)) throw new Error(res.stderr.slice(0, 400) || 'R did not list the sheets.');
+    sheets = (JSON.parse(fs.readFileSync(out, 'utf8')) as unknown[]).map(String);
+  } catch (e: any) {
+    deps.output.appendLine(`Could not list the sheets in ${file}: ${e?.message ?? e}`);
+    vscode.window.showErrorMessage('R could not read that Excel file. Run AURA: Check my setup, then try again.');
+    return undefined;
+  } finally {
+    fs.rmSync(out, { force: true });
+    fs.rmSync(script, { force: true });
+  }
+  if (sheets.length === 0) return undefined;
+  let sheet = sheets[0];
+  if (sheets.length > 1) {
+    const pick = await vscode.window.showQuickPick(sheets, { title: 'Open in the data viewer', placeHolder: 'Which sheet?' });
+    if (!pick) return undefined;
+    sheet = pick;
+  }
+  const base = tableNameFromFile(file);
+  const name = sheets.length > 1 ? `${base}_${tableNameFromFile(sheet)}` : base;
+  return { kind: 'rdataframe', expr: probeExpr(file, sheet), name };
 }
 
 const COURSE_DATASETS = [

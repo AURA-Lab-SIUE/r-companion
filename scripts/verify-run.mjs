@@ -70,7 +70,10 @@ for (const e of manifest.entries) {
     continue;
   }
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rcomp-'));
-  for (const dt of e.data) fs.copyFileSync(mapData(dt.canonical), path.join(work, dt.as));
+  for (const dt of e.data) {
+    fs.mkdirSync(path.dirname(path.join(work, dt.as)), { recursive: true });
+    fs.copyFileSync(mapData(dt.canonical), path.join(work, dt.as));
+  }
   // Materialize the chain into work/, numbered so basenames stay unique and order is preserved.
   const chain = [];
   [...e.requires, e.file].forEach((rel, i) => {

@@ -25,6 +25,10 @@ export interface GenParams {
   value?: string;
   /** Write value as it is (TRUE, FALSE, a number), not in quotation marks. */
   rawValue?: boolean;
+  /** The Excel sheet an import reads. */
+  sheet?: string;
+  /** Add janitor::clean_names() after the read (MC 451 and MC 501, when a column name needs it). */
+  cleanNames?: boolean;
 }
 
 export interface GenOptions {

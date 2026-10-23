@@ -27,6 +27,30 @@
       "sentence_template": null
     },
     {
+      "id": "mc427.import-xlsx",
+      "release": "R2",
+      "task": "import-xlsx",
+      "profile": "mc427",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc427/r2-import-xlsx.R",
+      "requires": [],
+      "data": [
+        {
+          "name": "coded-pilot-xlsx",
+          "canonical": "O:/20-research/aura-lab/r-companion-golden/data-map/coded-pilot.xlsx",
+          "as": "coded-pilot.xlsx"
+        }
+      ],
+      "must_print": [
+        "Rows: 10",
+        "Columns: 5",
+        "pass_1"
+      ],
+      "sentence_template": null
+    },
+    {
       "id": "mc451.import-csv",
       "release": "R2",
       "task": "import-csv",
@@ -60,6 +84,54 @@
       "data": [],
       "must_print": [
         "Rows: 20",
+        "pass_1"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.import-xlsx",
+      "release": "R2",
+      "task": "import-xlsx",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-import-xlsx.R",
+      "requires": [],
+      "data": [
+        {
+          "name": "coded-pilot-xlsx",
+          "canonical": "O:/20-research/aura-lab/r-companion-golden/data-map/coded-pilot.xlsx",
+          "as": "data/coded-pilot.xlsx"
+        }
+      ],
+      "must_print": [
+        "Rows: 10",
+        "Columns: 5",
+        "pass_1"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.import-xlsx",
+      "release": "R2",
+      "task": "import-xlsx",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-import-xlsx.R",
+      "requires": [],
+      "data": [
+        {
+          "name": "coded-pilot-xlsx",
+          "canonical": "O:/20-research/aura-lab/r-companion-golden/data-map/coded-pilot.xlsx",
+          "as": "data/coded-pilot.xlsx"
+        }
+      ],
+      "must_print": [
+        "Rows: 10",
+        "Columns: 5",
         "pass_1"
       ],
       "sentence_template": null
