@@ -2,9 +2,9 @@
 // a 250 ms debounced atomic CodeStore.save. The parent (kill-test.cjs) hard-kills this process to
 // prove saved coding survives a crash. NOT shipped.
 //
-//   node scripts/kill-child.cjs <codes-path>
+//   node scripts/verify/kill-child.cjs <codes-path>
 
-const { CodeStore } = require('../out/src/codesStore');
+const { CodeStore } = require('../../out/src/codesStore');
 const codesPath = process.argv[2];
 const store = new CodeStore(codesPath);
 

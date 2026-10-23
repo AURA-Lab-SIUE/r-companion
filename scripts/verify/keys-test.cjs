@@ -6,7 +6,7 @@
 // Also reads what a screen reader is given: the combobox name, the active option, the live text.
 // NOT shipped.
 //
-//   node scripts/keys-test.cjs <csv> [shots dir] [dark]
+//   node scripts/verify/keys-test.cjs <csv> [shots dir] [dark]
 //
 // Chrome: CHROME_PATH, else the usual Windows or macOS install.
 
@@ -14,8 +14,8 @@ const cp = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { loadCsvFile } = require('../out/src/dataSource');
-const { standaloneHtml } = require('../out/src/gridHtml');
+const { loadCsvFile } = require('../../out/src/dataSource');
+const { standaloneHtml } = require('../../out/src/gridHtml');
 
 const [csv, shotsDir, theme] = process.argv.slice(2);
 const data = loadCsvFile(csv);
@@ -31,7 +31,7 @@ const init = {
   ],
   codes: {},
 };
-const media = path.join(__dirname, '..', 'media', 'grid');
+const media = path.join(__dirname, '..', '..', 'media', 'grid');
 const read = (p) => fs.readFileSync(path.join(media, p), 'utf8');
 let html = standaloneHtml({
   agGridJs: read('ag-grid-community.min.js'), agGridCss: read('ag-grid.min.css'),

@@ -3,7 +3,7 @@
 // what it saw to the file named by AURA_IT_OUT. Covers: walkthrough ticks only on success (a
 // cancelled course pick leaves no tick), Install what is missing asking VS Code to add the R
 // extension, and the report never printing SETUP OK while a required line is not OK.
-// With AURA_IT_SHOTS set, scripts/capture-window.ps1 saves screenshots of this window.
+// With AURA_IT_SHOTS set, scripts/verify/capture-window.ps1 saves screenshots of this window.
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');

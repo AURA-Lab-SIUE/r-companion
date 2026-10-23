@@ -6,7 +6,7 @@ const cp = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { CodeStore } = require('../out/src/codesStore');
+const { CodeStore } = require('../../out/src/codesStore');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aura-kill-'));
 const codesPath = path.join(dir, 'data', 'derived', 'x-codes.csv');

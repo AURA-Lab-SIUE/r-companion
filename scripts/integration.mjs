@@ -68,7 +68,7 @@ let capture;
 if (process.platform === 'win32') {
   capture = spawn(
     'powershell',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repo, 'scripts', 'capture-window.ps1'), '-Dir', shots, '-Count', process.env.AURA_IT_SHOT_COUNT || '10'],
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repo, 'scripts', 'verify', 'capture-window.ps1'), '-Dir', shots, '-Count', process.env.AURA_IT_SHOT_COUNT || '10'],
     { stdio: 'ignore', windowsHide: true },
   );
 }

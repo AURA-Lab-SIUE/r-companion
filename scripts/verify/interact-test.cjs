@@ -2,7 +2,7 @@
 // and posts a codeChange with the right row id, column, and value, and that editing a data cell
 // posts nothing (data is read only). NOT shipped.
 //
-//   node scripts/interact-test.cjs <csv>
+//   node scripts/verify/interact-test.cjs <csv>
 //
 // Builds an HTML like the export but with a capturing acquireVsCodeApi, so grid.js takes the
 // webview path and its posts land in window.__posted. Then drives AG Grid's api over the DevTools
@@ -12,8 +12,8 @@ const cp = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { loadCsvFile } = require('../out/src/dataSource');
-const { standaloneHtml } = require('../out/src/gridHtml');
+const { loadCsvFile } = require('../../out/src/dataSource');
+const { standaloneHtml } = require('../../out/src/gridHtml');
 
 const csv = process.argv[2];
 const data = loadCsvFile(csv);
@@ -26,7 +26,7 @@ const init = {
   codingColumns: [{ name: 'tone', kind: 'list', values: ['positive', 'neutral', 'negative'] }],
   codes: {},
 };
-const media = path.join(__dirname, '..', 'media', 'grid');
+const media = path.join(__dirname, '..', '..', 'media', 'grid');
 const read = (p) => fs.readFileSync(path.join(media, p), 'utf8');
 let html = standaloneHtml({
   agGridJs: read('ag-grid-community.min.js'), agGridCss: read('ag-grid.min.css'),

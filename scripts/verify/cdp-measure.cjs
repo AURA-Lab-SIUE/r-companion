@@ -2,7 +2,7 @@
 // protocol (no virtual time, so the millisecond count is real). NOT shipped. The page writes the
 // render time its own onFirstDataRendered measured into #aura-loadtime; we poll for it.
 //
-//   node scripts/cdp-measure.cjs <html-file>
+//   node scripts/verify/cdp-measure.cjs <html-file>
 
 const cp = require('child_process');
 const fs = require('fs');
