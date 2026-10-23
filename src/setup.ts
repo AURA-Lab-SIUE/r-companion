@@ -113,6 +113,7 @@ export async function runCheck(course: CourseId, progress?: vscode.Progress<{ me
     rscript: r.rscript,
     rSource: r.source,
     vscodeRInstalled: vscode.extensions.getExtension('REditorSupport.r') !== undefined,
+    vscodeRVersion: vscode.extensions.getExtension('REditorSupport.r')?.packageJSON?.version,
     inPositron: inPositron(),
     setupScriptInWorkspace: profile.setupScript ? host.workspaceHas(profile.setupScript) : undefined,
   });
@@ -306,6 +307,9 @@ async function finishInstall(
   const after = await checkSetupCommand({ course, silent: true });
   if (!after) return undefined;
   const extNames = before.items.filter((i) => i.installableExtension && exts.includes(i.installableExtension)).map((i) => i.name);
+  const updatedExts = before.items
+    .filter((i) => i.status === 'outdated' && i.installableExtension && exts.includes(i.installableExtension))
+    .map((i) => i.name);
   const attempted = [...plan.map((p) => p.name), ...extNames];
   const failingAfter = new Set(after.items.filter(isFailing).map((i) => i.name));
   const missingAfter = new Set(after.items.filter((i) => i.installable && i.status !== 'ok').map((i) => i.name));
@@ -325,6 +329,15 @@ async function finishInstall(
       ];
       vscode.window.showInformationMessage(parts.filter(Boolean).join(' '));
       void showChecklist(after);
+    } else if (stillFailing.length > 0 && stillFailing.every((n) => updatedExts.includes(n))) {
+      // An extension that was already installed keeps reporting its old version until the window
+      // reloads, so the re-check cannot see an update yet
+      void vscode.window
+        .showInformationMessage(
+          `VS Code finishes updating the ${stillFailing.join(', ')} when the window reloads. Select Reload Window, then run AURA: Check my setup again.`,
+          'Reload Window',
+        )
+        .then((b) => b && vscode.commands.executeCommand('workbench.action.reloadWindow'));
     } else if (stillFailing.every((n) => extNames.includes(n))) {
       // VS Code asks the student to trust the extension's publisher; Cancel there lands here
       void vscode.window

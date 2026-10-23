@@ -18,6 +18,11 @@ interface Case {
 const CASES: Case[] = [
   // ---- existing entries ----
   { id: 'bracketed-paste', msg: '> [200~print("hi")[201~' },
+  // 0.5.3: the 2026-10-22 student support case and vscode-R issue 1723
+  { id: 'r-not-attached', msg: 'Connection to server got closed. Server will not be restarted.' },
+  { id: 'r-not-attached', msg: 'Client R Language Server: read ECONNRESET' },
+  { id: 'r-not-attached', msg: 'The status bar says R: (not attached)' },
+  { id: 'r-not-attached', msg: 'Error in .vsc.attach() : could not find function ".vsc.attach"' },
   { id: 'v2v-not-available', msg: "package 'v2v' is not available for this version of R", course: 'mc451' },
   { id: 'v2v-restored', msg: "Warning: cannot remove prior installation of package 'rlang'\nWarning: restored 'rlang'" },
   { id: 'no-package-v2v', msg: "Error in library(v2v) : there is no package called 'v2v'", course: 'mc451' },
@@ -182,4 +187,25 @@ test('Git conflict markers and a pasted backtick run cannot break the page', () 
   assert.ok(ticks.includes('From your message: `````a ```` b`````\n'), 'delimiters longer than the backtick run');
   const edge = explanationMarkdown({ entry: x.entry, matched: '`x` doesn\'t\nexist' });
   assert.ok(edge.includes("From your message: `` `x` doesn't exist ``\n"), 'padded at a backtick edge, one line');
+});
+
+test('0.5.3: the not-attached messages match that entry and nothing else, and it offers its Fix it', () => {
+  for (const msg of [
+    'Connection to server got closed. Server will not be restarted.',
+    '[Error - 10:14:02 AM] Client R Language Server: read ECONNRESET',
+    'R: (not attached)',
+    'could not find function ".vsc.attach"',
+  ]) {
+    assert.deepEqual(explain(msg, 'mc451').map((e) => e.entry.id), ['r-not-attached'], msg);
+  }
+  const fixes = Object.fromEntries(ERROR_TABLE.filter((e) => e.fixIt).map((e) => [e.id, e.fixIt]));
+  assert.deepEqual(fixes, {
+    'bracketed-paste': 'turn-off-bracketed-paste',
+    'r-not-attached': 'update-r-extension',
+    'v2v-restored': 'close-r-and-install',
+    'file-in-use': 'close-r-and-install',
+  });
+  const md = explanationMarkdown(explain('R: (not attached)')[0]);
+  assert.ok(md.includes('## Or let the R Companion do it'));
+  assert.ok(md.includes('Update the R extension'));
 });

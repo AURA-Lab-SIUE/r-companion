@@ -40,11 +40,26 @@ export interface CheckItem {
 
 /** vscode-R. Every course's setup guide installs it (v2v-hub install-r Step 2; the MC 427 software list). */
 export const VSCODE_R_ID = 'REditorSupport.r';
+/** The first vscode-R that attaches to R 4.6 and newer. */
+export const VSCODE_R_MIN = '3.0.0';
+
+/** True when version a is below b, comparing the numeric parts (3.3.20261018 is above 3.0.0). */
+export function versionBelow(a: string, b: string): boolean {
+  const pa = a.split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const pb = b.split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d < 0;
+  }
+  return false;
+}
 
 export interface ExtraFacts {
   rscript: string;
   rSource: string;
   vscodeRInstalled: boolean;
+  /** The installed vscode-R version (its package.json), when VS Code reports one. */
+  vscodeRVersion?: string;
   inPositron: boolean;
   setupScriptInWorkspace?: boolean;
 }
@@ -141,15 +156,20 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
   }
 
   // Required in VS Code for every course; Positron replaces it with its own R support
+  // Before 3.0.0 it never attaches to R 4.6 or newer, so the Workspace panel stays empty and the
+  // status bar reads "R: (not attached)" (vscode-R issues 1696 and 1723, fixed in 3.0.0, 2026-09-27)
   if (!extra.inPositron) {
+    const tooOld = extra.vscodeRInstalled && extra.vscodeRVersion !== undefined && versionBelow(extra.vscodeRVersion, VSCODE_R_MIN);
     items.push({
       name: 'R extension for VS Code',
       group: 'VS Code',
-      status: extra.vscodeRInstalled ? 'ok' : 'missing',
-      detail: extra.vscodeRInstalled
-        ? 'REditorSupport R extension is installed (Ctrl+Enter runs a line)'
-        : 'the R extension by REditorSupport is not installed. Install what is missing adds it.',
-      installableExtension: extra.vscodeRInstalled ? undefined : VSCODE_R_ID,
+      status: !extra.vscodeRInstalled ? 'missing' : tooOld ? 'outdated' : 'ok',
+      detail: !extra.vscodeRInstalled
+        ? 'the R extension by REditorSupport is not installed. Install what is missing adds it.'
+        : tooOld
+          ? `version ${extra.vscodeRVersion} is installed, and versions before ${VSCODE_R_MIN} cannot connect to R 4.6. Install what is missing updates it.`
+          : `REditorSupport R extension${extra.vscodeRVersion ? ` ${extra.vscodeRVersion}` : ''} is installed (Ctrl+Enter runs a line)`,
+      installableExtension: extra.vscodeRInstalled && !tooOld ? undefined : VSCODE_R_ID,
     });
   }
 

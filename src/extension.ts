@@ -16,8 +16,9 @@ import * as os from 'os';
 import { CourseId, CourseProfile, PROFILES, COURSE_IDS, courseSetMessage, isCourseId } from './profiles';
 import { discoverR, systemEnv, RCandidate } from './rDiscovery';
 import { STATUS_WORD } from './checklist';
-import { ActionItem, initSetup, installMissingCommand, checkSetupCommand, runCheck, RunResult, SilentOpts } from './setup';
-import { explain, Explanation, explanationMarkdown } from './errors';
+import { ActionItem, initSetup, installMissingCommand, installExtension, checkSetupCommand, runCheck, RunResult, SilentOpts } from './setup';
+import { VSCODE_R_ID } from './checklist';
+import { explain, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
 import { checkForUpdate, installSource } from './update';
 import { mergeRecommendations } from './courseFiles';
@@ -115,6 +116,8 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.checkForUpdates', () => checkForUpdatesCommand(false));
   reg('auraR.openWalkthrough', () => openWalkthrough());
   reg('auraR.addCourseFiles', (opts?: SilentOpts) => addCourseFiles(opts));
+  // The Fix it buttons beside an explanation; not in the Command Palette (tests and support)
+  reg('auraR.fixIt', (fix: FixIt) => runFixIt(fix));
   const viewerDeps: ViewerDeps = {
     rscript: () => findR()[0]?.rscript,
     bridgeScript: resourcePath('bridge.R'),
@@ -343,6 +346,12 @@ async function getHelp() {
       picks.push({ label: `$(link-external) ${h.label}`, detail: h.url, action: () => vscode.env.openExternal(vscode.Uri.parse(h.url)) });
     }
   }
+  picks.push({ label: 'Accessibility', kind: vscode.QuickPickItemKind.Separator });
+  picks.push({
+    label: '$(accessibility) Keyboard and screen reader tips',
+    detail: "The coding sheet keys, focus mode for NVDA and JAWS, and Alt+F1 for VS Code's own accessibility help",
+    action: () => openHelpPage('Keyboard and screen reader tips', ACCESSIBILITY_TIPS),
+  });
   picks.push({ label: 'Your instructor', kind: vscode.QuickPickItemKind.Separator });
   picks.push({
     label: '$(mail) Still stuck after 15 minutes? Email your instructor or come to office hours',
@@ -352,6 +361,41 @@ async function getHelp() {
   markDone(DONE.help);
   const choice = await shown;
   await choice?.action?.();
+}
+
+// The Accessibility row in Where to get help (0.5.3): what jamovi's keyboard guide and RStudio's
+// accessibility menu give their users, for the parts of VS Code the R Companion adds.
+const ACCESSIBILITY_TIPS = [
+  '# Keyboard and screen reader tips',
+  '',
+  '## Everywhere in VS Code',
+  '',
+  '- Every R Companion command is in the Command Palette: press Ctrl+Shift+P (Cmd+Shift+P on a Mac) and type AURA.',
+  "- Press Alt+F1 (Option+F1 on a Mac) for VS Code's own accessibility help about the part of the screen you are in.",
+  '',
+  '## The data viewer and coding sheet',
+  '',
+  '- Arrow keys move between cells. Home and End go to the start and end of a row.',
+  '- In a column with a list of codes, type the first letters of a code and press Enter to save it and move down.',
+  '- Tab moves right, Escape cancels, F2 shows the whole list, and Delete clears a cell.',
+  '- Ctrl+Z (Cmd+Z on a Mac) undoes the last change. Work saves by itself.',
+  '',
+  '## Screen readers in the coding sheet',
+  '',
+  '- NVDA: press NVDA+Space to switch to focus mode, so your keys go to the grid and not the screen reader.',
+  '- JAWS: press Insert+Z to turn the virtual cursor off, for the same reason, or let JAWS switch to forms mode when it enters the grid.',
+  '- The chosen code is read out after you press Enter.',
+  '',
+].join('\n');
+
+async function openHelpPage(title: string, markdown: string): Promise<void> {
+  const uri = vscode.Uri.from({ scheme: EXPLAIN_SCHEME, path: `/${title}.md` });
+  explainPages.put(uri, markdown);
+  try {
+    await vscode.commands.executeCommand('markdown.showLockedPreviewToSide', uri);
+  } catch {
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri), { viewColumn: vscode.ViewColumn.Beside });
+  }
 }
 
 async function explainErrorCommand(text?: string): Promise<string[]> {
@@ -419,6 +463,50 @@ async function openExplanation(x: Explanation): Promise<void> {
     // No Markdown preview (the built-in Markdown extension is turned off): the same page as read-only text
     const doc = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside, preview: false });
+  }
+  // A Markdown page cannot carry a button, so a fix the extension can make itself is offered here
+  const fix = x.entry.fixIt;
+  if (fix) {
+    void vscode.window
+      .showInformationMessage(`The R Companion can do this for you: ${FIX_IT_LABEL[fix]}.`, FIX_IT_LABEL[fix])
+      .then((b) => b && runFixIt(fix));
+  }
+}
+
+/** R terminals the extension or vscode-R opened. */
+function rTerminals(): vscode.Terminal[] {
+  return vscode.window.terminals.filter((t) => /(^|\s)R(\s|$)|R Interactive|R \(AURA\)/.test(t.name));
+}
+
+/** The one-click fixes beside an explanation (0.5.3). Returns what was done, for tests and support. */
+async function runFixIt(fix: FixIt): Promise<string> {
+  output.appendLine(`Fix it: ${FIX_IT_LABEL[fix]}`);
+  switch (fix) {
+    case 'turn-off-bracketed-paste': {
+      if (!vscode.workspace.workspaceFolders?.length) {
+        vscode.window.showWarningMessage('Open your course folder first (File, then Open Folder), then try again.');
+        return 'no folder';
+      }
+      // Edits .vscode/settings.json in place, keeping its comments and the student's other settings
+      await vscode.workspace.getConfiguration('r').update('bracketedPaste', false, vscode.ConfigurationTarget.Workspace);
+      const closed = rTerminals();
+      closed.forEach((t) => t.dispose());
+      vscode.window.showInformationMessage(
+        `Bracketed paste is off for this folder${closed.length ? ', and the R terminal was closed' : ''}. The next Run it opens a clean R terminal.`,
+      );
+      return `bracketedPaste false, closed ${closed.length}`;
+    }
+    case 'close-r-and-install': {
+      const closed = rTerminals();
+      closed.forEach((t) => t.dispose());
+      await installMissingCommand();
+      return `closed ${closed.length}, installed`;
+    }
+    case 'update-r-extension': {
+      await installExtension(VSCODE_R_ID);
+      await checkSetupCommand();
+      return 'updated, checked';
+    }
   }
 }
 

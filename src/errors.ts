@@ -29,7 +29,18 @@ export interface ErrorEntry {
   link?: { label: string; url: string };
   /** Courses this entry applies to; all courses when absent. */
   courses?: CourseId[];
+  /** A fix the extension can make itself, offered as a button beside the explanation (0.5.3). */
+  fixIt?: FixIt;
 }
+
+/** The fixes the extension can make for the student, with the button label each shows. */
+export type FixIt = 'turn-off-bracketed-paste' | 'close-r-and-install' | 'update-r-extension';
+
+export const FIX_IT_LABEL: Record<FixIt, string> = {
+  'turn-off-bracketed-paste': 'Turn off bracketed paste for this folder',
+  'close-r-and-install': 'Close R terminals and install again',
+  'update-r-extension': 'Update the R extension',
+};
 
 const HUB = 'https://aura-lab.siue.edu/v2v-hub/resources';
 const WB = 'https://aura-lab.siue.edu/v2v-hub/workbook';
@@ -47,6 +58,24 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Close the R terminal with the bin icon. The next Run opens a clean one.',
     ],
     link: { label: 'Fix It, section 1', url: 'https://aura-lab.siue.edu/v2v-hub/resources/fix-it.html#do-this-one-even-if-nothing-looks-broken' },
+    fixIt: 'turn-off-bracketed-paste',
+  },
+  {
+    // vscode-R before 3.0.0 never attaches to R 4.6 or newer (R stopped calling the .First.sys hook
+    // its session watcher used; REditorSupport/vscode-R issues 1696 and 1723, fixed in 3.0.0). The
+    // ECONNRESET half is the language server process dying (languageserver issues 585 and 677), a
+    // hypothesis for this case, so the steps cover both helpers.
+    id: 'r-not-attached',
+    pattern: /R: \(not attached\)|Connection to server got closed|read ECONNRESET|could not find function ["'‘’]?\.vsc\.attach/i,
+    title: "'R: (not attached)' or 'Connection to server got closed' in VS Code",
+    why: 'Two helpers run beside R in VS Code. One connects the Workspace panel and plots to your R session, and one powers code completion. This message means one of them did not start. Your code still runs; the panels stay empty.',
+    fix: [
+      'Open the Extensions view (Ctrl+Shift+X, Cmd+Shift+X on a Mac) and find R by REditorSupport. If it shows an Update button, or its version starts with 2, update it. Versions before 3.0.0 cannot connect to R 4.6.',
+      'Quit VS Code completely. Open R on its own (R x64 from the Start menu, or the R app on a Mac) and run: install.packages("languageserver"). If R asks whether to compile from source, answer No.',
+      'Open VS Code again, open your course folder, and run AURA: Open an R terminal. If VS Code asks to install sess, click Yes.',
+      'Run AURA: Check my setup. The R extension line should read OK with a version of 3.0.0 or newer.',
+    ],
+    fixIt: 'update-r-extension',
   },
   {
     id: 'v2v-not-available',
@@ -69,6 +98,7 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'Then run: remotes::install_github("AURA-Lab-SIUE/v2v-r", upgrade = "never")',
     ],
     link: { label: 'Fix It, section 3', url: 'https://aura-lab.siue.edu/v2v-hub/resources/fix-it.html#r-says-there-is-no-package-called-v2v' },
+    fixIt: 'close-r-and-install',
   },
   {
     id: 'no-package-v2v',
@@ -130,6 +160,7 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'If it persists, run R: Restart R Session from the Command Palette and try again.',
     ],
     link: { label: 'Installing the v2v package', url: `${HUB}/install-v2v.html#file-is-in-use-on-windows` },
+    fixIt: 'close-r-and-install',
   },
   {
     id: 'help-corrupt',
@@ -587,6 +618,8 @@ export function explain(text: string, course?: CourseId): Explanation[] {
     if (entry.id === 'object-not-found' && out.some((e) => e.entry.id === 'object-r-not-found')) continue;
     // A text column already explains the [1] NA that mean() printed beside its warning
     if (entry.id === 'na-mean' && out.some((e) => e.entry.id === 'mean-not-numeric')) continue;
+    // .vsc.attach is vscode-R's own function: the not-attached entry, not a package to load
+    if (entry.id === 'could-not-find-function' && out.some((e) => e.entry.id === 'r-not-attached')) continue;
     if (seenGeneric.has(entry.id)) continue;
     seenGeneric.add(entry.id);
     out.push({ entry, matched: m[0] });
@@ -625,6 +658,14 @@ export function explanationMarkdown(x: Explanation): string {
   out.push('## What to do', '');
   e.fix.forEach((step, i) => out.push(`${i + 1}. ${mdText(step)}`));
   out.push('');
+  if (e.fixIt) {
+    out.push(
+      '## Or let the R Companion do it',
+      '',
+      `Select **${mdText(FIX_IT_LABEL[e.fixIt])}** in the notification at the bottom right of VS Code.`,
+      '',
+    );
+  }
   if (e.link) out.push('## Read more', '', `[${mdText(e.link.label)}](${e.link.url})`, '');
   out.push(
     '## Still stuck?',

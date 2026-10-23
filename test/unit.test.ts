@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { PROFILES, compareVersions, courseSetMessage } from '../src/profiles';
 import { discoverR, newestRFolder, rscriptBeside, DiscoveryEnv } from '../src/rDiscovery';
-import { buildChecklist, extensionPlan, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems, VSCODE_R_ID } from '../src/checklist';
+import { buildChecklist, extensionPlan, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems, VSCODE_R_ID, versionBelow } from '../src/checklist';
 import { TrustGate, TrustHost, TRUST_BUTTON, PENDING_MS } from '../src/trustGate';
 import { explain, ERROR_TABLE } from '../src/errors';
 import { parseRelease } from '../src/update';
@@ -537,4 +537,31 @@ test('MC 501: lm.beta is required, reported missing by Check my setup, and insta
   // Only MC 501's regression writes the standardized slope
   assert.ok(!PROFILES.mc451.packages.some((p) => p.name === 'lm.beta'));
   assert.ok(!PROFILES.mc427.packages.some((p) => p.name === 'lm.beta'));
+});
+
+// 0.5.3 (#rgui Rank 3b): vscode-R before 3.0.0 never attaches to R 4.6, so Check my setup reads
+// its version, says NEEDS UPDATE below 3.0.0, and never prints SETUP OK beside it.
+test('0.5.3: the R extension line carries its version and needs 3.0.0 or newer', () => {
+  assert.equal(versionBelow('2.8.8', '3.0.0'), true);
+  assert.equal(versionBelow('3.0.0', '3.0.0'), false);
+  assert.equal(versionBelow('3.3.20261018', '3.0.0'), false);
+  assert.equal(versionBelow('2.99', '3.0.0'), true);
+  const ok = probe({ packages: [
+    { name: 'tidyverse', installed: true, version: '2.0.0', loads: true, error: null },
+    { name: 'effectsize', installed: true, version: '1.0.3', loads: true, error: null },
+  ] });
+  const old = { rscript: 'R', rSource: 'PATH', vscodeRInstalled: true, vscodeRVersion: '2.8.8', inPositron: false };
+  const items = buildChecklist(PROFILES.mc427, ok, old);
+  const ext = items.find((i) => i.name === 'R extension for VS Code');
+  assert.equal(ext?.status, 'outdated');
+  assert.match(ext!.detail, /version 2\.8\.8 is installed, and versions before 3\.0\.0 cannot connect to R 4\.6/);
+  assert.deepEqual(extensionPlan(items), [VSCODE_R_ID], 'Install what is missing offers the update');
+  const text = renderText(PROFILES.mc427, ok, items, new Date());
+  assert.match(text, /\[NEEDS UPDATE\] R extension for VS Code/);
+  assert.ok(!text.includes('SETUP OK'));
+  const fresh = buildChecklist(PROFILES.mc427, ok, { ...old, vscodeRVersion: '3.2.0' });
+  const ext2 = fresh.find((i) => i.name === 'R extension for VS Code');
+  assert.equal(ext2?.status, 'ok');
+  assert.match(ext2!.detail, /R extension 3\.2\.0 is installed/);
+  assert.equal(renderText(PROFILES.mc427, ok, fresh, new Date()).split('\n').pop(), 'SETUP OK: R and the course packages are working.');
 });
