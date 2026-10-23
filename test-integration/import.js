@@ -103,6 +103,13 @@ async function run() {
     fs.copyFileSync(path.join(__dirname, '..', 'golden', 'data-map', 'coded-pilot.xlsx'), xlsx);
 
     const pick = vscode.commands.executeCommand('auraR.pickCourse');
+    // Wait until the course picker is on screen: a fixed wait let the keys land before it opened in
+    // 2 of 3 runs on 2026-10-23, and the picker then sat over every later step
+    for (let t = 0; wb && t < 20000; t += 250) {
+      const q = await wb.eval(QUICK);
+      if (q && /Which course/.test(q.title)) break;
+      await sleep(250);
+    }
     await choose(1);
     log('course', (await pick) ?? null);
 
