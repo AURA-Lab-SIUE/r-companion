@@ -34,7 +34,6 @@ function body(title: string): string {
       <button type="button" id="btn-refresh" class="aura-btn" title="Re-read the data file from disk">Refresh</button>
       <button type="button" id="btn-add" class="aura-btn">Add coding column</button>
       <button type="button" id="btn-rebuild" class="aura-btn">Insert rebuild code</button>
-      <button type="button" id="btn-export" class="aura-btn">Export HTML for accessibility check</button>
     </div>
   </header>
   <p id="aura-status" class="aura-status" role="status" aria-live="polite"></p>

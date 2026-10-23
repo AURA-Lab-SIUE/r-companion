@@ -1,7 +1,7 @@
 // R4 Test: code templates (workstream E, #rgui).
-// MC 427 uses plain tidyverse + broom + effectsize; MC 451/MC 501 use the v2v wrappers the
-// Inferencing rubrics name, each in its own rubric's form. v2v-plain holds the proposed plain
-// calls the wrappers stand for (q-20261018-0044). Reproduces the golden fixtures byte for byte.
+// MC 427 uses plain tidyverse + broom + effectsize; MC 451/MC 501 write the plain calls the v2v
+// wrappers stand for, each in its own rubric's form, with the wrapper last as a check
+// (q-20261018-0044). Reproduces the golden fixtures byte for byte.
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';
@@ -187,9 +187,9 @@ const v2vSettingsBlock: Template = () =>
 
 // ---------------- MC 451 (v2v wrappers, rubric form) ----------------
 
-// Owner q-20261018-0044 = A: MC 451 and MC 501 write the plain calls by default (auraR.plainCalls),
-// with the v2v wrapper last as a check that prints the same numbers. The wrapper forms below stay
-// for auraR.plainCalls = false, as the rubrics read before the change.
+// Owner q-20261018-0044 = A: MC 451 and MC 501 write the plain calls, with the v2v wrapper last as
+// a check that prints the same numbers. The wrapper-only forms and their setting were removed in
+// 0.5.3 (owner q-20261022-0006 = A).
 const plainTTestBody = (): string[] => [
   '# The Welch t-test as a one-row table: estimate1 and estimate2 are the group means,',
   '# statistic is t, parameter is the df, and p.value is p.',
@@ -255,40 +255,11 @@ const plainTTest: Template = () =>
     ...plainTTestBody(),
   );
 
-const mc451ChiSquare: Template = (_p, opts) =>
-  opts.plainCalls
-    ? lines(...plainChiSquareHead(), ...plainChiSquareTail(false), ...plainChiSquareCheck())
-    : lines(
-    banner('Chi-square test of independence: cat_a by cat_b'),
-    '# The counts the test expected if the two were unrelated. Check that none is below 5.',
-    'xtabs(~ cat_a + cat_b, data = analysis) %>%',
-    '  chisq.test() %>%',
-    '  pluck("expected") %>%',
-    '  round(2)',
-    '',
-    "# The test with its effect size. Prints N, chi-square, df, p, and Cramer's V.",
-    'run_chi_square(analysis, x = cat_a, y = cat_b)',
-  );
+const mc451ChiSquare: Template = () => lines(...plainChiSquareHead(), ...plainChiSquareTail(false), ...plainChiSquareCheck());
 
-const mc451TTest: Template = (p, opts) =>
-  opts.plainCalls
-    ? plainTTest(p, opts)
-    : lines(
-    banner('Welch t-test: outcome by group2'),
-    '# The size, mean, and standard deviation of each group. The APA report needs the n,',
-    '# and run_t_test() does not print it.',
-    'analysis %>%',
-    '  filter(!is.na(outcome), !is.na(group2)) %>%',
-    '  group_by(group2) %>%',
-    '  summarize(',
-    '    n = n(),',
-    '    mean = mean(outcome),',
-    '    sd = sd(outcome)',
-    '  )',
-    '',
-    "# The test with its effect size. Prints the two means, t, df, p, and Cohen's d.",
-    'run_t_test(analysis, value = outcome, group = group2)',
-  );
+
+const mc451TTest: Template = () => plainTTest({});
+
 
 const mc451Anova: Template = () =>
   lines(
@@ -347,65 +318,22 @@ const correlationPredictorOutcome: Template = () =>
 
 // ---------------- MC 501 (adds intervals, Welch ANOVA, Tukey, lm.beta) ----------------
 
-const mc501ChiSquare: Template = (_p, opts) =>
-  opts.plainCalls
-    ? lines(
-        ...plainChiSquareHead(),
-        ...plainChiSquareTail(true),
-        '',
-        '# Standardized residuals: cells beyond 2 or -2 are the ones driving the result.',
-        'counts %>%',
-        '  chisq.test() %>%',
-        '  pluck("stdres") %>%',
-        '  round(2)',
-        ...plainChiSquareCheck(),
-      )
-    : lines(
-    banner('Chi-square test of independence: cat_a by cat_b'),
-    '# The counts in the form the test reads. Name it counts, so the lines below reuse it.',
-    'counts <- xtabs(~ cat_a + cat_b, data = analysis)',
-    '',
-    '# The counts the test expected if the two were unrelated. Check that none is below 5.',
-    'counts %>%',
-    '  chisq.test() %>%',
-    '  pluck("expected") %>%',
-    '  round(2)',
-    '',
-    "# The test with its effect size. Prints N, chi-square, df, p, and Cramer's V.",
-    'run_chi_square(analysis, x = cat_a, y = cat_b)',
-    '',
-    "# Cramer's V with its 95% interval. adjust = FALSE gives the same V that run_chi_square() prints.",
-    'effectsize::cramers_v(counts, adjust = FALSE)',
+const mc501ChiSquare: Template = () =>
+  lines(
+    ...plainChiSquareHead(),
+    ...plainChiSquareTail(true),
     '',
     '# Standardized residuals: cells beyond 2 or -2 are the ones driving the result.',
     'counts %>%',
     '  chisq.test() %>%',
     '  pluck("stdres") %>%',
     '  round(2)',
+    ...plainChiSquareCheck(),
   );
 
-const mc501TTest: Template = (p, opts) =>
-  opts.plainCalls
-    ? plainTTest(p, opts)
-    : lines(
-    banner('Welch t-test: outcome by group2'),
-    '# The size, mean, and standard deviation of each group. The APA report needs the n,',
-    '# and run_t_test() does not print it.',
-    'analysis %>%',
-    '  filter(!is.na(outcome), !is.na(group2)) %>%',
-    '  group_by(group2) %>%',
-    '  summarize(',
-    '    n = n(),',
-    '    mean = mean(outcome),',
-    '    sd = sd(outcome)',
-    '  )',
-    '',
-    "# The test with its effect size. Prints the two means, t, df, p, and Cohen's d.",
-    'run_t_test(analysis, value = outcome, group = group2)',
-    '',
-    "# Cohen's d with its 95% interval.",
-    'effectsize::cohens_d(outcome ~ group2, data = analysis)',
-  );
+
+const mc501TTest: Template = () => plainTTest({});
+
 
 const mc501Anova: Template = () =>
   lines(
@@ -481,36 +409,6 @@ const mc501Power: Template = () =>
     ')',
   );
 
-// ---------------- v2v-plain (proposed stepping-stone variants) ----------------
-
-const v2vPlainTTest: Template = () =>
-  lines(
-    banner('Welch t-test: outcome by group2, with the functions run_t_test() wraps'),
-    '# PROPOSED for the stepping-stone audit; not a course dialect.',
-    '# The test as a one-row table: estimate1 and estimate2 are the group means, statistic is t,',
-    '# parameter is the df, and p.value is p.',
-    't.test(outcome ~ group2, data = analysis) %>%',
-    '  broom::tidy()',
-    '',
-    "# Cohen's d with its 95% interval (pooled SD, the same d run_t_test() prints).",
-    'effectsize::cohens_d(outcome ~ group2, data = analysis)',
-  );
-
-const v2vPlainChiSquare: Template = () =>
-  lines(
-    banner('Chi-square test: cat_a by cat_b, with the functions run_chi_square() wraps'),
-    '# PROPOSED for the stepping-stone audit; not a course dialect.',
-    'counts <- xtabs(~ cat_a + cat_b, data = analysis)',
-    '',
-    '# The test, as a one-row table: statistic is chi-square, parameter is the df, p.value is p.',
-    'counts %>%',
-    '  chisq.test() %>%',
-    '  broom::tidy()',
-    '',
-    "# Cramer's V without the small-sample adjustment, the number run_chi_square() prints.",
-    'effectsize::cramers_v(counts, adjust = FALSE)',
-  );
-
 export const MC427_R4: Record<string, Template> = {
   't-test': mc427TTest,
   't-test-missing': mc427TTestMissing,
@@ -539,9 +437,4 @@ export const MC501_R4: Record<string, Template> = {
   regression: mc501Regression,
   correlation: correlationPredictorOutcome,
   power: mc501Power,
-};
-
-export const V2V_PLAIN_R4: Record<string, Template> = {
-  't-test': v2vPlainTTest,
-  'chi-square': v2vPlainChiSquare,
 };

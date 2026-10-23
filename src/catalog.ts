@@ -26,7 +26,6 @@ export const CATALOG: TaskDef[] = [
   { task: 'mutate', label: 'Add a column (mutate)', category: 'R2 Data' },
   { task: 'count', label: 'Count rows per group (count)', category: 'R2 Data', columns: 'one' },
   { task: 'clean-dates', label: 'Turn the date column into a time (clean_dates)', category: 'R2 Data' },
-  { task: 'convert-timestamp', label: 'Turn the date column into a time (plain, no v2v)', category: 'R2 Data', alternative: true },
   { task: 'join-chat-streams', label: 'Match each message to its stream (join_chat_streams)', category: 'R2 Data' },
   { task: 'channel-lookup', label: 'Label each channel by its top category', category: 'R2 Data' },
   { task: 'join-lookup', label: 'Join the channel labels onto the messages', category: 'R2 Data' },

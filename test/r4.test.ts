@@ -23,11 +23,10 @@ test('no release gate: auraR.previewReleases is gone and no source reads it', ()
   }
 });
 
-test('the U2 to U4 defaults are settings', () => {
+test('the U3 and U4 defaults are settings; 0.5.3 removed testChoice, mc427TestMenu, plainCalls, and the update URL', () => {
   assert.equal(props['auraR.copilotTools'].default, 'auto');
-  assert.equal(props['auraR.testChoice'].default, 'check');
   assert.equal(props['auraR.apaCheck'].default, true);
-  assert.equal(props['auraR.mc427TestMenu'].default, 'cross-check');
+  assert.deepEqual(Object.keys(props).sort(), ['auraR.apaCheck', 'auraR.copilotTools', 'auraR.course', 'auraR.cranMirror', 'auraR.rPath', 'auraR.runWith']);
 });
 
 test('effectsize is required in all three courses', () => {

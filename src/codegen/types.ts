@@ -1,7 +1,7 @@
 // Code-generation types shared across the R2/R3/R4 templates (workstream E, #rgui).
 
-/** The code profile. v2v-plain holds the proposed plain-call variants (q-20261018-0044). */
-export type GenProfile = 'mc427' | 'mc451' | 'mc501' | 'v2v-plain';
+/** The code profile: one per course. */
+export type GenProfile = 'mc427' | 'mc451' | 'mc501';
 
 export type Release = 'R2' | 'R3' | 'R4';
 
@@ -35,22 +35,8 @@ export interface GenParams {
   keepOnlyMatches?: boolean;
 }
 
-export interface GenOptions {
-  /**
-   * Write the plain calls the v2v wrappers stand for (t.test, chisq.test, effectsize,
-   * irr::kappa2) instead of the wrappers, with the wrapper last as a check. Owner
-   * q-20261018-0044 = A: the extension's auraR.plainCalls setting defaults to true. The generator
-   * default stays false so the golden wrapper fixtures keep reproducing byte for byte.
-   */
-  plainCalls?: boolean;
-}
-
 /** A template: golden-reproducing when given no overrides. */
-export type Template = (params: GenParams, opts: Required<GenOptions>) => string;
-
-export const DEFAULT_OPTIONS: Required<GenOptions> = {
-  plainCalls: false,
-};
+export type Template = (params: GenParams) => string;
 
 /**
  * The R4 test tasks resolved from the per-course table (MC451_R4 / MC501_R4) rather than the

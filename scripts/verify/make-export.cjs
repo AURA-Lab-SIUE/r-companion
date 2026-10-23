@@ -1,6 +1,6 @@
 // Builds the self-contained grid HTML outside the extension, for the accessibility check (axe on
 // Pythia) and for measuring the browser render time of the full Twitch sample. Mirrors what the
-// panel's initPayload and exportHtml do. NOT shipped.
+// panel's initPayload does. NOT shipped.
 //
 //   node scripts/verify/make-export.cjs <csv> <out.html>
 

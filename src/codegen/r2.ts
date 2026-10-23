@@ -387,20 +387,6 @@ const v2vJoinLookup: Template = () =>
     '  count(is_gaming)',
   );
 
-const v2vConvertTimestamp: Template = () =>
-  lines(
-    banner('Turn the date column into a readable time'),
-    '# date counts milliseconds since midnight, January 1, 1970 (UTC). Divide by 1,000 to get',
-    '# seconds, then as.POSIXct() turns the seconds into a date and time. Changes chat; prints nothing.',
-    'chat <- chat %>%',
-    '  mutate(timestamp = as.POSIXct(date / 1000, origin = "1970-01-01", tz = "UTC"))',
-    '',
-    '# Check the new column beside the one it came from, in the first three rows.',
-    'chat %>%',
-    '  select(date, timestamp) %>%',
-    '  slice_head(n = 3)',
-  );
-
 const v2vLabelFromSnapshot: Template = () =>
   lines(
     banner('Label each message from its stream snapshot'),
@@ -462,46 +448,10 @@ const v2vExportRds: Template = (p) => {
   );
 };
 
-// Reliability: the v2v wrapper by default; the plain irr calls under plainCalls (q-20261018-0044).
-const v2vReliability: Template = (p, opts) => {
-  const data = d(p, 'pilot');
-  const a = p.columns?.[0] ?? 'pass_1';
-  const b = p.columns?.[1] ?? 'pass_2';
-  if (opts.plainCalls) return v2vReliabilityPlain(p, opts);
-  return lines(
-    banner('Reliability: compare your two coding passes'),
-    '# The share of items where pass 1 and pass 2 gave the same code.',
-    `${data} %>%`,
-    '  summarize(',
-    '    items = n(),',
-    `    share_agree = mean(${a} == ${b})`,
-    '  )',
-    '',
-    '# Every pair of codes, and how many items got it. The n column adds up to the items.',
-    `${data} %>%`,
-    `  count(${a}, ${b})`,
-    '',
-    "# Cohen's kappa: agreement after removing the agreement chance alone would produce.",
-    '# Prints a list: statistic, method, interpretation, and raw.',
-    'reliability(',
-    `  pull(${data}, ${a}),`,
-    `  pull(${data}, ${b}),`,
-    '  method = "kappa"',
-    ')',
-    '',
-    "# Krippendorff's alpha on the same two passes.",
-    'reliability(',
-    `  pull(${data}, ${a}),`,
-    `  pull(${data}, ${b}),`,
-    '  method = "alpha"',
-    ')',
-  );
-};
-
-// Reliability with the irr calls reliability() wraps: the MC 451 and MC 501 default since owner
-// q-20261018-0044 = A (fixtures/v2v-plain/r2-reliability.R). The codes are numbered from the data,
-// never from a fixed list, so any codebook works; the wrapper runs last as a check.
-const v2vReliabilityPlain: Template = (p) => {
+// Reliability with the irr calls reliability() wraps (owner q-20261018-0044 = A). The codes are
+// numbered from the data, never from a fixed list, so any codebook works; the wrapper runs last as
+// a check.
+const v2vReliability: Template = (p) => {
   const data = d(p, 'pilot');
   const a = p.columns?.[0] ?? 'pass_1';
   const b = p.columns?.[1] ?? 'pass_2';
@@ -614,13 +564,8 @@ export const V2V_R2: Record<string, Template> = {
   'join-chat-streams': v2vJoinChatStreams,
   'channel-lookup': v2vChannelLookup,
   'join-lookup': v2vJoinLookup,
-  'convert-timestamp': v2vConvertTimestamp,
   'label-from-snapshot': v2vLabelFromSnapshot,
   'export-csv': v2vExportCsv,
   'export-rds': v2vExportRds,
   reliability: v2vReliability,
-};
-
-export const V2V_PLAIN_R2: Record<string, Template> = {
-  reliability: v2vReliabilityPlain,
 };

@@ -22,8 +22,6 @@ interface Entry {
   role: string;
   alternative_to: string | null;
   file: string;
-  /** Generator options for this entry (the plain-call defaults set plainCalls). */
-  options?: { plainCalls?: boolean };
   /** Wizard choices for an alternative entry (the count of the saved analysis). */
   params?: GenParams;
   requires: string[];
@@ -41,15 +39,18 @@ const generated = manifest.entries.filter((e) => e.generated);
 // plus the two MC 451 and MC 501 counts of the saved analysis (R2 card step 7, 2026-10-19).
 // Phase 2 charts (#rgui, 2026-10-19) add 5: mc451/mc501 line, mc451/mc501 grouped histogram, mc501 power.
 // 0.5.1 adds 2 checks: the mc451/mc501 line chart run after the R2 clean_dates() step as well as fresh.
-test('the golden manifest has 103 entries, 97 generated', () => {
-  assert.equal(manifest.entries.length, 103);
-  assert.equal(generated.length, 97);
+// 0.5.3 adds 6 (import-xlsx x3, join-tables x3) and removes 9 entries, 8 files (owner q-20261022-0006
+// = A): the wrapper-only MC 451 and MC 501 t-test and chi-square, the three v2v-plain proposals, and
+// the plain date alternative. The plain-call tests are the defaults now, under their own names.
+test('the golden manifest has 94 entries, 88 generated', () => {
+  assert.equal(manifest.entries.length, 94);
+  assert.equal(generated.length, 88);
 });
 
 for (const e of generated) {
   test(`${e.id} (${e.release}, ${e.role}) is byte-identical to ${e.file}`, () => {
     const golden = norm(fs.readFileSync(path.join(GOLDEN, e.file), 'utf8'));
-    const got = norm(generate(e.profile as GenProfile, e.task, e.params ?? {}, e.options ?? {}));
+    const got = norm(generate(e.profile as GenProfile, e.task, e.params ?? {}));
     assert.equal(got, golden);
   });
 }
@@ -70,7 +71,7 @@ test('hasTask agrees with the manifest for each generated entry', () => {
 // rename(ts = ts.x, ...) line 0.3.2 needed errors on 0.3.3, so no block or preamble may write it.
 test('no generated block or runner preamble renames ts.x', () => {
   for (const e of generated) {
-    assert.ok(!generate(e.profile as GenProfile, e.task, e.params ?? {}, e.options ?? {}).includes('ts.x'), e.id);
+    assert.ok(!generate(e.profile as GenProfile, e.task, e.params ?? {}).includes('ts.x'), e.id);
     for (const r of e.requires) {
       assert.ok(!fs.readFileSync(path.join(GOLDEN, r), 'utf8').includes('ts.x'), r);
     }
@@ -94,29 +95,24 @@ test('a filter on a TRUE or FALSE value writes it without quotation marks', () =
   assert.ok(generate('mc451', 'filter').includes('# Keep the messages from gaming channels'));
 });
 
-// plainCalls (owner q-20261018-0044 = A, the extension default): MC 451 and MC 501 reliability
-// writes the irr calls of the v2v-plain fixture, with the wrapper last as a check; off, the wrapper.
-test('plainCalls on reliability writes the irr calls, with the wrapper as a check', () => {
-  const proposal = norm(fs.readFileSync(path.join(GOLDEN, 'fixtures/v2v-plain/r2-reliability.R'), 'utf8'));
+// Owner q-20261018-0044 = A: MC 451 and MC 501 write the irr and test calls the v2v wrappers stand
+// for, with the wrapper last as a check. Since 0.5.3 there is no wrapper-only variant.
+test('reliability writes the irr calls, with the wrapper as a check, codes numbered from the data', () => {
   for (const course of ['mc451', 'mc501'] as const) {
-    const plain = generate(course, 'reliability', {}, { plainCalls: true });
-    assert.equal(norm(plain), proposal);
-    assert.ok(plain.includes('irr::kappa2()') && plain.includes('method = "kappa"'));
-    assert.ok(!generate(course, 'reliability').includes('irr::'));
+    const r = generate(course, 'reliability');
+    assert.ok(r.includes('irr::kappa2()') && r.includes('method = "kappa"'));
+    assert.ok(r.indexOf('irr::') < r.indexOf('reliability('), 'the wrapper comes last');
+    assert.ok(!r.includes('"calm"'), 'never a fixed codebook');
   }
-  // The codes are numbered from the data, never from a fixed codebook
-  assert.ok(!proposal.includes('"calm"'));
 });
 
-test('plainCalls on the MC 451 and MC 501 tests writes t.test() and chisq.test(), the wrapper last', () => {
+test('the MC 451 and MC 501 tests write t.test() and chisq.test(), the wrapper last', () => {
   for (const course of ['mc451', 'mc501'] as const) {
-    const t = generate(course, 't-test', {}, { plainCalls: true });
+    const t = generate(course, 't-test');
     assert.ok(t.indexOf('t.test(outcome ~ group2') < t.indexOf('run_t_test('));
-    const c = generate(course, 'chi-square', {}, { plainCalls: true });
+    const c = generate(course, 'chi-square');
     assert.ok(c.indexOf('  broom::tidy()') < c.indexOf('run_chi_square('));
   }
-  // MC 427 has no wrappers, so the option changes nothing there
-  assert.equal(generate('mc427', 't-test', {}, { plainCalls: true }), generate('mc427', 't-test'));
 });
 
 // Phase 2 charts (#rgui, 2026-10-19). The line chart and grouped histogram are MC 451 and MC 501

@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CourseId } from './profiles';
-import { generate, hasTask, GenProfile, GenParams, GenOptions, APA_TESTS, ApaTest, apaTask } from './codegen';
+import { generate, hasTask, GenProfile, GenParams, APA_TESTS, ApaTest, apaTask } from './codegen';
 import { TEST_LABEL } from './testChoice';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint, fillProbe } from './columnProbe';
 import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
@@ -40,10 +40,6 @@ export interface MenuDeps {
   storageDir: string;
   /** auraR.apaCheck: offer the APA numbers block in the Test menu (owner decision U4). */
   apaCheck: () => boolean;
-  /** auraR.mc427TestMenu: in MC 427 the Test menu is a cross-check on Copilot's code (U2). */
-  mc427TestMenu: () => 'cross-check' | 'writer';
-  /** auraR.plainCalls: the plain calls instead of the v2v wrappers (q-20261018-0044 = A). */
-  plainCalls: () => boolean;
 }
 
 // The last text editor the student worked in. A chart tab, the data viewer, or the error
@@ -172,7 +168,8 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
   const course = deps.currentCourse() ?? (await deps.pickCourse(false));
   if (!course) return;
   const profile = profileOf(course);
-  const crossCheck = course === 'mc427' && deps.mc427TestMenu() === 'cross-check';
+  // U2: in MC 427 the Test menu is always a check on Copilot's code
+  const crossCheck = course === 'mc427';
 
   const offered = CATALOG.filter((t) => offers(profile, t.task, deps.apaCheck()));
   const preset = presetTask ? offered.find((t) => t.task === presetTask) : undefined;
@@ -231,9 +228,8 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
     }
   }
 
-  const opts: GenOptions = { plainCalls: deps.plainCalls() };
-  const code = generate(profile, task, params, opts);
-  // U2 (coordinator default, auraR.mc427TestMenu): in MC 427 Module 5, Copilot writes the graded
+  const code = generate(profile, task, params);
+  // U2: in MC 427 Module 5, Copilot writes the graded
   // analysis and the Test menu checks it. Shown with the Run prompt, not after it, so it appears
   // even when the student never answers that prompt.
   const note = crossCheck && R4_TEST_TASKS.has(def.task)
@@ -713,10 +709,10 @@ async function saveGridAndGenerate(
 
   // The generated block loads the saved pilot CSV into `pilot`, then runs the statistic. The golden
   // reliability code shows both Cohen's kappa and Krippendorff's alpha, so the student can compare;
-  // the grid's statistic choice is recorded in the write-up. plainCalls (q-20261018-0044 = A, the
-  // default) writes the irr calls, with the v2v wrapper last as a check.
+  // the grid's statistic choice is recorded in the write-up. The block writes the irr calls, with
+  // the v2v wrapper last as a check (q-20261018-0044 = A).
   const importBlock = generate(profileOf(course), 'import-csv', { file: csvRel });
-  const relBlock = generate(profileOf(course), 'reliability', {}, { plainCalls: deps.plainCalls() });
+  const relBlock = generate(profileOf(course), 'reliability');
   const code = importBlock + '\n' + relBlock;
   panel.dispose();
   // Back to that script, with its cursor where the student left it

@@ -40,10 +40,6 @@ source(tail(.files, 1), echo = TRUE, max.deparse.length = Inf, print.eval = TRUE
 // Map the manifest's O:/ canonical path to this host's One Touch mount.
 const mapData = (canonical) => canonical.replace(/^O:\//, ONE_TOUCH + '/');
 
-// Resolve the generator profile/task for a manifest entry (proposal entries use v2v-plain).
-function profileFor(e) {
-  return e.role === 'proposal' ? 'v2v-plain' : e.profile;
-}
 
 // Write a fixture file (generated from templates, or copied from golden if not generated).
 function materialize(relFile, destDir) {
@@ -51,7 +47,7 @@ function materialize(relFile, destDir) {
   // Find the manifest entry whose file is relFile to know how to generate it.
   const owner = manifest.entries.find((e) => e.file === relFile);
   if (owner && owner.generated) {
-    fs.writeFileSync(dest, generate(profileFor(owner), owner.task, owner.params ?? {}, owner.options ?? {}));
+    fs.writeFileSync(dest, generate(owner.profile, owner.task, owner.params ?? {}));
   } else {
     fs.copyFileSync(path.join(GOLDEN, relFile), dest);
   }

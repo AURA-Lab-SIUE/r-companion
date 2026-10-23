@@ -380,7 +380,7 @@
   }
 
   function wireButtons() {
-    var map = { 'btn-refresh': 'refresh', 'btn-add': 'addColumn', 'btn-rebuild': 'insertRebuild', 'btn-export': 'exportHtml' };
+    var map = { 'btn-refresh': 'refresh', 'btn-add': 'addColumn', 'btn-rebuild': 'insertRebuild' };
     Object.keys(map).forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('click', function () { post({ type: map[id] }); });

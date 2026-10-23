@@ -9,7 +9,6 @@ import { discoverR, newestRFolder, rscriptBeside, DiscoveryEnv } from '../src/rD
 import { buildChecklist, extensionPlan, installPlan, parseProbeOutput, ProbeResult, renderText, v2vSetupItems, VSCODE_R_ID, versionBelow } from '../src/checklist';
 import { TrustGate, TrustHost, TRUST_BUTTON, PENDING_MS } from '../src/trustGate';
 import { explain, ERROR_TABLE } from '../src/errors';
-import { parseRelease } from '../src/update';
 import { installScript } from '../src/installScript';
 import { mergeRecommendations, SELF_ID } from '../src/courseFiles';
 import { parseCsv, writeCsv, csvField, inferType } from '../src/csv';
@@ -207,12 +206,6 @@ test('explain matches the messages students paste', () => {
   assert.ok(!explain("there is no package called 'v2v'", 'mc451').some((e) => e.entry.id === 'no-package'));
   // MC 427 never sees v2v advice
   assert.ok(!explain("there is no package called 'v2v'", 'mc427').some((e) => e.entry.id === 'no-package-v2v'));
-});
-
-test('parseRelease compares the tag with the installed version', () => {
-  assert.deepEqual(parseRelease({ tag_name: 'v0.2.0', html_url: 'u' }, '0.1.0'), { latest: '0.2.0', newer: true, page: 'u' });
-  assert.equal(parseRelease({ tag_name: '0.1.0' }, '0.1.0').newer, false);
-  assert.throws(() => parseRelease({}, '0.1.0'));
 });
 
 test('install script sets the mirror, never builds from source, uses force for GitHub', () => {

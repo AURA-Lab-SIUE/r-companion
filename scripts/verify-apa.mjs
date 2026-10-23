@@ -56,7 +56,7 @@ const mapData = (canonical) => canonical.replace(/^O:\//, ONE_TOUCH + '/');
 function materialize(rel, dest) {
   const owner = manifest.entries.find((e) => e.file === rel);
   const code = owner && owner.generated
-    ? generate(owner.role === 'proposal' ? 'v2v-plain' : owner.profile, owner.task, owner.params ?? {}, owner.options ?? {})
+    ? generate(owner.profile, owner.task, owner.params ?? {})
     : fs.readFileSync(path.join(GOLDEN, rel), 'utf8');
   fs.writeFileSync(dest, code);
 }

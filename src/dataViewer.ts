@@ -4,7 +4,8 @@
 // read only. The student adds coding columns and types a value per row; every change is saved to a
 // separate long codes file, data/derived/<name>-codes.csv, and the original file is never written.
 // A Refresh button re-reads the data. The viewer can insert the tidyverse chunk that rebuilds the
-// coded data, and can export a self-contained HTML of the grid for the accessibility check.
+// coded data. The self-contained HTML for the axe check is made by scripts/verify/export-grid-html.mjs
+// (the toolbar button for it was removed in 0.5.3).
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
@@ -15,7 +16,7 @@ import { LoadedData, CodingColumn } from './dataTypes';
 import { loadCsvFile, loadRDataFrame, runRscriptSync } from './dataSource';
 import { CodeStore } from './codesStore';
 import { rebuildChunk } from './rebuild';
-import { webviewHtml, standaloneHtml } from './gridHtml';
+import { webviewHtml } from './gridHtml';
 import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
 import { dataFileKind, probeExpr, sheetListExpr, tableNameFromFile } from './importFile';
 
@@ -290,9 +291,6 @@ class DataViewerPanel {
       case 'insertRebuild':
         void this.insertRebuild();
         break;
-      case 'exportHtml':
-        void this.exportHtml();
-        break;
     }
   }
 
@@ -424,25 +422,6 @@ class DataViewerPanel {
       await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
       vscode.window.showInformationMessage('Opened the rebuild code in a new R file. Save it into your project.');
     }
-  }
-
-  private async exportHtml() {
-    const read = (p: string) => fs.readFileSync(path.join(this.deps.mediaRoot, p), 'utf8');
-    const html = standaloneHtml({
-      agGridJs: read('ag-grid-community.min.js'),
-      agGridCss: read('ag-grid.min.css'),
-      themeCss: read('ag-theme-quartz.min.css'),
-      gridCss: read('grid.css'),
-      gridJs: read('grid.js'),
-      init: this.initPayload(),
-      title: this.initPayload().title,
-    });
-    const out = path.join(this.folder, 'data', 'derived', `${this.data.name}-grid.html`);
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, html);
-    this.deps.output.appendLine(`Exported the grid for the accessibility check: ${out}`);
-    const b = await vscode.window.showInformationMessage(`Exported a self-contained HTML of the grid to ${out}.`, 'Open it');
-    if (b) await vscode.env.openExternal(vscode.Uri.file(out));
   }
 
   private html(): string {

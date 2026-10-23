@@ -1,8 +1,7 @@
 // Check my test choice (R4): does the test a student chose fit their variables?
 //
-// Owner decision U4 (coordinator default, reversible through auraR.testChoice): choosing the test
-// is graded (MC 427 A01 and A02, the MC 451 and MC 501 Inferencing rubrics), so by default the
-// student picks the test and this only says whether it fits. The rules are the ones the three
+// Owner decision U4: choosing the test is graded (MC 427 A01 and A02, the MC 451 and MC 501
+// Inferencing rubrics), so the student picks the test and this only says whether it fits. The rules are the ones the three
 // courses teach: chi-square for two categories, Welch t-test for a number across two groups,
 // one-way ANOVA for three or more groups, regression or correlation for two numbers.
 // Pure: no VS Code API, so the unit tests and the Copilot tool share it.

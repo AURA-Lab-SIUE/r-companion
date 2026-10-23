@@ -723,42 +723,6 @@
       "sentence_template": null
     },
     {
-      "id": "mc451.convert-timestamp",
-      "release": "R2",
-      "task": "convert-timestamp",
-      "profile": "mc451",
-      "generated": true,
-      "role": "alternative",
-      "alternative_to": "clean-dates",
-      "file": "fixtures/v2v/alt-r2-convert-timestamp.R",
-      "requires": [
-        "fixtures/v2v/r2-import-course-dataset.R"
-      ],
-      "data": [],
-      "must_print": [
-        "2018-"
-      ],
-      "sentence_template": null
-    },
-    {
-      "id": "mc501.convert-timestamp",
-      "release": "R2",
-      "task": "convert-timestamp",
-      "profile": "mc501",
-      "generated": true,
-      "role": "alternative",
-      "alternative_to": "clean-dates",
-      "file": "fixtures/v2v/alt-r2-convert-timestamp.R",
-      "requires": [
-        "fixtures/v2v/r2-import-course-dataset.R"
-      ],
-      "data": [],
-      "must_print": [
-        "2018-"
-      ],
-      "sentence_template": null
-    },
-    {
       "id": "mc451.label-from-snapshot",
       "release": "R2",
       "task": "label-from-snapshot",
@@ -1666,31 +1630,9 @@
       "task": "chi-square",
       "profile": "mc451",
       "generated": true,
-      "role": "alternative",
-      "alternative_to": "mc451.chi-square.plain",
-      "file": "fixtures/mc451/r4-chi-square.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "Chi-squared",
-        "Cramer's V",
-        "N\\s+\\d+",
-        "df"
-      ],
-      "sentence_template": "chi-square"
-    },
-    {
-      "id": "mc451.chi-square.plain",
-      "release": "R4",
-      "task": "chi-square",
-      "profile": "mc451",
-      "generated": true,
       "role": "default",
       "alternative_to": null,
-      "file": "fixtures/mc451/r4-chi-square-plain.R",
+      "file": "fixtures/mc451/r4-chi-square.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r4-settings-block.R"
@@ -1702,10 +1644,7 @@
         "Chi-square test of independence",
         "expected|cat_b"
       ],
-      "sentence_template": "chi-square",
-      "options": {
-        "plainCalls": true
-      }
+      "sentence_template": "chi-square"
     },
     {
       "id": "mc451.t-test",
@@ -1713,31 +1652,9 @@
       "task": "t-test",
       "profile": "mc451",
       "generated": true,
-      "role": "alternative",
-      "alternative_to": "mc451.t-test.plain",
-      "file": "fixtures/mc451/r4-t-test.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "Welch two-sample t-test",
-        "Cohen's d",
-        "p-value",
-        "\\bsd\\b"
-      ],
-      "sentence_template": "t-test"
-    },
-    {
-      "id": "mc451.t-test.plain",
-      "release": "R4",
-      "task": "t-test",
-      "profile": "mc451",
-      "generated": true,
       "role": "default",
       "alternative_to": null,
-      "file": "fixtures/mc451/r4-t-test-plain.R",
+      "file": "fixtures/mc451/r4-t-test.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r4-settings-block.R"
@@ -1749,10 +1666,7 @@
         "Welch two-sample t-test",
         "\\bsd\\b"
       ],
-      "sentence_template": "t-test",
-      "options": {
-        "plainCalls": true
-      }
+      "sentence_template": "t-test"
     },
     {
       "id": "mc451.anova",
@@ -1824,31 +1738,9 @@
       "task": "chi-square",
       "profile": "mc501",
       "generated": true,
-      "role": "alternative",
-      "alternative_to": "mc501.chi-square.plain",
-      "file": "fixtures/mc501/r4-chi-square.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "Chi-squared",
-        "Cramer's V",
-        "95% CI",
-        "N\\s+\\d+"
-      ],
-      "sentence_template": "chi-square"
-    },
-    {
-      "id": "mc501.chi-square.plain",
-      "release": "R4",
-      "task": "chi-square",
-      "profile": "mc501",
-      "generated": true,
       "role": "default",
       "alternative_to": null,
-      "file": "fixtures/mc501/r4-chi-square-plain.R",
+      "file": "fixtures/mc501/r4-chi-square.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r4-settings-block.R"
@@ -1860,10 +1752,7 @@
         "Chi-square test of independence",
         "expected|cat_b"
       ],
-      "sentence_template": "chi-square",
-      "options": {
-        "plainCalls": true
-      }
+      "sentence_template": "chi-square"
     },
     {
       "id": "mc501.t-test",
@@ -1871,31 +1760,9 @@
       "task": "t-test",
       "profile": "mc501",
       "generated": true,
-      "role": "alternative",
-      "alternative_to": "mc501.t-test.plain",
-      "file": "fixtures/mc501/r4-t-test.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "Welch two-sample t-test",
-        "Cohen's d",
-        "95% CI",
-        "\\bsd\\b"
-      ],
-      "sentence_template": "t-test"
-    },
-    {
-      "id": "mc501.t-test.plain",
-      "release": "R4",
-      "task": "t-test",
-      "profile": "mc501",
-      "generated": true,
       "role": "default",
       "alternative_to": null,
-      "file": "fixtures/mc501/r4-t-test-plain.R",
+      "file": "fixtures/mc501/r4-t-test.R",
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r4-settings-block.R"
@@ -1907,10 +1774,7 @@
         "Welch two-sample t-test",
         "\\bsd\\b"
       ],
-      "sentence_template": "t-test",
-      "options": {
-        "plainCalls": true
-      }
+      "sentence_template": "t-test"
     },
     {
       "id": "mc501.anova",
@@ -1978,67 +1842,6 @@
         "conf.low"
       ],
       "sentence_template": "correlation"
-    },
-    {
-      "id": "v2v-plain.t-test",
-      "release": "R4",
-      "task": "t-test",
-      "profile": "v2v-plain",
-      "generated": true,
-      "role": "proposal",
-      "alternative_to": null,
-      "file": "fixtures/v2v-plain/r4-t-test.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "estimate1",
-        "Cohen's d"
-      ],
-      "sentence_template": "t-test"
-    },
-    {
-      "id": "v2v-plain.chi-square",
-      "release": "R4",
-      "task": "chi-square",
-      "profile": "v2v-plain",
-      "generated": true,
-      "role": "proposal",
-      "alternative_to": null,
-      "file": "fixtures/v2v-plain/r4-chi-square.R",
-      "requires": [
-        "fixtures/v2v/_setup-build-analysis.R",
-        "fixtures/v2v/r4-settings-block.R"
-      ],
-      "data": [],
-      "must_print": [
-        "statistic",
-        "Cramer's V"
-      ],
-      "sentence_template": "chi-square"
-    },
-    {
-      "id": "v2v-plain.reliability",
-      "release": "R2",
-      "task": "reliability",
-      "profile": "v2v-plain",
-      "generated": true,
-      "role": "proposal",
-      "alternative_to": null,
-      "file": "fixtures/v2v-plain/r2-reliability.R",
-      "requires": [
-        "fixtures/v2v/_setup-pilot-csv.R",
-        "fixtures/v2v/r2-import-csv.R"
-      ],
-      "data": [],
-      "must_print": [
-        "Kappa",
-        "Krippendorff",
-        "alpha = "
-      ],
-      "sentence_template": "reliability"
     },
     {
       "id": "mc451.line",

@@ -21,7 +21,7 @@ The README is the short version. This page carries the detail per feature, the s
 - **AURA: Open the data viewer.** Opens a CSV file, or an R data frame through an Rscript JSON bridge, in a grid with scroll, sort, filter, and column types. Data values are read only. It handles the 35,000-row course Twitch sample smoothly (about 65 ms to parse and 64 ms to render on a desktop).
 - **Coding sheet.** Add your own coding columns (a dropdown of allowed values you type or paste from your codebook, or free text) and enter a value per row from the keyboard as in a spreadsheet: in a column with a list of codes, type the first letters of a code and press Enter to save it and move down (Tab moves right, Escape cancels, F2 or a double-click shows the whole list, Delete clears); in a free-text column, type and press Enter. Work saves by itself, and Ctrl+Z (Cmd+Z on a Mac) undoes. Codes are kept in a separate long file, `data/derived/<name>-codes.csv`, with one row per coded cell (row_id, column, value, coded_at). Your original data file is never written. The viewer adds a `row_id` column only when the data has none.
 - **Insert rebuild code.** Writes a commented tidyverse chunk that rebuilds the coded data from the original file plus your codes (read_csv, pivot_wider, left_join by row_id), so the result is reproducible and the original stays untouched.
-- **Refresh** re-reads the data file. **Export HTML for accessibility check** writes a self-contained copy of the grid.
+- **Refresh** re-reads the data file.
 
 ## What it does (release 0.4, "R3 Describe and R4 Tests", every menu on)
 
@@ -42,7 +42,7 @@ Inside Positron it uses Positron's console. Where the R extension by REditorSupp
 
 ## Privacy
 
-No telemetry. The only network traffic is the CRAN and GitHub downloads you start with Install what is missing. Copies installed from the Visual Studio Marketplace or Open VSX are updated by VS Code itself. A copy installed from a `.vsix` file checks GitHub releases for a newer version only when the `auraR.updates.releaseUrl` setting holds an address; it is empty by default.
+No telemetry. The only network traffic is the CRAN and GitHub downloads you start with Install what is missing. Copies installed from the Visual Studio Marketplace or Open VSX are updated by VS Code itself. A copy installed from a `.vsix` file is not updated; install the newer `.vsix`, or install from a marketplace.
 
 ## Settings
 
@@ -52,18 +52,14 @@ No telemetry. The only network traffic is the CRAN and GitHub downloads you star
 | `auraR.rPath` | empty | Full path to `Rscript`, when the extension cannot find R by itself. |
 | `auraR.cranMirror` | `https://cloud.r-project.org` | Download site for Install what is missing. |
 | `auraR.runWith` | `auto` | `auto`, `positron`, `vscode-r`, or `terminal`. |
-| `auraR.updates.releaseUrl` | empty | For `.vsix` installs only: the GitHub releases API address to check. |
-| `auraR.plainCalls` | on | MC 451 and MC 501: write the plain R calls (`t.test()`, `chisq.test()`, `effectsize`, `irr`) with the `v2v` wrapper last as a check. Off writes the wrappers alone. |
 | `auraR.copilotTools` | `auto` | The three Copilot tools: `auto` is on for MC 451 and MC 501 and off for MC 427; `on` or `off` in every course. |
-| `auraR.testChoice` | `check` | **Check my test choice**: `check` asks for the test you chose and says whether it fits; `suggest` names the test. |
 | `auraR.apaCheck` | on | Offers **APA numbers to check your sentence** in the Test menu. |
-| `auraR.mc427TestMenu` | `cross-check` | MC 427: the Test menu is labeled a check on Copilot's code. `writer` drops that reminder. |
 
 ## Accessibility
 
 The setup features use only native VS Code interface: the Command Palette, quick picks, notifications, the Output panel, and the Get Started walkthrough. All of it is keyboard-operable and read by screen readers, and it follows your color theme, including high contrast.
 
-The reliability grid and the data viewer are the two webviews. Both take their colors from your VS Code theme, label every field, and are keyboard-operable. The data viewer follows the WAI-ARIA grid pattern (role grid, rows, and cells, with row and column counts), is fully keyboard-operable (navigate, type the first letters of a code, Enter to save and move down, Tab to move right, Ctrl+Z to undo), announces the chosen code (an ARIA combobox and a polite status line), shows a visible focus ring, labels every control, takes its colors from your VS Code theme through the `--vscode-*` variables, and has a high-contrast rule. **Export HTML for accessibility check** writes a self-contained copy of the grid so it can be checked with axe.
+The reliability grid and the data viewer are the two webviews. Both take their colors from your VS Code theme, label every field, and are keyboard-operable. The data viewer follows the WAI-ARIA grid pattern (role grid, rows, and cells, with row and column counts), is fully keyboard-operable (navigate, type the first letters of a code, Enter to save and move down, Tab to move right, Ctrl+Z to undo), announces the chosen code (an ARIA combobox and a polite status line), shows a visible focus ring, labels every control, takes its colors from your VS Code theme through the `--vscode-*` variables, and has a high-contrast rule. For an axe check, `node scripts/verify/export-grid-html.mjs` writes a self-contained copy of the grid.
 
 ## Adapting this for your course
 
@@ -75,7 +71,7 @@ The extension is built so another course, or another campus, can adopt it by edi
 4. **Generated install code** comes from `src/installScript.ts`, which writes the `install.packages()` script from the profile's package list (CRAN mirror set, binary-only installs on Windows and macOS, a personal library when the system one is not writable). A new profile usually needs no change here.
 5. **Copilot instructions** your course hands to students live in `resources/course-files/`; add a file there and name it in the profile's `copilotInstructions` field.
 6. **Change the code the menus write** in `src/codegen/`: `r2.ts` (data and wrangling), `r3.ts` (describe and charts), `r4.ts` (tests), and `apa.ts` (the APA numbers). Each task is a template that takes your data and column names; the menu list itself is the `CATALOG` in `src/menus.ts`. Your course's own example code makes the best test: put it in `golden/` and the unit tests check each template against it byte for byte.
-7. **Change the test-choice rules** in `src/testChoice.ts` if your course teaches other tests, and decide in the settings whether the Copilot tools are on for your course (`auraR.copilotTools`) and whether the test chooser checks or suggests (`auraR.testChoice`).
+7. **Change the test-choice rules** in `src/testChoice.ts` if your course teaches other tests, and decide in the settings whether the Copilot tools are on for your course (`auraR.copilotTools`).
 8. **Build a VSIX** with `npm run package`. It runs the separation check and the unit tests, then writes `dist/r-companion-<version>.vsix`, which installs through VS Code's **Install from VSIX** command without any marketplace.
 
 If you publish an adapted build, change `name`, `displayName`, and `publisher` in `package.json` so it does not collide with this extension on the Visual Studio Marketplace or Open VSX.

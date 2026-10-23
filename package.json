@@ -42,8 +42,7 @@
       "supported": "limited",
       "description": "In Restricted Mode the setup check runs R from a neutral folder and ignores folder settings that point at a program. Opening an R terminal and running the course setup script wait until you trust the folder.",
       "restrictedConfigurations": [
-        "auraR.rPath",
-        "auraR.updates.releaseUrl"
+        "auraR.rPath"
       ]
     },
     "virtualWorkspaces": false
@@ -88,11 +87,6 @@
       {
         "command": "auraR.openRTerminal",
         "title": "Open an R terminal",
-        "category": "AURA"
-      },
-      {
-        "command": "auraR.checkForUpdates",
-        "title": "Check for updates",
         "category": "AURA"
       },
       {
@@ -293,11 +287,6 @@
           "default": "auto",
           "markdownDescription": "How the extension runs R code you can see. `auto` uses Positron inside Positron, the R extension (REditorSupport) when it is installed, and otherwise a plain R terminal with bracketed paste off."
         },
-        "auraR.updates.releaseUrl": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Only for copies installed from a `.vsix` file. The GitHub releases API address to check for a newer version, for example `https://api.github.com/repos/AURA-Lab-SIUE/r-companion/releases/latest`. Empty means no update check. Copies installed from the Marketplace or Open VSX are updated by VS Code itself and never use this."
-        },
         "auraR.copilotTools": {
           "type": "string",
           "enum": [
@@ -313,41 +302,10 @@
           "default": "auto",
           "markdownDescription": "The three tools GitHub Copilot Chat's agent mode can call: **Check my R setup**, **Explain an R error**, and **Check my test choice**. None of them changes a file or runs your analysis. `auto` turns them on for MC 451 and MC 501 and off for MC 427."
         },
-        "auraR.testChoice": {
-          "type": "string",
-          "enum": [
-            "check",
-            "suggest"
-          ],
-          "enumDescriptions": [
-            "You pick the test; the companion says whether it fits your variables.",
-            "The companion names the test that fits your variables."
-          ],
-          "default": "check",
-          "markdownDescription": "How **Check my test choice** works. `check` (the default) asks for the test you chose and says whether it fits, because choosing the test is part of your grade. `suggest` names the test for you."
-        },
         "auraR.apaCheck": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Offer **APA numbers to check your sentence** in the Test menu: a short R block that prints a test's numbers in APA form from your own run, so you can check the numbers in the sentence you wrote. It never writes the sentence's words or a plain-English interpretation."
-        },
-        "auraR.mc427TestMenu": {
-          "type": "string",
-          "enum": [
-            "cross-check",
-            "writer"
-          ],
-          "enumDescriptions": [
-            "Module 5: Copilot writes your analysis code; the Test menu is a check on it.",
-            "Module 5: the Test menu may write the analysis code."
-          ],
-          "default": "cross-check",
-          "markdownDescription": "MC 427 only. In Module 5, Copilot writes the code for your graded analyses and the **Test** menu is a cross-check: run both, and log a difference as a Copilot error you caught. `writer` drops that reminder."
-        },
-        "auraR.plainCalls": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "MC 451 and MC 501: write the plain R calls (`t.test()`, `chisq.test()`, `effectsize`, `irr::kappa2()`, `irr::kripp.alpha()`) for the tests and the reliability grid, with the v2v wrapper last as a check that prints the same numbers. Turn it off to write only the v2v wrappers (`run_t_test()`, `run_chi_square()`, `reliability()`). MC 427 always writes plain tidyverse."
         }
       }
     },

@@ -20,14 +20,13 @@ import { ActionItem, CheckResult, initSetup, installMissingCommand, installExten
 import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
 import { explain, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
-import { checkForUpdate, installSource } from './update';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus, menuItems, stepsScript } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
-import { checkTestChoice, fittingTests, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
+import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
 const WALKTHROUGH = `${EXT_ID}#getStarted`;
@@ -116,7 +115,6 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.explainError', (text?: string) => explainErrorCommand(text));
   reg('auraR.runCourseSetupCheck', () => runCourseSetupCheck());
   reg('auraR.openRTerminal', () => openRTerminal());
-  reg('auraR.checkForUpdates', () => checkForUpdatesCommand(false));
   reg('auraR.openWalkthrough', () => openWalkthrough());
   reg('auraR.addCourseFiles', (opts?: SilentOpts) => addCourseFiles(opts));
   // The Fix it buttons beside an explanation; not in the Command Palette (tests and support)
@@ -131,7 +129,6 @@ export function activate(context: vscode.ExtensionContext) {
   // For tests and support: which run adapter and install source this copy sees
   reg('auraR.diagnostics', () => ({
     adapter: pickAdapter(setting('runWith', 'auto'), terminalAdapter).id,
-    installSource: installSource(context),
     r: findR(),
     course: currentCourse(),
     walkthroughDone: [...doneKeys],
@@ -149,16 +146,14 @@ export function activate(context: vscode.ExtensionContext) {
     requireTrust,
     resourcePath,
     storageDir: context.globalStorageUri.fsPath,
-    plainCalls: () => setting<boolean>('plainCalls', true),
     apaCheck: () => setting<boolean>('apaCheck', true),
-    mc427TestMenu: () => (setting<string>('mc427TestMenu', 'cross-check') === 'writer' ? 'writer' : 'cross-check'),
   });
   reg('auraR.checkTestChoice', (input?: TestChoiceInput) => checkTestChoiceCommand(input));
   // The AURA panel in the Activity Bar (0.5.3): a second door to the same commands
   panel = registerPanel(context, {
     currentCourse,
     items: (course) => menuItems(course, setting<boolean>('apaCheck', true)),
-    crossCheck: (course) => course === 'mc427' && setting<string>('mc427TestMenu', 'cross-check') !== 'writer',
+    crossCheck: (course) => course === 'mc427',
     stepsScript: () => {
       const s = stepsScript();
       return s === undefined ? undefined : path.basename(typeof s === 'string' ? s : s.fileName);
@@ -190,8 +185,6 @@ export function activate(context: vscode.ExtensionContext) {
     void context.globalState.update('auraR.walkthroughShown', true);
     void openWalkthrough();
   }
-  // Update check for .vsix installs only, at most once a day, and only when a release URL is set
-  void checkForUpdatesCommand(true);
 }
 
 export function deactivate() {}
@@ -755,11 +748,10 @@ interface TestChoiceInput {
   chosenTest?: TestId;
 }
 
-// Owner decision U4 (coordinator default, auraR.testChoice = "check"): the student names the test
-// they chose and the companion says whether it fits. "suggest" names the fitting test instead.
-// Arguments skip the picks (tests and support); the verdict is returned either way.
+// Owner decision U4: the student names the test they chose and the companion says whether it fits;
+// it never names the test for them, because choosing it is graded. Arguments skip the picks (tests
+// and support); the verdict is returned either way.
 async function checkTestChoiceCommand(input?: TestChoiceInput): Promise<{ fits?: boolean; fitting: TestId[]; reason: string } | undefined> {
-  const mode = setting<string>('testChoice', 'check') === 'suggest' ? 'suggest' : 'check';
   const title = 'Check my test choice';
   const outcome =
     input?.outcome ??
@@ -780,14 +772,6 @@ async function checkTestChoiceCommand(input?: TestChoiceInput): Promise<{ fits?:
     )?.k;
   if (!comparison) return undefined;
 
-  if (mode === 'suggest' && !input?.chosenTest) {
-    const fitting = fittingTests(outcome, comparison);
-    const reason = fitting.length
-      ? `For these variables: ${fitting.map((t) => TEST_LABEL[t]).join(' or ')}.`
-      : "None of the course's tests fits these variables. Check which one is the outcome.";
-    if (!input) void vscode.window.showInformationMessage(reason);
-    return { fitting, reason };
-  }
   const chosenTest =
     input?.chosenTest ??
     (
@@ -804,39 +788,6 @@ async function checkTestChoiceCommand(input?: TestChoiceInput): Promise<{ fits?:
     void show(`${verdict.fits ? 'Fits.' : 'Does not fit.'} ${verdict.reason}`);
   }
   return verdict;
-}
-
-async function checkForUpdatesCommand(automatic: boolean) {
-  const source = installSource(ctx);
-  if (source === 'gallery') {
-    if (!automatic) await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates');
-    return;
-  }
-  const url = setting<string>('updates.releaseUrl', '');
-  if (!url) {
-    if (!automatic) vscode.window.showInformationMessage('Update checks are off: this copy has no release address set.');
-    return;
-  }
-  if (automatic) {
-    const last = ctx.globalState.get<number>('auraR.lastUpdateCheck') ?? 0;
-    if (Date.now() - last < 24 * 3600 * 1000) return;
-    await ctx.globalState.update('auraR.lastUpdateCheck', Date.now());
-  }
-  const current = vscode.extensions.getExtension(EXT_ID)?.packageJSON?.version ?? '0.0.0';
-  try {
-    const r = await checkForUpdate(url, current);
-    if (r.newer) {
-      const b = await vscode.window.showInformationMessage(
-        `AURA Lab R Companion ${r.latest} is available (you have ${current}).`,
-        'Open the download page',
-      );
-      if (b && r.page) await vscode.env.openExternal(vscode.Uri.parse(r.page));
-    } else if (!automatic) {
-      vscode.window.showInformationMessage(`You have the newest version (${current}).`);
-    }
-  } catch (e: any) {
-    if (!automatic) vscode.window.showWarningMessage(`Could not check for updates: ${e?.message ?? e}`);
-  }
 }
 
 async function openWalkthrough() {
