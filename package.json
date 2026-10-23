@@ -337,7 +337,7 @@
           {
             "id": "checkSetup",
             "title": "Check your setup",
-            "description": "Find R, check each package your course needs, and install anything missing.\n[Check my setup](command:auraR.checkSetup)",
+            "description": "Find R, check each package your course needs, and install anything missing. The first time R opens, VS Code asks to install a helper called sess: click Install bundled sess, or R will not connect.\n[Check my setup](command:auraR.checkSetup)",
             "media": {
               "markdown": "media/walkthrough/2-check-setup.md"
             },

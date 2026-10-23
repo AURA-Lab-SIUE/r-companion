@@ -16,6 +16,10 @@ The install can take several minutes. You can watch R's own messages in the **Ou
 
 This step gets its tick once every line your course needs says **OK**.
 
+## Before you open R in VS Code
+
+The first time R opens, VS Code asks to install a helper called **sess**. Click **Install bundled sess**. You must say yes, or R will not connect. Missed it? Click the bell in the bottom-right corner to find it. If it is not there, run **AURA: Install what is missing**.
+
 **For MC 427:** when everything says OK, choose **Run mc427-setup-check.R in an R terminal**. The last line should read `SETUP OK: R and the course packages are working.` That is the line your Tools Stack Setup screenshot needs.
 
 **For MC 451 and MC 501:** the list includes the lines from `v2v::setup()`, the course package's own check.

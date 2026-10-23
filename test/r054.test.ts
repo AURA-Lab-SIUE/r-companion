@@ -244,6 +244,25 @@ test('Quarto extension row: MC 451 and MC 501 only, MISSING with a Show button w
   assert.equal(quartoRow('mc451', {}), undefined, 'not checked when the host did not say');
 });
 
+import { SESS_PROMPT } from '../src/sess';
+import { ERROR_TABLE } from '../src/errors';
+
+test('owner wording (2026-10-23): one sess sentence on every surface that talks about it', () => {
+  assert.equal(
+    SESS_PROMPT,
+    'The first time R opens, VS Code asks to install a helper called sess. Click Install bundled sess. You must say yes, or R will not connect. Missed it? Click the bell in the bottom-right corner to find it. If it is not there, run AURA: Install what is missing.',
+  );
+  const row = sessItems(facts({})).find((i) => i.name === SESS_ITEM)!;
+  assert.ok(row.detail.endsWith(SESS_PROMPT), row.detail);
+  assert.equal(ERROR_TABLE.find((e) => e.id === 'r-not-attached')!.fix[0], SESS_PROMPT);
+  const md = fs.readFileSync(path.join(ROOT, 'media', 'walkthrough', '2-check-setup.md'), 'utf8');
+  assert.ok(md.includes('The first time R opens, VS Code asks to install a helper called **sess**. Click **Install bundled sess**. You must say yes, or R will not connect.'));
+  // Before the student is sent to open R: ahead of the MC 427 "Run ... in an R terminal" paragraph
+  assert.ok(md.indexOf('Install bundled sess') < md.indexOf('in an R terminal'));
+  const step = pkg.contributes.walkthroughs[0].steps.find((s: any) => s.id === 'checkSetup');
+  assert.match(step.description, /click Install bundled sess, or R will not connect/);
+});
+
 test('install script: a local package installs from its folder after the CRAN packages, with forward slashes', () => {
   const plan = installPlan(sessItems(facts({ packages: pkgs(['processx']), bundled: { path: 'C:\\Users\\s\\sess', revision: REV } })), false);
   const s = installScript(plan, 'https://cloud.r-project.org');

@@ -15,6 +15,7 @@
 // Pure: no VS Code API, so the unit tests load it directly.
 
 import { CourseId } from './profiles';
+import { SESS_PROMPT } from './sess';
 
 export interface ErrorEntry {
   id: string;
@@ -74,10 +75,9 @@ export const ERROR_TABLE: ErrorEntry[] = [
     title: "'R: (not attached)' or 'Connection to server got closed' in VS Code",
     why: 'R still runs your code, but VS Code is not connected to it, so the Workspace panel and plots stay empty. The R extension connects through a small helper package called sess, which it offers to install the first time R opens; if that was skipped, answered with Not now or Don\'t ask again, or failed, R stays not attached. "Connection to server got closed" is a second helper, languageserver, which powers code completion.',
     fix: [
-      'Look under the bell at the bottom right of VS Code. If the R extension asks to install bundled sess, choose Install bundled sess, then close the R terminal with the bin icon and open a new one.',
-      'No question there, or you chose Don\'t ask again? Quit VS Code completely. Open R on its own (R x64 from the Start menu, or the R app on a Mac) and run: install.packages(c("processx", "later", "jsonlite", "rstudioapi", "languageserver")). If R asks whether to compile from source, answer No.',
-      'Open VS Code again, open your course folder, and run AURA: Check my setup. If the sess line is not OK, choose Install what is missing.',
-      'An R terminal that is already open can connect without restarting: type sess::connect() in it.',
+      SESS_PROMPT,
+      'Then close the R terminal with the bin icon and open a new one. Or connect the R terminal you have open without restarting it: type sess::connect() in it.',
+      'Install what is missing stopped with an error? Quit VS Code completely. Open R on its own (R x64 from the Start menu, or the R app on a Mac) and run: install.packages(c("processx", "later", "jsonlite", "rstudioapi", "languageserver")). If R asks whether to compile from source, answer No. Then open VS Code and run AURA: Install what is missing again.',
       'If your R extension version starts with 2, update it in the Extensions view (Ctrl+Shift+X, Cmd+Shift+X on a Mac). Only those older versions use .vsc.attach().',
     ],
     fixIt: 'connect-r',

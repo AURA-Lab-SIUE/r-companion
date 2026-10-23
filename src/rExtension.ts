@@ -4,9 +4,10 @@
 import * as vscode from 'vscode';
 import { VSCODE_R_ID } from './checklist';
 import { inPositron } from './adapters';
+import { SESS_PROMPT } from './sess';
 
 export const R_EXT_MISSING =
-  'The R extension for VS Code (by REditorSupport) is not installed or is turned off, so VS Code cannot connect to R. Select Show the R extension, then Install or Enable.';
+  'The R extension for VS Code (by REditorSupport) is not installed or is turned off, so VS Code cannot connect to R. Select Show the R extension, then Install or Enable. After that, the first time R opens, VS Code asks to install a helper called sess. Click Install bundled sess. You must say yes, or R will not connect.';
 export const SHOW_R_EXT = 'Show the R extension';
 
 /** Opens the Extensions view on the R extension: Install when it is missing, Enable when it is off. */
@@ -29,10 +30,9 @@ export function checkRExtensionAtStartup(): boolean {
 
 /** How long a new vscode-R terminal gets to attach before the Companion says something. */
 export const ATTACH_WAIT_MS = 30000;
-export const NOT_ATTACHED_NOTICE =
-  'R opened, but VS Code has not connected to it, so the status bar says "R: (not attached)". If a question about sess is waiting under the bell at the bottom right, choose Install bundled sess. Otherwise select Fix not attached.';
+export const NOT_ATTACHED_NOTICE = `R opened, but it has not connected to VS Code (the status bar says "R: (not attached)"). ${SESS_PROMPT}`;
 export const SHOW_BELL = 'Show notifications';
-export const FIX_NOT_ATTACHED = 'Fix not attached';
+export const FIX_NOT_ATTACHED = 'Install what is missing';
 
 /** What the attach watch has seen, for the help report. */
 const attach: { api?: boolean; events: { kind: string; at: Date }[] } = { events: [] };
@@ -109,5 +109,6 @@ export function attachLines(): string[] {
         : 'Connection events since this window opened: none, so no R terminal has connected to VS Code yet',
     );
   }
+  lines.push(`If R does not connect: ${SESS_PROMPT}`);
   return lines;
 }

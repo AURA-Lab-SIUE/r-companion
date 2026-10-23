@@ -56,7 +56,7 @@ async function run() {
     check(expect ? 'without sess: never attached' : 'with sess: attached', expect ? !events.includes('connected') : events.includes('connected'), events);
     check(expect ? 'without sess: one notice, counted by the extension' : 'with sess: no notice counted', diag.attachNotices === (expect ? 1 : 0), diag.attachNotices);
     check(expect ? 'without sess: the notice is on screen after about 30 s' : 'with sess: no notice on screen in 45 s', expect ? !!seen && seen.ms >= 29000 : !seen, seen);
-    if (seen) check('the notice names the bell and Fix not attached', /bell/.test(seen.text) && /Fix not attached/.test(seen.text), seen.text);
+    if (seen) check('the notice carries the owner wording and its two buttons', /Click Install bundled sess. You must say yes, or R will not connect./.test(seen.text) && /bell in the bottom-right corner/.test(seen.text) && /Show notifications/.test(seen.text) && /Install what is missing/.test(seen.text), seen.text);
   } catch (e) {
     out.error = String((e && e.stack) || e);
   }

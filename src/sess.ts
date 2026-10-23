@@ -15,6 +15,13 @@ import * as path from 'path';
 import { CheckItem, ProbePackage, versionBelow, VSCODE_R_MIN } from './checklist';
 import { PackageSpec } from './profiles';
 
+/**
+ * What every 0.5.4 surface tells a student about the sess question (owner wording, 2026-10-23).
+ * "Install bundled sess" is the button's own label in vscode-R 3.2.0.
+ */
+export const SESS_PROMPT =
+  'The first time R opens, VS Code asks to install a helper called sess. Click Install bundled sess. You must say yes, or R will not connect. Missed it? Click the bell in the bottom-right corner to find it. If it is not there, run AURA: Install what is missing.';
+
 /** sess's Imports that are not base R (vscode-R 3.2.0 sess DESCRIPTION). processx brings ps. */
 export const SESS_IMPORTS = ['processx', 'later', 'jsonlite', 'rstudioapi'];
 // The item name is the package name: Install what is missing verifies an install by item name
@@ -128,9 +135,8 @@ export function sessItems(f: SessFacts): CheckItem[] {
     status: older ? 'outdated' : 'missing',
     detail:
       (older
-        ? `your R library has a different copy of sess than this R extension needs. `
-        : `the R session helper is not installed for R ${rv}. `) +
-      'The R extension needs this small helper package to connect your R terminal to VS Code; without it the status bar says "R: (not attached)". Install what is missing adds it. (VS Code may also ask about sess under the bell at the bottom right; choose Install bundled sess.)',
+        ? `your R library has a different copy of sess than this R extension needs, so R will not connect to VS Code. `
+        : `not installed for R ${rv}, so R will not connect to VS Code (the status bar says "R: (not attached)"). `) + SESS_PROMPT,
     installable: spec,
   });
   return items;
