@@ -84,7 +84,11 @@ async function waitFor(check, ms, step = 500) {
 
 async function run() {
   const out = { steps: [] };
-  const log = (name, value) => out.steps.push({ name, value });
+  // Written after every step, so a stalled run still shows how far it got
+  const log = (name, value) => {
+    out.steps.push({ name, value: value === undefined ? null : value });
+    fs.writeFileSync(process.env.AURA_IT_OUT, JSON.stringify(out, null, 2));
+  };
   const ws = vscode.workspace.workspaceFolders[0].uri.fsPath;
   let wb = null;
   try {

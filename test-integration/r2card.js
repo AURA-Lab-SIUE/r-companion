@@ -273,8 +273,11 @@ async function run() {
     const tweets = path.join(ws, 'tweets.R');
     fs.writeFileSync(tweets, '');
     editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(tweets));
-    const w10 = vscode.commands.executeCommand('auraR.writeCode');
-    await choose(0);
+    // 0.5.3: Import a data file opens the system's file dialog, which a suite cannot drive, so the
+    // file and table name are given; the peek and Run it are the real steps
+    const w10 = vscode.commands.executeCommand('auraR.importDataFile', { file: path.join(ws, 'mod05-E01-practice-tweets.csv'), name: 'df' });
+    await sleep(8000); // the column probe
+    await choose(0); // Write the code that loads this table
     await sleep(1500);
     await acceptToast();
     await w10;
@@ -288,8 +291,9 @@ async function run() {
     // 11. R3 Describe > Frequency table (the eighth MC 427 item; every release is on from 0.4.0)
     await editor.edit((b) => b.insert(new vscode.Position(editor.document.lineCount, 0), '\n'));
     end();
-    const w11 = vscode.commands.executeCommand('auraR.writeCode');
-    await choose(7);
+    // 0.5.3 added Join two tables to MC 427's menu, so the task is named (the AURA panel's route)
+    // rather than picked by position
+    const w11 = vscode.commands.executeCommand('auraR.writeCode', 'frequency');
     await choose(0);
     await acceptToast();
     await w11;
@@ -306,8 +310,9 @@ async function run() {
     fs.writeFileSync(notes, 'Some notes about the data.\n');
     editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(notes));
     editor.selection = new vscode.Selection(1, 0, 1, 0);
-    const w12 = vscode.commands.executeCommand('auraR.writeCode');
-    await choose(0);
+    // Any block shows the chunk wrapping. 0.5.3's first item, Import a data file, opens the
+    // system's file dialog, which a suite cannot answer, so the task is named instead.
+    const w12 = vscode.commands.executeCommand('auraR.writeCode', 'mutate');
     await sleep(1500);
     await vscode.commands.executeCommand('notifications.clearAll');
     await w12;
@@ -327,8 +332,7 @@ async function run() {
     fs.writeFileSync(pick, 'analysis <- read_rds("data/twitch_analysis.RDS")\n');
     editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(pick));
     end();
-    const wT = vscode.commands.executeCommand('auraR.writeCode');
-    await choose(6); // Count rows per group
+    const wT = vscode.commands.executeCommand('auraR.writeCode', 'count');
     await choose(1); // the table list: chat (the default), then analysis
     await choose(0); // Use the course default columns
     await sleep(1500);
