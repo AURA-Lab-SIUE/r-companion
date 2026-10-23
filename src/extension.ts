@@ -26,7 +26,7 @@ import { registerMenus, menuItems, stepsScript } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
-import { checkRExtensionAtStartup } from './rExtension';
+import { checkRExtensionAtStartup, watchAttach } from './rExtension';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
@@ -37,6 +37,7 @@ let terminalAdapter: TerminalAdapter;
 let ctx: vscode.ExtensionContext;
 let trustGate: TrustGate;
 let panel: AuraPanel | undefined;
+let attachNotices: () => number = () => 0;
 
 // Walkthrough steps complete on these context keys (package.json completionEvents), set only once
 // the step's action has succeeded, never when its button is selected
@@ -135,6 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
     walkthroughDone: [...doneKeys],
     waitingForTrust: trustGate.waiting,
     panel: panel?.roots(),
+    attachNotices: attachNotices(),
   }));
   // R2/R3/R4 code-generation menus and the reliability grid (workstream E)
   registerMenus(context, {
@@ -183,6 +185,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   // The R extension is a declared dependency, but a student can still turn it off: say so once
   checkRExtensionAtStartup();
+  // A new vscode-R terminal that has not attached after 30 s gets one notice (vscode-R 3.2.0 API)
+  attachNotices = watchAttach(context);
 
   // First run: open the Get Started walkthrough once
   if (!context.globalState.get<boolean>('auraR.walkthroughShown')) {
