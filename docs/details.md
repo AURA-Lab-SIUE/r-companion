@@ -2,6 +2,13 @@
 
 The README is the short version. This page carries the detail per feature, the settings, how the extension finds and runs R, accessibility, and how to adapt it for another course. It is the source for the R Companion page on the AURA Lab site.
 
+## What it does (release 0.5.4, R stays connected)
+
+- **The R extension is a dependency.** VS Code installs the R extension (REditorSupport.r) with the Companion and offers to enable it when it is disabled. A startup notice covers the case where it is still missing or off.
+- **sess in Check my setup.** With the R extension 3.0 or newer, the check looks for sess with the R extension's exact bundled source revision, first in R's libraries and then in the R extension's managed library for this R version (`<global storage>/reditorsupport.r/sess/<platform>/<major.minor>/<revision>/.ready`). When neither has it, sess and any missing imports (processx, later, jsonlite, rstudioapi) are listed, and Install what is missing installs the imports from CRAN and sess from the R extension's own folder into your library.
+- **Attach watch.** Through the R extension's session API (`session.onDidChangeSessionConnection`, 3.2.0 and newer), a new R terminal that has not connected after 30 seconds gets one notice per window.
+- **Make a help report.** Setup, versions, connection state, and recent log lines in one read-only document, with the home folder and user name hidden.
+
 ## What it does (release 0.5.3, the AURA panel)
 
 - **The AURA panel.** An Activity Bar view with My setup (the last Check my setup in one line), Data, Describe, Test, Your steps, and Help. Every task node runs Write R code straight into that task, with the menu's label. It is a native tree view: arrow keys and Enter, **AURA: Focus on R Companion View** in the Command Palette, and each row's accessible name is its label.
@@ -50,6 +57,8 @@ In order: the `auraR.rPath` setting, the R extension's `r.rpath` and `r.rterm` s
 Inside Positron it uses Positron's console. Where the R extension by REditorSupport is installed, it uses that extension's terminal. Otherwise it opens a plain R terminal with bracketed paste switched off, so the stray `[200~` characters never appear. Package checks use a short-lived `Rscript` process and never touch your R session.
 
 ## Privacy
+
+Make a help report reads only the setup check, R through `Rscript`, and log files under VS Code's own logs folder. It sends nothing; the student copies the text into an email.
 
 No telemetry. The only network traffic is the CRAN and GitHub downloads you start with Install what is missing. Copies installed from the Visual Studio Marketplace or Open VSX are updated by VS Code itself. A copy installed from a `.vsix` file is not updated; install the newer `.vsix`, or install from a marketplace.
 

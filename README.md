@@ -15,7 +15,7 @@ R stays visible. Every menu writes the code into your own script, with a comment
 
 ## Install
 
-Search for **AURA Lab R Companion** in the Extensions view (Ctrl+Shift+X, or Cmd+Shift+X on a Mac) and select **Install**. It is on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=aura-lab-siue.r-companion) and [Open VSX](https://open-vsx.org/extension/aura-lab-siue/r-companion). You also need [R](https://cloud.r-project.org/); the extension takes care of the packages.
+Search for **AURA Lab R Companion** in the Extensions view (Ctrl+Shift+X, or Cmd+Shift+X on a Mac) and select **Install**. It is on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=aura-lab-siue.r-companion) and [Open VSX](https://open-vsx.org/extension/aura-lab-siue/r-companion). The R extension for VS Code (by REditorSupport) installs with it. You also need [R](https://cloud.r-project.org/); the extension takes care of the packages.
 
 ## Commands
 
@@ -24,7 +24,7 @@ Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type 
 | Command | What it does |
 |---|---|
 | Pick my course | Tells the extension which course's packages and code to use. |
-| Check my setup | Reports R, each course package, and the R extension for VS Code, line by line. |
+| Check my setup | Reports R, each course package, the R extension for VS Code, and sess (the helper that connects R to VS Code), line by line. |
 | Install what is missing | Installs the missing packages, then checks again. |
 | Open my course workspace | Opens or clones your course folder. |
 | Write R code | The menus: data, describe, and test. |
@@ -37,10 +37,12 @@ Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type 
 | Explain an R error | A plain-English explanation of an R message. |
 | Open an R terminal | Starts R in VS Code. |
 | Where to get help | Course help pages and how to ask. |
+| Fix R (not attached) | Installs what R needs to connect to VS Code, then opens a new R terminal. |
+| Make a help report | Your setup, versions, and recent errors in one document, ready to email to your instructor. |
 
 ## Privacy
 
-No telemetry. The only network traffic is the CRAN and GitHub downloads you start with Install what is missing.
+No telemetry. The only network traffic is the CRAN and GitHub downloads you start with Install what is missing. Make a help report reads your setup and log files on your computer and sends nothing; you decide what to email.
 
 ## More
 

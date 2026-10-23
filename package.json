@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code, then writes commented tidyverse code from menus: data and wrangling, a data viewer and coding sheet, reliability, descriptive statistics and charts, and the course's statistical tests.",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
