@@ -20,6 +20,8 @@ viewers_over_time <- streams %>%
 viewers_over_time %>%
   ggplot(aes(x = six_hour, y = total_viewers, color = category)) +
   geom_line(linewidth = 0.9) +
+  # Write the viewer counts with commas (20,000,000), not in scientific notation (2.0e+07).
+  scale_y_continuous(labels = scales::label_comma()) +
   labs(
     title = "Concurrent viewers by game category",
     x = "Date (UTC, six-hour buckets)",

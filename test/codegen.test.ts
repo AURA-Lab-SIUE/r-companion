@@ -168,3 +168,32 @@ test('wizard overrides flow into the generated code', () => {
   assert.ok(code.includes('filter(platform == "X")'));
   assert.ok(code.includes('nrow(x_posts)'));
 });
+
+// 0.5.3 chart quality (#rgui Rank 1): every Load block turns off scientific notation, the grouped
+// histogram draws each group as shares, and the Twitch count axes print with commas.
+test('0.5.3: every Load block sets options(scipen = 10) right after the library() lines', () => {
+  const loads: [GenProfile, string][] = [
+    ['mc427', 'import-csv'],
+    ['mc451', 'import-csv'], ['mc451', 'import-course-dataset'], ['mc451', 'import-rds'],
+    ['mc501', 'import-csv'], ['mc501', 'import-course-dataset'], ['mc501', 'import-rds'],
+  ];
+  for (const [p, t] of loads) {
+    const code = generate(p, t);
+    const lib = code.lastIndexOf('library(');
+    const sci = code.indexOf('options(scipen = 10)');
+    assert.ok(sci > lib && lib >= 0, `${p} ${t}`);
+  }
+  // A block that loads no data does not change the session's printing
+  assert.ok(!generate('mc451', 'count').includes('scipen'));
+});
+
+test('0.5.3: the grouped histogram shows shares, and the Twitch count axes use commas', () => {
+  for (const course of ['mc451', 'mc501'] as const) {
+    assert.ok(generate(course, 'histogram-grouped').includes('ggplot(aes(x = length_shown, y = after_stat(density), fill = is_gaming)) +'));
+    for (const t of ['line', 'bar', 'histogram']) {
+      assert.ok(generate(course, t).includes('  scale_y_continuous(labels = scales::label_comma()) +'), `${course} ${t}`);
+    }
+  }
+  // MC 427 counts posts in the hundreds: its charts stay as they are
+  for (const t of ['bar', 'histogram']) assert.ok(!generate('mc427', t).includes('label_comma'), t);
+});

@@ -9,6 +9,8 @@ streams %>%
   ggplot(aes(x = fct_reorder(game, n), y = n)) +
   geom_col() +
   coord_flip() +
+  # Write the counts with commas (12,000), not 12000.
+  scale_y_continuous(labels = scales::label_comma()) +
   labs(
     title = "Most-streamed categories",
     x = NULL,

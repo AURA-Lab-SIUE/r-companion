@@ -5,6 +5,8 @@ analysis %>%
   filter(message_length <= 200) %>%
   ggplot(aes(x = message_length)) +
   geom_histogram(binwidth = 5) +
+  # Write the counts with commas (12,000), not 12000.
+  scale_y_continuous(labels = scales::label_comma()) +
   labs(
     title = "Message length",
     subtitle = "Messages up to 200 characters",
