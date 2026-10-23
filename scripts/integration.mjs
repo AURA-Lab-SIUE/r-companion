@@ -73,6 +73,16 @@ if (process.platform === 'win32') {
   );
 }
 
+// AURA_IT_OFFSCREEN=1 keeps the test window off the visible desktop (no screenshots then)
+let offscreen;
+if (process.platform === 'win32' && process.env.AURA_IT_OFFSCREEN === '1') {
+  offscreen = spawn(
+    'powershell',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(repo, 'scripts', 'verify', 'offscreen-window.ps1'), '-Scratch', path.resolve(scratch)],
+    { stdio: 'ignore', windowsHide: true },
+  );
+}
+
 const env = { ...process.env, AURA_IT_OUT: result, AURA_IT_SHOTS: capture ? shots : '', AURA_IT_USER_DATA: dirs['user-data'], AURA_IT_EXT_DIR: dirs.extensions };
 delete env.ELECTRON_RUN_AS_NODE;
 const r = spawnSync(
@@ -93,6 +103,7 @@ const r = spawnSync(
 );
 console.log(`VS Code exited with ${r.status}`);
 capture?.kill();
+offscreen?.kill();
 // vscode-R's language server (R.exe from this scratch profile) outlived VS Code on Windows
 // (2026-10-19): stop only processes whose command line names this scratch folder
 if (process.platform === 'win32') {
