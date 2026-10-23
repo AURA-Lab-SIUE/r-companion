@@ -222,6 +222,11 @@ export async function showChecklist(result: CheckResult): Promise<void> {
     });
   }
   picks.push({ label: '$(copy) Copy this report', detail: 'Paste it when you ask for help', action: () => copyReport(result) });
+  picks.push({
+    label: '$(report) Make a help report',
+    detail: 'This check plus versions and error logs, ready to email to your instructor',
+    action: () => vscode.commands.executeCommand('auraR.makeHelpReport'),
+  });
   picks.push({ label: '$(output) Show the full report', action: () => host.output.show() });
   let group = '';
   for (const it of result.items) {

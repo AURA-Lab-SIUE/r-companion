@@ -34,6 +34,9 @@ export const NOT_ATTACHED_NOTICE =
 export const SHOW_BELL = 'Show notifications';
 export const FIX_NOT_ATTACHED = 'Fix not attached';
 
+/** What the attach watch has seen, for the help report. */
+const attach: { api?: boolean; events: { kind: string; at: Date }[] } = { events: [] };
+
 /** vscode-R names its R terminals "R Interactive" (3.2.0). */
 export function isVscodeRTerminal(name: string): boolean {
   return /^R Interactive/.test(name);
@@ -54,10 +57,13 @@ export function watchAttach(context: vscode.ExtensionContext, waitMs = ATTACH_WA
   void Promise.resolve(ext.isActive ? ext.exports : ext.activate()).then(
     (api: any) => {
       const onConnection = api?.session?.onDidChangeSessionConnection;
-      if (typeof onConnection !== 'function') return;
+      attach.api = typeof onConnection === 'function';
+      if (!attach.api) return;
       context.subscriptions.push(
         onConnection((e: { kind: string }) => {
           if (e?.kind === 'connected') lastConnected = Date.now();
+          attach.events.push({ kind: String(e?.kind), at: new Date() });
+          if (attach.events.length > 20) attach.events.shift();
         }),
         vscode.window.onDidOpenTerminal((t) => {
           if (!isVscodeRTerminal(t.name) || !vscode.workspace.getConfiguration('r').get<boolean>('sessionWatcher', true)) return;
@@ -85,4 +91,23 @@ export function watchAttach(context: vscode.ExtensionContext, waitMs = ATTACH_WA
     () => undefined,
   );
   return () => shown;
+}
+
+/** The help report's "Connection between R and VS Code" lines. */
+export function attachLines(): string[] {
+  const ext = vscode.extensions.getExtension(VSCODE_R_ID);
+  const terms = vscode.window.terminals.map((t) => t.name).filter((n) => /(^|\s)R(\s|$)|R Interactive|R \(AURA\)/.test(n));
+  const lines = [
+    `R extension session API: ${!ext ? 'no R extension' : attach.api === undefined ? 'not read yet' : attach.api ? 'available (vscode-R 3.2.0 or newer)' : 'not offered by this version'}`,
+    `R session watcher setting (r.sessionWatcher): ${vscode.workspace.getConfiguration('r').get<boolean>('sessionWatcher', true) ? 'on' : 'off'}`,
+    `R terminals open now: ${terms.length ? terms.join(', ') : 'none'}`,
+  ];
+  if (attach.api) {
+    lines.push(
+      attach.events.length
+        ? `Connection events since this window opened: ${attach.events.map((e) => `${e.kind} at ${e.at.toLocaleTimeString()}`).join('; ')}`
+        : 'Connection events since this window opened: none, so no R terminal has connected to VS Code yet',
+    );
+  }
+  return lines;
 }

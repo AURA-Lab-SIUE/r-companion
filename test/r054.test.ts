@@ -106,6 +106,110 @@ test('sess check: nothing before vscode-R 3.0, a note when the session watcher i
   assert.equal(sessItems(facts({ bundled: undefined }))[0].status, 'info');
 });
 
+import { buildReport, errorLines, LAST_LINE, RecentLines, redact, reportSections, ReportInput, TERMINAL_NOTE, USER_MARK } from '../src/helpReport';
+import { panelTree } from '../src/panelModel';
+
+const WIN = { home: 'C:\\Users\\jdoe7', user: 'jdoe7' };
+
+test('help report: redaction turns the home folder into ~ in every slash style, and the user name into <user>', () => {
+  const text = [
+    'R: 4.6.1 (C:\\Users\\jdoe7\\AppData\\Local\\Programs\\R\\R-4.6.1\\bin\\Rscript.exe)',
+    'lib C:/Users/jdoe7/AppData/Local/R/win-library/4.6',
+    'json "c:\\\\users\\\\JDOE7\\\\Documents"',
+    'OneDrive - jdoe7 school, signed in as JDoe7',
+    'C:\\Users\\jdoe7x\\other stays a different folder',
+  ].join('\n');
+  const out = redact(text, WIN);
+  assert.ok(out.includes('(~\\AppData\\Local\\Programs\\R\\R-4.6.1\\bin\\Rscript.exe)'), out);
+  assert.ok(out.includes('lib ~/AppData/Local/R/win-library/4.6'), out);
+  assert.ok(out.includes('json "~\\\\Documents"'), out);
+  assert.ok(out.includes(`OneDrive - ${USER_MARK} school, signed in as ${USER_MARK}`), out);
+  assert.ok(out.includes('C:\\Users\\jdoe7x\\other'), 'a longer name that only starts with the user name is left alone');
+  assert.doesNotMatch(out.replace('jdoe7x', ''), /jdoe7/i);
+  assert.equal(redact('/Users/sam/Library/R and sam', { home: '/Users/sam', user: 'sam' }), `~/Library/R and ${USER_MARK}`);
+});
+
+test('help report: the last 50 lines of the output channel, split across appends', () => {
+  const r = new RecentLines(5);
+  r.add('one\ntw');
+  r.add('o\nthree\n');
+  for (const n of ['4', '5', '6']) r.add(n + '\n');
+  r.add('partial');
+  // keeps 5 complete lines, plus the line still being written
+  assert.deepEqual(r.last(10), ['two', 'three', '4', '5', '6', 'partial']);
+  assert.deepEqual(r.last(2), ['6', 'partial']);
+});
+
+test('help report: only error and warning lines from the R extension logs, the last n', () => {
+  const lines = errorLines(
+    [
+      { file: 'a/window1/R Language Server.log', text: 'started\n[Error] read ECONNRESET\nok' },
+      { file: 'b/window1/exthost.log', text: "2026 [warning] Cannot activate extension 'REditorSupport.r'\ninfo line" },
+    ],
+    50,
+  );
+  assert.deepEqual(lines, ['a/window1/R Language Server.log: [Error] read ECONNRESET', "b/window1/exthost.log: 2026 [warning] Cannot activate extension 'REditorSupport.r'"]);
+  assert.equal(errorLines([{ file: 'x', text: Array.from({ length: 80 }, (_, i) => `error ${i}`).join('\n') }], 50).length, 50);
+});
+
+const input = (over: Partial<ReportInput> = {}): ReportInput => ({
+  when: new Date(2026, 9, 23, 17, 0),
+  setup: 'AURA Lab R Companion: setup check for MC 451\n  [MISSING] sess: not installed',
+  os: 'Windows_NT 10.0.26200 (x64)',
+  vscode: '1.142.0 (Visual Studio Code)',
+  companion: '0.5.4',
+  rExtension: '3.2.0',
+  r: { version: '4.6.1', path: 'C:\\Users\\jdoe7\\R\\Rscript.exe', source: 'the Windows registry' },
+  libPaths: ['C:/Users/jdoe7/AppData/Local/R/win-library/4.6', 'C:/Program Files/R/R-4.6.1/library'],
+  packages: [
+    { name: 'sess', version: '3.2.0', revision: REV },
+    { name: 'languageserver', version: null },
+  ],
+  attach: ['R extension session API: available (vscode-R 3.2.0 or newer)'],
+  companionLog: Array.from({ length: 70 }, (_, i) => `log ${i}`),
+  rExtensionLog: [],
+  ...over,
+});
+
+test('help report: six labeled sections in order, with every version line the instructor asks for', () => {
+  const s = reportSections(input());
+  assert.deepEqual(s.map((x) => x.title.replace(/ \(.*$/, '')), [
+    '1. Check my setup',
+    '2. Versions',
+    '3. Connection between R and VS Code',
+    '4. R Companion log',
+    '5. R extension log: errors and warnings',
+    '6. Errors in the R terminal',
+  ]);
+  const v = s[1].body.join('\n');
+  for (const want of ['Operating system: Windows_NT', 'VS Code: 1.142.0', 'R Companion: 0.5.4', 'R extension (REditorSupport.r): 3.2.0', 'R: 4.6.1, found through the Windows registry', 'R libraries (.libPaths()):', 'sess: 3.2.0 (revision 25da801)', 'languageserver: not installed']) {
+    assert.ok(v.includes(want), want);
+  }
+  assert.equal(s[3].body.length, 50);
+  assert.equal(s[3].body[0], 'log 20');
+  assert.deepEqual(s[4].body, ['(none found)']);
+  assert.deepEqual(s[5].body, [TERMINAL_NOTE]);
+  assert.match(reportSections(input({ rExtension: undefined }))[1].body.join('\n'), /REditorSupport\.r\): not installed or turned off/);
+});
+
+test('help report: the whole text is redacted, carries no em dash, and ends with the email line', () => {
+  const text = buildReport(input(), WIN);
+  assert.doesNotMatch(text, /jdoe7/i);
+  assert.ok(text.includes('~/AppData/Local/R/win-library/4.6'));
+  assert.ok(text.includes('== 2. Versions =='));
+  assert.equal(text.trim().split('\n').pop(), LAST_LINE);
+  assert.match(LAST_LINE, /email to Dr\. Leith/);
+  assert.doesNotMatch(text, /\u2014/);
+});
+
+test('help report: a node in the AURA panel Help section', () => {
+  const help = panelTree({ course: 'mc451', items: [], crossCheck: false, banners: [] }).find((n) => n.id === 'help')!;
+  const node = help.children!.find((c) => c.id === 'help/report')!;
+  assert.equal(node.label, 'Make a help report');
+  assert.deepEqual(node.command, { command: 'auraR.makeHelpReport' });
+  assert.ok(pkg.contributes.commands.some((c: any) => c.command === 'auraR.makeHelpReport' && c.title === 'Make a help report' && c.category === 'AURA'));
+});
+
 test('install script: a local package installs from its folder after the CRAN packages, with forward slashes', () => {
   const plan = installPlan(sessItems(facts({ packages: pkgs(['processx']), bundled: { path: 'C:\\Users\\s\\sess', revision: REV } })), false);
   const s = installScript(plan, 'https://cloud.r-project.org');

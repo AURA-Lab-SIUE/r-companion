@@ -26,7 +26,9 @@ import { registerMenus, menuItems, stepsScript } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
-import { checkRExtensionAtStartup, showRExtension, watchAttach } from './rExtension';
+import { attachLines, checkRExtensionAtStartup, showRExtension, watchAttach } from './rExtension';
+import { RecentLines } from './helpReport';
+import { makeHelpReport } from './helpReportCommand';
 import { SESS_IMPORTS } from './sess';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
@@ -39,6 +41,8 @@ let ctx: vscode.ExtensionContext;
 let trustGate: TrustGate;
 let panel: AuraPanel | undefined;
 let attachNotices: () => number = () => 0;
+// The output channel's last lines, for the help report (VS Code cannot read a channel back)
+const recentOutput = new RecentLines();
 
 // Walkthrough steps complete on these context keys (package.json completionEvents), set only once
 // the step's action has succeeded, never when its button is selected
@@ -73,6 +77,10 @@ function markDone(key: DoneKey) {
 export function activate(context: vscode.ExtensionContext) {
   ctx = context;
   output = vscode.window.createOutputChannel('AURA Lab R Companion');
+  const append = output.append.bind(output);
+  const appendLine = output.appendLine.bind(output);
+  output.append = (s: string) => (recentOutput.add(s), append(s));
+  output.appendLine = (s: string) => (recentOutput.add(s + '\n'), appendLine(s));
   terminalAdapter = new TerminalAdapter(() => findR()[0]?.rterm, context.globalStorageUri.fsPath);
   context.subscriptions.push(output, { dispose: () => terminalAdapter.dispose() });
   trustGate = new TrustGate({
@@ -166,6 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.openLink', (url: unknown) => typeof url === 'string' && vscode.env.openExternal(vscode.Uri.parse(url)));
   reg('auraR.openWorkspaceView', () => openWorkspaceView());
   reg('auraR.fixNotAttached', () => fixNotAttached());
+  reg('auraR.makeHelpReport', () => makeHelpReportCommand());
   // R4 Copilot tools: read-only, on for MC 451 and MC 501, off for MC 427 by default (U3)
   registerCopilotTools(context, {
     setting: () => setting<CopilotToolsSetting>('copilotTools', 'auto'),
@@ -515,6 +524,36 @@ async function openWorkspaceView(): Promise<void> {
     return;
   }
   await vscode.commands.executeCommand('workspaceViewer.focus');
+}
+
+/** AURA: Make a help report: opens it read-only for the student to review, with a Copy button. */
+async function makeHelpReportCommand(): Promise<string> {
+  const text = await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: 'AURA: Making your help report (this can take 30 seconds)' },
+    () =>
+      makeHelpReport({
+        recent: recentOutput,
+        currentCourse,
+        findR,
+        runRscript: (rscript, args, opts) => runRscript(rscript, args, opts),
+        resourcePath,
+        logDir: ctx.logUri.fsPath,
+        companionVersion: String(ctx.extension.packageJSON.version),
+        attachLines,
+      }),
+  );
+  // A virtual document: read-only, nothing written to the student's folder, no save prompt
+  const uri = vscode.Uri.from({ scheme: EXPLAIN_SCHEME, path: '/AURA help report.txt' });
+  explainPages.put(uri, text);
+  await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri), { preview: false });
+  void vscode.window
+    .showInformationMessage('Your help report is open. Read it over, then copy it into an email to Dr. Leith.', 'Copy to clipboard')
+    .then(async (b) => {
+      if (!b) return;
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.showInformationMessage('Help report copied. Paste it into your email.');
+    });
+  return text;
 }
 
 /** R shows (not attached)? The same steps as the explanation's Fix it button. */

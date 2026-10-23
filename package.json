@@ -143,6 +143,11 @@
         "category": "AURA"
       },
       {
+        "command": "auraR.makeHelpReport",
+        "title": "Make a help report",
+        "category": "AURA"
+      },
+      {
         "command": "auraR.fixNotAttached",
         "title": "Fix R (not attached)",
         "category": "AURA"

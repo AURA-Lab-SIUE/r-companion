@@ -166,6 +166,7 @@ export function panelTree(input: PanelInput): PanelNode[] {
     children: [
       { id: 'help/explain', label: 'Explain an R error', icon: 'lightbulb', command: { command: 'auraR.explainError' } },
       { id: 'help/where', label: 'Where to get help', icon: 'comment-discussion', command: { command: 'auraR.getHelp' } },
+      { id: 'help/report', label: 'Make a help report', tooltip: 'Your setup, versions, and error logs, ready to email to your instructor', icon: 'report', command: { command: 'auraR.makeHelpReport' } },
       ...(course && GUIDES[course]
         ? [{ id: 'help/guides', label: GUIDES[course]!.label, tooltip: GUIDES[course]!.url, icon: 'book', command: { command: 'auraR.openLink', args: [GUIDES[course]!.url] } }]
         : []),
