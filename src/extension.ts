@@ -26,6 +26,7 @@ import { registerMenus, menuItems, stepsScript } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
+import { checkRExtensionAtStartup } from './rExtension';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
@@ -179,6 +180,9 @@ export function activate(context: vscode.ExtensionContext) {
   // A course found in the folder or remembered is not a pick: "Pick your course" ticks only when the
   // student picks one, even the one already found. A folder already open does count as opened.
   if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
+
+  // The R extension is a declared dependency, but a student can still turn it off: say so once
+  checkRExtensionAtStartup();
 
   // First run: open the Get Started walkthrough once
   if (!context.globalState.get<boolean>('auraR.walkthroughShown')) {
