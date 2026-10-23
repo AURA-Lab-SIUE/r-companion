@@ -7,6 +7,7 @@ export function installScript(plan: PackageSpec[], mirror: string): string {
   const q = (s: string) => JSON.stringify(s);
   const cran = plan.filter((p) => p.source === 'cran').map((p) => q(p.name));
   const gh = plan.filter((p) => p.source === 'github' && p.repo);
+  const local = plan.filter((p) => p.source === 'local' && p.path);
   const lines = [
     '# Written by AURA Lab R Companion: Install what is missing',
     `options(repos = c(CRAN = ${q(mirror)}), install.packages.compile.from.sources = "never")`,
@@ -36,6 +37,11 @@ export function installScript(plan: PackageSpec[], mirror: string): string {
     for (const p of gh) {
       lines.push(`remotes::install_github(${q(p.repo as string)}, upgrade = "never", force = TRUE, lib = lib)`);
     }
+  }
+  // After CRAN, so a local package's imports are already there (sess needs processx, later, jsonlite,
+  // rstudioapi). Pure R source packages, so no compiler is needed.
+  for (const p of local) {
+    lines.push(`install.packages(${q((p.path as string).replace(/\\/g, '/'))}, repos = NULL, type = "source", lib = lib)`);
   }
   lines.push('cat("AURA install step finished. The check below reads the library to see what actually installed.\\n")');
   return lines.join('\n') + '\n';

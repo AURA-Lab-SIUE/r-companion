@@ -16,10 +16,12 @@ export interface PackageSpec {
   why: string;
   /** Required packages make the setup fail when missing; recommended ones only warn. */
   level: 'required' | 'recommended';
-  /** Where it installs from. GitHub packages need remotes first. */
-  source: 'cran' | 'github';
+  /** Where it installs from. GitHub packages need remotes first; local is a source folder on disk. */
+  source: 'cran' | 'github' | 'local';
   /** owner/repo for GitHub packages. */
   repo?: string;
+  /** The source folder for a local package (sess, from the R extension's own folder). */
+  path?: string;
   /** Lowest version the course expects, if any. */
   minVersion?: string;
 }

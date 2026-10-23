@@ -20,6 +20,8 @@ export interface ProbeResult {
   quarto: string | null;
   git: string | null;
   v2vSetup: { lines: string[] | null; error: string | null };
+  /** sess copies in .libPaths() with their vscode-R source revision (probe.R since 0.5.4). */
+  sess?: { lib: string; revision: string | null }[];
 }
 
 export type Status = 'ok' | 'missing' | 'outdated' | 'broken' | 'warn' | 'info';

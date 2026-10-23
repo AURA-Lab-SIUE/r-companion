@@ -45,6 +45,16 @@ git_path <- unname(Sys.which("git"))
 libs <- .libPaths()
 writable <- vapply(libs, function(l) file.access(l, 2) == 0, logical(1))
 
+# sess (vscode-R 3.x): each copy in the libraries and the vscode-R source revision it was built from
+sess_items <- character()
+for (l in libs) {
+  d <- file.path(l, "sess", "DESCRIPTION")
+  if (file.exists(d)) {
+    rev <- tryCatch(unname(read.dcf(d, fields = "Config/vscode-R/source-revision")[1, 1]), error = function(e) NA_character_)
+    sess_items <- c(sess_items, paste0("{\"lib\":", json_str(l), ",\"revision\":", json_str(rev), "}"))
+  }
+}
+
 # v2v::setup(), captured as plain text lines so the extension can show it as a checklist
 v2v_lines <- "null"
 v2v_error <- "null"
@@ -76,7 +86,8 @@ json <- paste0(
   "\"packages\":", json_arr(pkg_items), ",",
   "\"quarto\":", json_str(if (nzchar(quarto_path)) quarto_path else NA), ",",
   "\"git\":", json_str(if (nzchar(git_path)) git_path else NA), ",",
-  "\"v2vSetup\":{\"lines\":", v2v_lines, ",\"error\":", v2v_error, "}",
+  "\"v2vSetup\":{\"lines\":", v2v_lines, ",\"error\":", v2v_error, "},",
+  "\"sess\":", json_arr(sess_items),
   "}"
 )
 

@@ -16,10 +16,14 @@ import {
   ProbeResult,
   renderText,
   STATUS_WORD,
+  versionBelow,
+  VSCODE_R_ID,
+  VSCODE_R_MIN,
 } from './checklist';
 import { explain, Explanation } from './errors';
 import { inPositron } from './adapters';
 import { installScript } from './installScript';
+import { bundledSessPath, managedReady, parseRevision, SESS_IMPORTS, sessItems } from './sess';
 
 export interface CheckResult {
   course: CourseId;
@@ -100,7 +104,12 @@ export async function runCheck(course: CourseId, progress?: vscode.Progress<{ me
     return { course, items, text, failing: ['R'] };
   }
   progress?.report({ message: 'Asking R which packages are installed (this can take 20 seconds)' });
-  const res = await host.runRscript(r.rscript, [host.resourcePath('probe.R'), packageNames(profile).join(','), profile.runV2vSetup ? '1' : '0'], {
+  // vscode-R 3.x connects R through sess, so the probe also looks up sess's own imports
+  const vscodeR = vscode.extensions.getExtension(VSCODE_R_ID);
+  const vscodeRVersion: string | undefined = vscodeR?.packageJSON?.version;
+  const wantsSess = !inPositron() && vscodeRVersion !== undefined && !versionBelow(vscodeRVersion, VSCODE_R_MIN);
+  const names = [...new Set([...packageNames(profile), ...(wantsSess ? SESS_IMPORTS : [])])];
+  const res = await host.runRscript(r.rscript, [host.resourcePath('probe.R'), names.join(','), profile.runV2vSetup ? '1' : '0'], {
     timeoutMs: 180000,
   });
   let probe: ProbeResult;
@@ -114,13 +123,38 @@ export async function runCheck(course: CourseId, progress?: vscode.Progress<{ me
   const items = buildChecklist(profile, probe, {
     rscript: r.rscript,
     rSource: r.source,
-    vscodeRInstalled: vscode.extensions.getExtension('REditorSupport.r') !== undefined,
-    vscodeRVersion: vscode.extensions.getExtension('REditorSupport.r')?.packageJSON?.version,
+    vscodeRInstalled: vscodeR !== undefined,
+    vscodeRVersion,
     inPositron: inPositron(),
     setupScriptInWorkspace: profile.setupScript ? host.workspaceHas(profile.setupScript) : undefined,
   });
+  if (wantsSess && vscodeR) items.push(...sessItems(sessFacts(vscodeR.extensionPath, vscodeRVersion as string, probe, packageNames(profile))));
   const text = renderText(profile, probe, items, new Date());
   return { course, r, probe, items, text, failing: items.filter(isFailing).map((i) => i.name) };
+}
+
+/** What the sess check needs, read from disk: the bundled copy, vscode-R's managed library, settings. */
+function sessFacts(vscodeRFolder: string, vscodeRVersion: string, probe: ProbeResult, alreadyListed: string[]) {
+  const src = bundledSessPath(vscodeRFolder);
+  let revision: string | null = null;
+  try {
+    revision = parseRevision(fs.readFileSync(path.join(src, 'DESCRIPTION'), 'utf8'));
+  } catch {
+    revision = null;
+  }
+  // vscode-R's global storage sits beside this extension's (the folder name is its id, lowercased)
+  const storageRoot = path.dirname(host.storageDir);
+  const roots = ['reditorsupport.r', VSCODE_R_ID].map((d) => path.join(storageRoot, d));
+  return {
+    vscodeRVersion,
+    sessionWatcher: vscode.workspace.getConfiguration('r').get<boolean>('sessionWatcher', true),
+    bundled: revision ? { path: src, revision } : undefined,
+    rVersion: probe.r.version,
+    libraryCopies: probe.sess ?? [],
+    managedReady: !!revision && roots.some((root) => managedReady(root, probe.r.platform, probe.r.version, revision as string)),
+    packages: probe.packages,
+    alreadyListed,
+  };
 }
 
 export async function checkSetupCommand(opts?: SilentOpts): Promise<CheckResult | undefined> {
