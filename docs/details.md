@@ -2,6 +2,15 @@
 
 The README is the short version. This page carries the detail per feature, the settings, how the extension finds and runs R, accessibility, and how to adapt it for another course. It is the source for the R Companion page on the AURA Lab site.
 
+## What it does (release 0.5.3, the AURA panel)
+
+- **The AURA panel.** An Activity Bar view with My setup (the last Check my setup in one line), Data, Describe, Test, Your steps, and Help. Every task node runs Write R code straight into that task, with the menu's label. It is a native tree view: arrow keys and Enter, **AURA: Focus on R Companion View** in the Command Palette, and each row's accessible name is its label.
+- **Import a data file (CSV or Excel).** A file picker, a table name checked as a valid R name, the sheet for a workbook with more than one, and a peek at the columns before anything is written. Excel reads with `readxl::read_excel()`; MC 451 and MC 501 add `janitor::clean_names()` when a column name has spaces or capitals. A file outside the course folder is written with its full path and a notice.
+- **Join two tables by a shared column.** `left_join()` or `inner_join()`, a key list of the columns both tables have, a warning when the key repeats on the right, and two checks in the code (the row count and the `anti_join()` count of rows with no match).
+- **Your steps.** Blocks go into the open script, or to `steps.R` in the course folder when none is open. **Open my steps** and **Run my steps from the top** (`source(..., echo = TRUE)`, or `knitr::purl()` first for Quarto) work on the script that holds them; the panel lists its `# ---- section ----` headings.
+- **One-click fixes.** Turn off bracketed paste for this folder, Close R terminals and install again, and Update the R extension, offered beside their explanations. Check my setup reads the R extension's version (3.0.0 or newer for R 4.6).
+- **Objects in R** opens the R extension's Workspace panel, the environment view.
+
 ## What it does (release 0.1, "R1 Setup")
 
 - **AURA: Check my setup.** Finds R on your computer and reports, line by line, whether each package your course needs is installed, plus Quarto and Git where the course uses them, and the R extension for VS Code, which every course's setup guide installs. `SETUP OK` and the walkthrough tick appear only when every required line is OK. For MC 451 and MC 501 it also shows the course package's own check, `v2v::setup()`, as a checklist. Every line carries a status word (OK, MISSING, NEEDS UPDATE, BROKEN, CHECK, NOTE), so nothing depends on color.

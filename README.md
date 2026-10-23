@@ -6,11 +6,12 @@ R stays visible. Every menu writes the code into your own script, with a comment
 
 ## What it does
 
+- **The AURA panel.** An icon in the Activity Bar lists every task for your course: setup, data, charts, tests, your steps, and help.
 - **Setup.** Finds R, checks every package your course needs, installs what is missing, and checks again from your R library.
-- **Write R code.** Menus for importing data, wrangling, describing, charts, and the course's statistical tests. Each writes the same code the course pages teach.
+- **Write R code.** Menus for importing a CSV or Excel file, wrangling, joining two tables, describing, charts, and the course's statistical tests. Each writes the same code the course pages teach, into the script you have open (or `steps.R` when none is open), so you can run every step again from the top.
 - **Data viewer and coding sheet.** Opens a data file in a grid, and lets you code rows from your codebook. Your original file is never changed.
 - **Reliability grid** (MC 451 and MC 501). Enter two coding passes and get Cohen's kappa and Krippendorff's alpha.
-- **Explain an R error.** Paste what R printed and get a plain-English cause and the steps to fix it.
+- **Explain an R error.** Paste what R printed and get a plain-English cause and the steps to fix it, with a one-click fix where the Companion can make it.
 
 ## Install
 
@@ -18,7 +19,7 @@ Search for **AURA Lab R Companion** in the Extensions view (Ctrl+Shift+X, or Cmd
 
 ## Commands
 
-Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type **AURA**.
+Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type **AURA**, or select the AURA icon in the Activity Bar.
 
 | Command | What it does |
 |---|---|
@@ -27,6 +28,9 @@ Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type 
 | Install what is missing | Installs the missing packages, then checks again. |
 | Open my course workspace | Opens or clones your course folder. |
 | Write R code | The menus: data, describe, and test. |
+| Import a data file (CSV or Excel) | Picks a file and writes the code that loads it. |
+| Open my steps | Opens the script that holds your steps. |
+| Run my steps from the top | Runs that script in R, in order. |
 | Open the data viewer | The grid and coding sheet. |
 | Reliability grid | Two coding passes and the reliability statistics. |
 | Check my test choice | Says whether the test you chose fits your variables. |
