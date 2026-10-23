@@ -16,6 +16,7 @@ import {
   ProbeResult,
   renderText,
   STATUS_WORD,
+  QUARTO_EXT_ID,
   versionBelow,
   VSCODE_R_ID,
   VSCODE_R_MIN,
@@ -127,6 +128,7 @@ export async function runCheck(course: CourseId, progress?: vscode.Progress<{ me
     vscodeRVersion,
     inPositron: inPositron(),
     setupScriptInWorkspace: profile.setupScript ? host.workspaceHas(profile.setupScript) : undefined,
+    quartoExtension: vscode.extensions.getExtension(QUARTO_EXT_ID) !== undefined,
   });
   if (wantsSess && vscodeR) items.push(...sessItems(sessFacts(vscodeR.extensionPath, vscodeRVersion as string, probe, packageNames(profile))));
   const text = renderText(profile, probe, items, new Date());
@@ -205,6 +207,13 @@ export async function showChecklist(result: CheckResult): Promise<void> {
       label: `$(cloud-download) Install what is missing (${names.length})`,
       detail: names.join(', '),
       action: () => installMissingCommand({ course: result.course }),
+    });
+  }
+  for (const it of result.items.filter((i) => i.showExtension && isFailing(i))) {
+    picks.push({
+      label: `$(extensions) Show the ${it.name.replace(/ for VS Code$/, '')}`,
+      detail: 'Opens it in the Extensions view, where you select Install or Enable',
+      action: () => vscode.commands.executeCommand('workbench.extensions.search', `@id:${it.showExtension}`),
     });
   }
   if (recommended.length > 0) {

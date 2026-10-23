@@ -38,10 +38,14 @@ export interface CheckItem {
   installable?: PackageSpec;
   /** The VS Code extension this item can install, when "Install what is missing" can fix it. */
   installableExtension?: string;
+  /** An extension to show in the Extensions view (Install or Enable), when installing alone cannot fix it. */
+  showExtension?: string;
 }
 
 /** vscode-R. Every course's setup guide installs it (v2v-hub install-r Step 2; the MC 427 software list). */
 export const VSCODE_R_ID = 'REditorSupport.r';
+/** The Quarto extension: the Render button and preview for .qmd files (course page install-quarto, step 2). */
+export const QUARTO_EXT_ID = 'quarto.quarto';
 /** The first vscode-R that attaches to R 4.6 and newer. */
 export const VSCODE_R_MIN = '3.0.0';
 
@@ -64,6 +68,8 @@ export interface ExtraFacts {
   vscodeRVersion?: string;
   inPositron: boolean;
   setupScriptInWorkspace?: boolean;
+  /** The Quarto extension is installed and enabled (VS Code reports a disabled one as absent). */
+  quartoExtension?: boolean;
 }
 
 const BEGIN = '@@AURA_PROBE_BEGIN@@';
@@ -144,6 +150,18 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
       detail: probe.quarto
         ? `found at ${probe.quarto}`
         : 'not found. Quarto is a program, not an R package: install it from quarto.org, then quit VS Code completely and open it again.',
+    });
+  }
+  // MC 451 and MC 501 render .qmd files; Positron brings its own Quarto support
+  if (profile.needsQuarto && !extra.inPositron && extra.quartoExtension !== undefined) {
+    items.push({
+      name: 'Quarto extension for VS Code',
+      group: 'VS Code',
+      status: extra.quartoExtension ? 'ok' : 'missing',
+      detail: extra.quartoExtension
+        ? 'is installed and turned on (the Render button for .qmd files)'
+        : 'is not installed or is turned off. Select Show the Quarto extension below, then Install or Enable.',
+      showExtension: extra.quartoExtension ? undefined : QUARTO_EXT_ID,
     });
   }
   if (profile.needsGit) {

@@ -210,6 +210,40 @@ test('help report: a node in the AURA panel Help section', () => {
   assert.ok(pkg.contributes.commands.some((c: any) => c.command === 'auraR.makeHelpReport' && c.title === 'Make a help report' && c.category === 'AURA'));
 });
 
+import { buildChecklist, isFailing, QUARTO_EXT_ID, ProbeResult } from '../src/checklist';
+import { PROFILES } from '../src/profiles';
+
+const probe461: ProbeResult = {
+  r: { version: '4.6.1', string: 'R version 4.6.1', home: 'C:/R', platform: PLATFORM },
+  libPaths: ['C:/R/lib'],
+  libWritable: [true],
+  userLib: 'C:/R/lib',
+  packages: [],
+  quarto: 'C:/quarto.exe',
+  git: 'C:/git.exe',
+  v2vSetup: { lines: null, error: 'v2v is not installed' },
+};
+const extra = { rscript: 'C:/R/Rscript.exe', rSource: 'PATH', vscodeRInstalled: true, vscodeRVersion: '3.2.0', inPositron: false };
+const quartoRow = (course: 'mc427' | 'mc451' | 'mc501', more: object) =>
+  buildChecklist(PROFILES[course], probe461, { ...extra, ...more }).find((i) => i.name === 'Quarto extension for VS Code');
+
+test('Quarto extension row: MC 451 and MC 501 only, MISSING with a Show button when absent or off, OK when on', () => {
+  for (const c of ['mc451', 'mc501'] as const) {
+    const off = quartoRow(c, { quartoExtension: false })!;
+    assert.equal(off.status, 'missing');
+    assert.ok(isFailing(off));
+    assert.equal(off.showExtension, QUARTO_EXT_ID);
+    assert.equal(off.installableExtension, undefined, 'installing alone cannot enable a turned-off extension');
+    assert.match(off.detail, /Install or Enable/);
+    const on = quartoRow(c, { quartoExtension: true })!;
+    assert.equal(on.status, 'ok');
+    assert.equal(on.showExtension, undefined);
+  }
+  assert.equal(quartoRow('mc427', { quartoExtension: false }), undefined, 'MC 427 does not use Quarto');
+  assert.equal(quartoRow('mc451', { quartoExtension: false, inPositron: true }), undefined, 'Positron has its own Quarto support');
+  assert.equal(quartoRow('mc451', {}), undefined, 'not checked when the host did not say');
+});
+
 test('install script: a local package installs from its folder after the CRAN packages, with forward slashes', () => {
   const plan = installPlan(sessItems(facts({ packages: pkgs(['processx']), bundled: { path: 'C:\\Users\\s\\sess', revision: REV } })), false);
   const s = installScript(plan, 'https://cloud.r-project.org');

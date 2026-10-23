@@ -49,12 +49,14 @@ fs.writeFileSync(
   ),
 );
 // AURA_IT_PREINSTALL_VSIX: install an extension (the R extension's Open VSX .vsix) into the scratch
-// profile before launch, so it is there at startup the way a student has it (runit.js)
+// profile before launch, so it is there at startup the way a student has it (runit.js). Several
+// are separated by ";", and each may be a .vsix path or a gallery id (quarto.quarto).
 if (process.env.AURA_IT_PREINSTALL_VSIX) {
   const cli = process.platform === 'win32' ? path.join(path.dirname(code), 'bin', 'code.cmd') : path.join(path.dirname(code), 'bin', 'code');
   // shell: true runs a .cmd on Windows, so every path is quoted (the install folder has spaces)
   const q = (s) => (process.platform === 'win32' ? `"${s}"` : s);
-  const pre = spawnSync(q(cli), [q(`--extensions-dir=${dirs.extensions}`), '--install-extension', q(process.env.AURA_IT_PREINSTALL_VSIX)], {
+  const installs = process.env.AURA_IT_PREINSTALL_VSIX.split(';').filter(Boolean).flatMap((x) => ['--install-extension', q(x)]);
+  const pre = spawnSync(q(cli), [q(`--extensions-dir=${dirs.extensions}`), ...installs], {
     stdio: 'inherit',
     shell: process.platform === 'win32',
     windowsHide: true,
