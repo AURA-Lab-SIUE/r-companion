@@ -1,7 +1,7 @@
 // R2 Data, wrangling, and the reliability grid: code templates (workstream E, #rgui).
 // Each function reproduces its golden fixture byte for byte when called with no overrides.
 
-import { lines, banner } from './house';
+import { lines, banner, comment } from './house';
 import { GenParams, Template } from './types';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
@@ -546,7 +546,50 @@ const v2vReliabilityPlain: Template = (p) => {
   );
 };
 
+// ---------------- Join two tables by a shared column (0.5.3, both dialects) ----------------
+
+/**
+ * left_join() by default: every row of the left table, plus the right table's columns where the
+ * shared column matches. keepOnlyMatches switches to inner_join(). The two checks after it are the
+ * student's own test for the join-all-na and row-count-grew-after-join error entries.
+ */
+function joinTables(p: GenParams, left: string, right: string, key: string): string {
+  const result = p.result ?? `${left}_${right}`;
+  const inner = !!p.keepOnlyMatches;
+  const verb = inner ? 'inner_join' : 'left_join';
+  return lines(
+    banner(`Join two tables by a shared column: ${verb}()`),
+    ...comment(
+      inner
+        ? `Keep only the rows of ${left} whose ${key} is also in ${right}, and add the columns of ${right}. ` +
+            `Rows with no match on either side are dropped. ${left} itself does not change: the result is ` +
+            `a new table named ${result}. Prints nothing.`
+        : `Keep every row of ${left} and add the columns of ${right} whose ${key} matches. A row whose ` +
+            `${key} is not in ${right} gets NA in the new columns. ${left} itself does not change: the ` +
+            `result is a new table named ${result}. Prints nothing.`,
+    ),
+    `${result} <- ${left} %>%`,
+    `  ${verb}(${right}, by = join_by(${key}))`,
+    '',
+    ...comment(
+      inner
+        ? `Check the join two ways: how many rows are left, and how many rows of ${left} found no match ` +
+            'and were dropped.'
+        : `Check the join two ways: the row count should equal the rows in ${left} (a bigger number means ` +
+            `${key} repeats in ${right}), and the second count says how many rows found no match.`,
+    ),
+    `nrow(${result})`,
+    `${left} %>%`,
+    `  anti_join(${right}, by = join_by(${key})) %>%`,
+    '  nrow()',
+  );
+}
+
+const mc427JoinTables: Template = (p) => joinTables(p, d(p, 'df'), p.right ?? 'apps', p.column ?? 'posted_from');
+const v2vJoinTables: Template = (p) => joinTables(p, d(p, 'chat'), p.right ?? 'channel_type', p.column ?? 'channel');
+
 export const MC427_R2: Record<string, Template> = {
+  'join-tables': mc427JoinTables,
   'import-xlsx': mc427ImportXlsx,
   'import-csv': mc427ImportCsv,
   filter: mc427Filter,
@@ -558,6 +601,7 @@ export const MC427_R2: Record<string, Template> = {
 };
 
 export const V2V_R2: Record<string, Template> = {
+  'join-tables': v2vJoinTables,
   'import-xlsx': v2vImportXlsx,
   'import-csv': v2vImportCsv,
   'import-course-dataset': v2vImportCourseDataset,

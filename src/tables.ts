@@ -78,3 +78,53 @@ export function tableChoices(task: string, has: Set<string>, analysisFile?: stri
   if (task === 'count' && has.has('analysis')) out.push(analysis);
   return out;
 }
+
+// ---------------- Join two tables (0.5.3) ----------------
+
+/** Tables the course corpus makes, with the R that reads each without the student's session. */
+const COURSE_SOURCES: Record<string, string> = {
+  chat: 'v2v::twitch_chat()',
+  streams: 'v2v::twitch_streams()',
+};
+
+/**
+ * Where each table assigned in the code above the cursor comes from, when R can read it again
+ * without the student's session: a read_csv(), read_excel(), or read_rds() of a file, or the
+ * course corpus. Relative paths are made absolute against `folder` so the probe finds the file.
+ * A table built from other tables (a join, a filter) has no entry: its columns are not knowable
+ * without running the script.
+ */
+export function tableSources(codeAbove: string, folder?: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const abs = (p: string) => (folder && !/^([A-Za-z]:)?[\\/]/.test(p) ? `${folder.replace(/\\/g, '/')}/${p}` : p);
+  const read = /^[ \t]*([A-Za-z][A-Za-z0-9._]*)[ \t]*<-[ \t]*(readr::)?(read_csv|read_rds|readRDS|readxl::read_excel)\("([^"]+)"(?:,\s*sheet\s*=\s*"([^"]+)")?\)/gm;
+  for (const m of codeAbove.matchAll(read)) {
+    const [, name, , fn, file, sheet] = m;
+    const p = JSON.stringify(abs(file));
+    out.set(
+      name,
+      fn === 'read_csv'
+        ? `readr::read_csv(${p}, show_col_types = FALSE)`
+        : fn === 'readxl::read_excel'
+          ? `readxl::read_excel(${p}${sheet ? `, sheet = ${JSON.stringify(sheet)}` : ''})`
+          : `readRDS(${p})`,
+    );
+  }
+  for (const m of codeAbove.matchAll(/^[ \t]*(chat|streams)[ \t]*<-[ \t]*(v2v::)?twitch_(chat|streams)\(\)/gm)) {
+    out.set(m[1], COURSE_SOURCES[m[1]]);
+  }
+  return out;
+}
+
+/** Column names both tables have, in the left table's order: the keys a join can use. */
+export function sharedColumns(left: string[], right: string[]): string[] {
+  const r = new Set(right);
+  return left.filter((c) => r.has(c));
+}
+
+/** A warning when the key repeats in the right-hand table, so the join would add rows. */
+export function repeatWarning(key: string, right: string, distinct: number, rows: number): string | undefined {
+  if (distinct >= rows) return undefined;
+  const repeats = rows - distinct;
+  return `${key} repeats in ${right} (${repeats} of ${rows} rows share a value with another row), so the join will add rows. If each ${key} should appear once, count it first.`;
+}

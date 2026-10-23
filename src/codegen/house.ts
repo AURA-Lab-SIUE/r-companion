@@ -16,6 +16,24 @@ export function lines(...rows: string[]): string {
   return rows.join('\n') + '\n';
 }
 
+/**
+ * A comment whose text holds names the student chose, wrapped into "# " lines no wider than
+ * `width`, so a long table name never runs the line off the screen.
+ */
+export function comment(text: string, width = 96): string[] {
+  const out: string[] = [];
+  let line = '#';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (line.length > 1 && line.length + 1 + word.length > width) {
+      out.push(line);
+      line = '#';
+    }
+    line += ' ' + word;
+  }
+  if (line.length > 1) out.push(line);
+  return out;
+}
+
 /** The comment-header banner that opens every generated block. */
 export function banner(title: string): string {
   return `# ---- ${title} ----`;

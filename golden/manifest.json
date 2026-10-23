@@ -51,6 +51,32 @@
       "sentence_template": null
     },
     {
+      "id": "mc427.join-tables",
+      "release": "R2",
+      "task": "join-tables",
+      "profile": "mc427",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc427/r2-join-tables.R",
+      "requires": [
+        "fixtures/mc427/_setup-app-lookup.R",
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "\\[1\\] 750",
+        "\\[1\\] 0"
+      ],
+      "sentence_template": null
+    },
+    {
       "id": "mc451.import-csv",
       "release": "R2",
       "task": "import-csv",
@@ -655,6 +681,44 @@
         "FALSE\\s+3457",
         "TRUE\\s+31309",
         "NA\\s+501"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.join-tables",
+      "release": "R2",
+      "task": "join-tables",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-join-tables.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-channel-lookup.R"
+      ],
+      "data": [],
+      "must_print": [
+        "\\[1\\] 35267"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.join-tables",
+      "release": "R2",
+      "task": "join-tables",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-join-tables.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-channel-lookup.R"
+      ],
+      "data": [],
+      "must_print": [
+        "\\[1\\] 35267"
       ],
       "sentence_template": null
     },

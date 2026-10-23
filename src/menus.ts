@@ -15,7 +15,7 @@ import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint
 import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
 import { CHART_TASKS, watchSavedChart } from './chartWatch';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
-import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES } from './tables';
+import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
 /** What the menus need from the host extension. */
@@ -67,6 +67,7 @@ const CATALOG: TaskDef[] = [
   { task: 'join-chat-streams', label: 'Match each message to its stream (join_chat_streams)', category: 'R2 Data' },
   { task: 'channel-lookup', label: 'Label each channel by its top category', category: 'R2 Data' },
   { task: 'join-lookup', label: 'Join the channel labels onto the messages', category: 'R2 Data' },
+  { task: 'join-tables', label: 'Join two tables by a shared column', category: 'R2 Data' },
   { task: 'label-from-snapshot', label: 'Label each message per moment (alternative)', category: 'R2 Data', alternative: true },
   { task: 'export-csv', label: 'Save a table as a CSV file', category: 'R2 Data', outFile: true },
   { task: 'export-rds', label: 'Save a table as an RDS file', category: 'R2 Data', outFile: true },
@@ -182,7 +183,11 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
   // These open a webview, a command, or a second pick instead of writing one block directly
   if (def.task === 'reliability') return vscode.commands.executeCommand('auraR.openReliabilityGrid');
   if (def.task === 'check-test-choice') return vscode.commands.executeCommand('auraR.checkTestChoice');
-  if (def.task === 'import-csv') return importDataFile(deps, profile, def.label);
+  if (def.task === 'import-csv') {
+    await importDataFile(deps, profile, def.label);
+    return;
+  }
+  if (def.task === 'join-tables') return joinTablesFlow(deps, profile, def.label);
   let task = def.task;
   if (task === 'apa-check') {
     const test = await pickApaTest(profile);
@@ -228,7 +233,7 @@ export interface ImportPreset {
 // Pick the file, name the table, choose the Excel sheet, and look at the columns before anything
 // is written (RStudio's import preview and JASP's CSV preview in one list). Esc at any step writes
 // nothing.
-async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string, preset: ImportPreset = {}): Promise<void> {
+async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string, preset: ImportPreset = {}): Promise<ImportedTable | undefined> {
   const picked = preset.file ? [vscode.Uri.file(preset.file)] : await vscode.window.showOpenDialog({
     title: 'Pick the data file to import',
     canSelectMany: false,
@@ -310,6 +315,107 @@ async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string
   if (profile !== 'mc427' && probe && namesNeedCleaning(probe).length > 0) params.cleanNames = true;
   const task = kind === 'excel' ? 'import-xlsx' : 'import-csv';
   await insertAndMaybeRun(deps, generate(profile, task, params), label, task, undefined, [name.trim()]);
+  const expr = probeExpr(file, sheet);
+  return { name: name.trim(), probe: params.cleanNames ? `janitor::clean_names(${expr})` : expr };
+}
+
+/** A table an import wrote, and the R that reads it again without the student's session. */
+interface ImportedTable {
+  name: string;
+  probe: string;
+}
+
+// ---------------- Join two tables by a shared column (0.5.3) ----------------
+
+const A_DATA_FILE = '$(folder-opened) A data file';
+
+// Pick the table to keep every row of, the table to take columns from, and the shared column.
+// The tables offered are the ones the script assigns above the cursor or a run block made; a
+// data file is imported first. The key list is the columns both tables have when R can read both
+// without the student's session; otherwise the key is typed and checked against the side it can
+// read. A key that repeats on the right gets a warning before anything is written.
+async function joinTablesFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
+  const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const sources = tableSources(above, folder);
+  const rds = folder ? path.join(folder, 'data', 'twitch_analysis.RDS') : undefined;
+  if (rds && fs.existsSync(rds)) sources.set('analysis', `readRDS(${JSON.stringify(rds.replace(/\\/g, '/'))})`);
+  const names = [...new Set([...assignedNames(above), ...ranTables])];
+
+  const pickTable = async (title: string, placeHolder: string, exclude?: string): Promise<ImportedTable | undefined> => {
+    const items = names
+      .filter((n) => n !== exclude)
+      .map((n) => ({ label: n, description: sources.has(n) ? undefined : 'made in your script', value: n }));
+    const chosen = await vscode.window.showQuickPick([...items, { label: A_DATA_FILE, description: 'import it first', value: '' }], { title, placeHolder });
+    if (!chosen) return undefined;
+    if (!chosen.value) return importDataFile(deps, profile, 'Import a data file (CSV or Excel)');
+    return { name: chosen.value, probe: sources.get(chosen.value) ?? '' };
+  };
+
+  const left = await pickTable(label, 'The table you keep every row of');
+  if (!left) return;
+  const right = await pickTable(label, 'The table you take columns from', left.name);
+  if (!right) return;
+
+  const probeOf = async (t: ImportedTable): Promise<ColumnProbe | undefined> => {
+    if (!t.probe) return undefined;
+    try {
+      return await runColumnProbe(deps, t.probe);
+    } catch (e: any) {
+      deps.output.appendLine(`Could not read the columns of ${t.name}: ${e?.message ?? e}`);
+      return undefined;
+    }
+  };
+  const [lp, rp] = [await probeOf(left), await probeOf(right)];
+  let key: string | undefined;
+  if (lp && rp) {
+    const shared = sharedColumns(lp.columns.map((c) => c.name), rp.columns.map((c) => c.name));
+    if (shared.length === 0) {
+      vscode.window.showWarningMessage(`${left.name} and ${right.name} have no column with the same name, so they cannot be joined yet. Rename one with rename() first.`);
+      return;
+    }
+    const pick = await vscode.window.showQuickPick(
+      shared.map((c) => ({ label: c, description: typeWord(rp.columns.find((x) => x.name === c)!.type) })),
+      { title: label, placeHolder: `The column ${left.name} and ${right.name} share` },
+    );
+    key = pick?.label;
+  } else {
+    const known = (lp ?? rp)?.columns.map((c) => c.name);
+    key = await vscode.window.showInputBox({
+      title: label,
+      prompt: `The column ${left.name} and ${right.name} share`,
+      validateInput: (v) =>
+        !/^[A-Za-z.][A-Za-z0-9._]*$/.test(v.trim())
+          ? 'Type one column name, with no spaces or quotation marks.'
+          : known && !known.includes(v.trim())
+            ? `${(lp ? left : right).name} has no column named ${v.trim()}.`
+            : undefined,
+      ignoreFocusOut: true,
+    });
+    key = key?.trim();
+  }
+  if (!key) return;
+
+  if (rp) {
+    const col = rp.columns.find((c) => c.name === key);
+    const warning = col ? repeatWarning(key, right.name, col.n_distinct, rp.rows) : undefined;
+    if (warning) {
+      const go = await vscode.window.showWarningMessage(warning, 'Write the join anyway');
+      if (!go) return;
+    }
+  }
+
+  const how = await vscode.window.showQuickPick(
+    [
+      { label: `Keep every row of ${left.name}`, description: 'left_join(), the usual choice', inner: false as boolean },
+      { label: 'Keep only rows that match on both sides', description: 'inner_join()', inner: true },
+    ],
+    { title: label, placeHolder: 'Which rows do you keep?' },
+  );
+  if (!how) return;
+  const params: GenParams = { data: left.name, right: right.name, column: key, keepOnlyMatches: how.inner };
+  await insertAndMaybeRun(deps, generate(profile, 'join-tables', params), label, 'join-tables', undefined, [`${left.name}_${right.name}`]);
 }
 
 /** The sheet names in an Excel workbook, read by R into a JSON file (never console text). */

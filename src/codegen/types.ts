@@ -29,6 +29,10 @@ export interface GenParams {
   sheet?: string;
   /** Add janitor::clean_names() after the read (MC 451 and MC 501, when a column name needs it). */
   cleanNames?: boolean;
+  /** The second table of a join (the one columns are taken from). */
+  right?: string;
+  /** Join with inner_join(): keep only the rows that match on both sides. */
+  keepOnlyMatches?: boolean;
 }
 
 export interface GenOptions {
