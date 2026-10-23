@@ -124,6 +124,37 @@
         "command": "auraR.checkTestChoice",
         "title": "Check my test choice",
         "category": "AURA"
+      },
+      {
+        "command": "auraR.importDataFile",
+        "title": "Import a data file (CSV or Excel)",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openSteps",
+        "title": "Open my steps",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.runSteps",
+        "title": "Run my steps from the top",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openWorkspaceView",
+        "title": "Show what is loaded in R (Workspace panel)",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.fixNotAttached",
+        "title": "Fix R (not attached)",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.refreshPanel",
+        "title": "Refresh",
+        "category": "AURA",
+        "icon": "$(refresh)"
       }
     ],
     "languageModelTools": [
@@ -372,7 +403,47 @@
           }
         ]
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aura-r-companion",
+          "title": "AURA R Companion",
+          "icon": "media/panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "aura-r-companion": [
+        {
+          "id": "auraR.panel",
+          "name": "R Companion",
+          "icon": "media/panel.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "auraR.panel",
+        "contents": "Pick your course and this panel lists every R Companion task for it: setup, data, charts, tests, your steps, and help.\n[Pick my course](command:auraR.pickCourse)",
+        "when": "!auraR.courseSet"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "auraR.refreshPanel",
+          "when": "view == auraR.panel",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "auraR.refreshPanel",
+          "when": "false"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

@@ -68,6 +68,8 @@ export interface SetupHost {
   cranMirror: () => string;
   /** The check found nothing to fix (ticks the walkthrough step). */
   onSetupOk: () => void;
+  /** Every finished check, for the AURA panel's status line. */
+  onChecked?: (result: CheckResult) => void;
   runCourseSetupCheck: () => Promise<unknown>;
   showExplanations: (found: Explanation[], heading?: string) => Promise<void>;
 }
@@ -140,6 +142,7 @@ export async function checkSetupCommand(opts?: SilentOpts): Promise<CheckResult 
   host.output.appendLine(result.text);
   host.output.appendLine('');
   if (result.failing.length === 0) host.onSetupOk();
+  host.onChecked?.(result);
   if (!opts?.silent) void showChecklist(result);
   return result;
 }

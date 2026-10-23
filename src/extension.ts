@@ -16,14 +16,15 @@ import * as os from 'os';
 import { CourseId, CourseProfile, PROFILES, COURSE_IDS, courseSetMessage, isCourseId } from './profiles';
 import { discoverR, systemEnv, RCandidate } from './rDiscovery';
 import { STATUS_WORD } from './checklist';
-import { ActionItem, initSetup, installMissingCommand, installExtension, checkSetupCommand, runCheck, RunResult, SilentOpts } from './setup';
-import { VSCODE_R_ID } from './checklist';
+import { ActionItem, CheckResult, initSetup, installMissingCommand, installExtension, checkSetupCommand, runCheck, RunResult, SilentOpts } from './setup';
+import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
 import { explain, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
 import { checkForUpdate, installSource } from './update';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
-import { registerMenus } from './menus';
+import { registerMenus, menuItems, stepsScript } from './menus';
+import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
 import { checkTestChoice, fittingTests, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
@@ -35,6 +36,7 @@ let output: vscode.OutputChannel;
 let terminalAdapter: TerminalAdapter;
 let ctx: vscode.ExtensionContext;
 let trustGate: TrustGate;
+let panel: AuraPanel | undefined;
 
 // Walkthrough steps complete on these context keys (package.json completionEvents), set only once
 // the step's action has succeeded, never when its button is selected
@@ -98,6 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
     workspaceHas,
     cranMirror: () => setting<string>('cranMirror', 'https://cloud.r-project.org'),
     onSetupOk: () => markDone(DONE.setup),
+    onChecked: (r) => panel?.setSetupLine(setupLine(r)),
     runCourseSetupCheck,
     showExplanations,
   });
@@ -133,6 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
     course: currentCourse(),
     walkthroughDone: [...doneKeys],
     waitingForTrust: trustGate.waiting,
+    panel: panel?.roots(),
   }));
   // R2/R3/R4 code-generation menus and the reliability grid (workstream E)
   registerMenus(context, {
@@ -150,6 +154,19 @@ export function activate(context: vscode.ExtensionContext) {
     mc427TestMenu: () => (setting<string>('mc427TestMenu', 'cross-check') === 'writer' ? 'writer' : 'cross-check'),
   });
   reg('auraR.checkTestChoice', (input?: TestChoiceInput) => checkTestChoiceCommand(input));
+  // The AURA panel in the Activity Bar (0.5.3): a second door to the same commands
+  panel = registerPanel(context, {
+    currentCourse,
+    items: (course) => menuItems(course, setting<boolean>('apaCheck', true)),
+    crossCheck: (course) => course === 'mc427' && setting<string>('mc427TestMenu', 'cross-check') !== 'writer',
+    stepsScript: () => {
+      const s = stepsScript();
+      return s === undefined ? undefined : path.basename(typeof s === 'string' ? s : s.fileName);
+    },
+  });
+  reg('auraR.openLink', (url: unknown) => typeof url === 'string' && vscode.env.openExternal(vscode.Uri.parse(url)));
+  reg('auraR.openWorkspaceView', () => openWorkspaceView());
+  reg('auraR.fixNotAttached', () => fixNotAttached());
   // R4 Copilot tools: read-only, on for MC 451 and MC 501, off for MC 427 by default (U3)
   registerCopilotTools(context, {
     setting: () => setting<CopilotToolsSetting>('copilotTools', 'auto'),
@@ -212,6 +229,8 @@ async function pickCourse(alwaysAsk: boolean): Promise<CourseId | undefined> {
   );
   if (!pick) return undefined;
   await rememberCourse(pick.id);
+  void vscode.commands.executeCommand('setContext', 'auraR.courseSet', true);
+  panel?.refresh();
   markDone(DONE.course);
   vscode.window.showInformationMessage(courseSetMessage(PROFILES[pick.id]));
   return pick.id;
@@ -471,6 +490,41 @@ async function openExplanation(x: Explanation): Promise<void> {
       .showInformationMessage(`The R Companion can do this for you: ${FIX_IT_LABEL[fix]}.`, FIX_IT_LABEL[fix])
       .then((b) => b && runFixIt(fix));
   }
+}
+
+/** The AURA panel's status line: "MC 451, R 4.5.2, everything installed" or "2 items to fix". */
+function setupLine(r: CheckResult): string {
+  const parts = [PROFILES[r.course].short];
+  if (r.probe) parts.push(`R ${r.probe.r.version}`);
+  parts.push(r.failing.length === 0 ? 'everything installed' : `${r.failing.length} item${r.failing.length === 1 ? '' : 's'} to fix`);
+  return parts.join(', ');
+}
+
+// Rank 6, owner q-20261022-0005 = A: the environment view is vscode-R's Workspace panel. The
+// Companion opens it rather than building a second one. vscode-R reports no attach state through
+// any API, so the panel node says it is empty until R is attached, and its sibling runs the fix.
+async function openWorkspaceView(): Promise<void> {
+  if (!vscode.extensions.getExtension(VSCODE_R_ID)) {
+    const b = await vscode.window.showWarningMessage(
+      "The Workspace panel comes with the R extension for VS Code, which is not installed. Install what is missing adds it.",
+      'Install what is missing',
+    );
+    if (b) await installMissingCommand();
+    return;
+  }
+  await vscode.commands.executeCommand('workspaceViewer.focus');
+}
+
+/** R shows (not attached)? The version check, the update, then a fresh R terminal and the steps. */
+async function fixNotAttached(): Promise<void> {
+  const version: string | undefined = vscode.extensions.getExtension(VSCODE_R_ID)?.packageJSON?.version;
+  if (!version || versionBelow(version, VSCODE_R_MIN)) {
+    await runFixIt('update-r-extension');
+    return;
+  }
+  const found = explain('R: (not attached)');
+  if (found[0]) await openExplanation(found[0]);
+  void vscode.commands.executeCommand('r.createRTerm');
 }
 
 /** R terminals the extension or vscode-R opened. */

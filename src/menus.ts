@@ -15,8 +15,12 @@ import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint
 import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION } from './insert';
 import { CHART_TASKS, watchSavedChart } from './chartWatch';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
+import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
+import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
+
+export { menuTasks, menuItems } from './catalog';
 
 /** What the menus need from the host extension. */
 export interface MenuDeps {
@@ -42,75 +46,6 @@ export interface MenuDeps {
   plainCalls: () => boolean;
 }
 
-interface TaskDef {
-  task: string;
-  label: string;
-  category: string;
-  /** A column-choosing task: probe the data and pick columns. */
-  columns?: 'one' | 'many';
-  /** A file-writing task: ask for the output name. */
-  outFile?: boolean;
-  alternative?: boolean;
-}
-
-// The menu catalog. hasTask(profile, task) decides which of these a course actually offers.
-const CATALOG: TaskDef[] = [
-  { task: 'import-csv', label: 'Import a data file (CSV or Excel)', category: 'R2 Data' },
-  { task: 'import-course-dataset', label: 'Load the course Twitch corpus', category: 'R2 Data' },
-  { task: 'import-rds', label: 'Load your saved analysis (RDS)', category: 'R2 Data' },
-  { task: 'filter', label: 'Keep some rows (filter)', category: 'R2 Data', columns: 'one' },
-  { task: 'select', label: 'Keep some columns (select)', category: 'R2 Data', columns: 'many' },
-  { task: 'mutate', label: 'Add a column (mutate)', category: 'R2 Data' },
-  { task: 'count', label: 'Count rows per group (count)', category: 'R2 Data', columns: 'one' },
-  { task: 'clean-dates', label: 'Turn the date column into a time (clean_dates)', category: 'R2 Data' },
-  { task: 'convert-timestamp', label: 'Turn the date column into a time (plain, no v2v)', category: 'R2 Data', alternative: true },
-  { task: 'join-chat-streams', label: 'Match each message to its stream (join_chat_streams)', category: 'R2 Data' },
-  { task: 'channel-lookup', label: 'Label each channel by its top category', category: 'R2 Data' },
-  { task: 'join-lookup', label: 'Join the channel labels onto the messages', category: 'R2 Data' },
-  { task: 'join-tables', label: 'Join two tables by a shared column', category: 'R2 Data' },
-  { task: 'label-from-snapshot', label: 'Label each message per moment (alternative)', category: 'R2 Data', alternative: true },
-  { task: 'export-csv', label: 'Save a table as a CSV file', category: 'R2 Data', outFile: true },
-  { task: 'export-rds', label: 'Save a table as an RDS file', category: 'R2 Data', outFile: true },
-  { task: 'reliability', label: 'Reliability grid and statistic', category: 'R2 Data' },
-  { task: 'frequency', label: 'Frequency table', category: 'R3 Describe', columns: 'one' },
-  { task: 'crosstab', label: 'Crosstab with proportions', category: 'R3 Describe' },
-  { task: 'grouped-summary', label: 'Summary by group', category: 'R3 Describe' },
-  { task: 'bar', label: 'Bar chart', category: 'R3 Describe' },
-  { task: 'histogram', label: 'Histogram', category: 'R3 Describe' },
-  { task: 'histogram-grouped', label: 'Histogram comparing two groups', category: 'R3 Describe', alternative: true },
-  { task: 'line', label: 'Line chart over time', category: 'R3 Describe' },
-  { task: 'boxplot', label: 'Boxplot', category: 'R3 Describe' },
-  { task: 'settings-block', label: 'Settings block (name the test variables)', category: 'R4 Test' },
-  { task: 't-test', label: 'Welch t-test with Cohen\'s d', category: 'R4 Test' },
-  { task: 't-test-missing', label: 'Welch t-test, dropping missing values', category: 'R4 Test' },
-  { task: 'chi-square', label: 'Chi-square test with Cramer\'s V', category: 'R4 Test' },
-  { task: 'anova', label: 'One-way ANOVA with eta squared', category: 'R4 Test' },
-  { task: 'regression', label: 'Linear regression', category: 'R4 Test' },
-  { task: 'correlation', label: 'Correlation', category: 'R4 Test' },
-  { task: 'power', label: 'Power analysis for your sample size', category: 'R4 Test' },
-  { task: 'check-test-choice', label: 'Check my test choice', category: 'R4 Test' },
-  { task: 'apa-check', label: 'APA numbers to check your sentence', category: 'R4 Test' },
-];
-
-
-// The R4 tasks MC 427 offers as a check on Copilot's code under U2 ("cross-check")
-const R4_TEST_TASKS = new Set(['t-test', 't-test-missing', 'chi-square', 'anova', 'regression', 'correlation', 'apa-check']);
-
-function profileOf(course: CourseId): GenProfile {
-  return course;
-}
-
-function offers(profile: GenProfile, task: string, apaCheck: boolean): boolean {
-  if (task === 'check-test-choice') return true;
-  if (task === 'apa-check') return apaCheck && hasTask(profile, apaTask('t-test'));
-  return hasTask(profile, task);
-}
-
-/** The Write R code items a course offers, in menu order (the integration suites pick by index). */
-export function menuTasks(profile: GenProfile, apaCheck: boolean): string[] {
-  return CATALOG.filter((t) => offers(profile, t.task, apaCheck)).map((t) => t.task);
-}
-
 // The last text editor the student worked in. A chart tab, the data viewer, or the error
 // explanation takes focus and leaves no active text editor, and without this the next block would
 // land in a new Untitled file instead of the student's script (seen in the 0.5.1 video run, 2026-10-19).
@@ -122,12 +57,22 @@ function rememberEditor(e: vscode.TextEditor | undefined): void {
   }
 }
 
+// A script the student closed is not one to write into. VS Code keeps a closed file's document in
+// memory for a while (isClosed stays false), so a script counts as open while it has a tab.
+function stillOpen(doc: vscode.TextDocument): boolean {
+  if (doc.isClosed) return false;
+  const uri = doc.uri.toString();
+  return vscode.window.tabGroups.all.some((g) =>
+    g.tabs.some((t) => t.input instanceof vscode.TabInputText && t.input.uri.toString() === uri),
+  );
+}
+
 // The editor to write into: the active one, or else the script the student last worked in, brought
 // back to the front with its cursor where it was.
 async function scriptEditor(): Promise<vscode.TextEditor | undefined> {
   const active = vscode.window.activeTextEditor;
   if (active) return active;
-  if (!lastTextDoc || lastTextDoc.doc.isClosed) return undefined;
+  if (!lastTextDoc || !stillOpen(lastTextDoc.doc)) return undefined;
   const editor = await vscode.window.showTextDocument(lastTextDoc.doc, {
     viewColumn: lastTextDoc.column,
     selection: lastTextDoc.selection,
@@ -145,23 +90,96 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   );
   const reg = (id: string, fn: (...a: any[]) => any) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
-  reg('auraR.writeCode', () => writeCodeCommand(deps));
+  // A task (from the AURA panel) skips the first pick; a tree item or no argument shows the menu
+  reg('auraR.writeCode', (task?: unknown) => writeCodeCommand(deps, typeof task === 'string' ? task : undefined));
   reg('auraR.importDataFile', async (preset?: ImportPreset) => {
     const course = deps.currentCourse() ?? (await deps.pickCourse(false));
     if (course) await importDataFile(deps, profileOf(course), 'Import a data file (CSV or Excel)', preset);
   });
   reg('auraR.openReliabilityGrid', () => openReliabilityGrid(context, deps));
+  reg('auraR.openSteps', () => openSteps());
+  reg('auraR.runSteps', () => runSteps(context, deps));
+  reg('auraR.goToLine', (line: number) => goToLine(line));
+}
+
+// ---------------- Your steps (0.5.3) ----------------
+
+/** steps.R in the course folder, or undefined with no folder open. */
+function stepsFile(): string | undefined {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  return folder ? path.join(folder.uri.fsPath, STEPS_FILE) : undefined;
+}
+
+/** The script that holds the student's steps: the one they work in, else steps.R if it exists. */
+export function stepsScript(): vscode.TextDocument | string | undefined {
+  const active = vscode.window.activeTextEditor?.document;
+  if (active && active.uri.scheme === 'file' && runnableScript(active.fileName)) return active;
+  if (lastTextDoc && stillOpen(lastTextDoc.doc) && lastTextDoc.doc.uri.scheme === 'file' && runnableScript(lastTextDoc.doc.fileName)) {
+    return lastTextDoc.doc;
+  }
+  const steps = stepsFile();
+  return steps && fs.existsSync(steps) ? steps : undefined;
+}
+
+const NO_STEPS =
+  'You have no steps yet. Write R code puts each block into the script you have open, or into steps.R in your course folder when no script is open.';
+
+async function openSteps(): Promise<void> {
+  const s = stepsScript();
+  if (!s) {
+    vscode.window.showInformationMessage(NO_STEPS);
+    return;
+  }
+  await vscode.window.showTextDocument(typeof s === 'string' ? await vscode.workspace.openTextDocument(s) : s, { preview: false });
+}
+
+async function runSteps(context: vscode.ExtensionContext, deps: MenuDeps): Promise<void> {
+  const s = stepsScript();
+  if (!s) {
+    vscode.window.showInformationMessage(NO_STEPS);
+    return;
+  }
+  const doc = typeof s === 'string' ? await vscode.workspace.openTextDocument(s) : s;
+  // source() reads the file on disk, so unsaved changes are saved first (as vscode-R's Source does)
+  if (doc.isDirty) await doc.save();
+  if (!context.globalState.get<boolean>('auraR.runStepsNoticeShown')) {
+    void context.globalState.update('auraR.runStepsNoticeShown', true);
+    void vscode.window.showInformationMessage(RUN_STEPS_NOTICE);
+  }
+  const code = runStepsCode(doc.fileName, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
+  const run = async () => {
+    deps.output.appendLine(`Run my steps from the top: ${code}`);
+    await deps.runInSession(code);
+  };
+  if (!(await deps.requireTrust('running your steps', run))) return;
+  await run();
+}
+
+/** Jump to a banner line the AURA panel lists, in the script the student works in. */
+async function goToLine(line: number): Promise<void> {
+  const s = stepsScript();
+  const editor = vscode.window.activeTextEditor ?? (s ? await vscode.window.showTextDocument(typeof s === 'string' ? await vscode.workspace.openTextDocument(s) : s) : undefined);
+  if (!editor || typeof line !== 'number') return;
+  const pos = new vscode.Position(Math.min(line, editor.document.lineCount - 1), 0);
+  editor.selection = new vscode.Selection(pos, pos);
+  editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.AtTop);
+  await vscode.window.showTextDocument(editor.document, editor.viewColumn);
 }
 
 // ---------------- the write-code wizard ----------------
 
-async function writeCodeCommand(deps: MenuDeps): Promise<void> {
+async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<void> {
   const course = deps.currentCourse() ?? (await deps.pickCourse(false));
   if (!course) return;
   const profile = profileOf(course);
   const crossCheck = course === 'mc427' && deps.mc427TestMenu() === 'cross-check';
 
   const offered = CATALOG.filter((t) => offers(profile, t.task, deps.apaCheck()));
+  const preset = presetTask ? offered.find((t) => t.task === presetTask) : undefined;
+  if (presetTask && !preset) {
+    vscode.window.showWarningMessage(`${course.toUpperCase()} does not offer that task. Pick another from Write R code.`);
+    return;
+  }
   const picks: (vscode.QuickPickItem & { def?: TaskDef })[] = [];
   let category = '';
   for (const t of offered) {
@@ -172,11 +190,13 @@ async function writeCodeCommand(deps: MenuDeps): Promise<void> {
     }
     picks.push({ label: t.label, description: t.alternative ? 'alternative' : undefined, def: t });
   }
-  const chosen = await vscode.window.showQuickPick(picks, {
-    title: `Write R code (${course.toUpperCase()})`,
-    placeHolder: 'Pick a task',
-    matchOnDescription: true,
-  });
+  const chosen = preset
+    ? { def: preset }
+    : await vscode.window.showQuickPick(picks, {
+        title: `Write R code (${course.toUpperCase()})`,
+        placeHolder: 'Pick a task',
+        matchOnDescription: true,
+      });
   const def = chosen?.def;
   if (!def) return;
 
@@ -587,7 +607,21 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
 // Insert the generated code at the cursor, then offer to run it.
 async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string, makes: string[] = []): Promise<void> {
   const editor = await scriptEditor();
-  if (!editor) {
+  const steps = stepsFile();
+  if (!editor && steps) {
+    // No script open (0.5.3, coordinator decision on spec Rank 5): the block goes to the end of
+    // steps.R in the course folder, so every block lives in exactly one script. The file is made
+    // only now, by the first block written, never on activation.
+    const before = fs.existsSync(steps) ? fs.readFileSync(steps, 'utf8') : '';
+    fs.writeFileSync(steps, appendBlock(before, code));
+    const doc = await vscode.workspace.openTextDocument(steps);
+    const shown = await vscode.window.showTextDocument(doc, { preview: false });
+    const end = new vscode.Position(doc.lineCount - 1, 0);
+    shown.selection = new vscode.Selection(end, end);
+    shown.revealRange(new vscode.Range(end, end));
+    deps.output.appendLine(`No script was open, so the code went to the end of ${steps}.`);
+  } else if (!editor) {
+    // No course folder open either: an unsaved script, as before
     const doc = await vscode.workspace.openTextDocument({ language: 'r', content: code });
     await vscode.window.showTextDocument(doc);
   } else {
