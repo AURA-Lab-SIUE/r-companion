@@ -75,7 +75,19 @@ async function run() {
     // One phase: open a vscode-R terminal and watch it. "press:<label>" also presses that button on
     // the sess notification; "install" installs the bundled sess into the first R_LIBS_USER library
     // with Rscript (what the 0.5.4 Fix it does) and opens no terminal.
+    let kept;
     async function phase(spec) {
+      // "connect": type sess::connect() into the terminal a "+keep" phase left open
+      if (spec === 'connect') {
+        const start = events.length;
+        kept.sendText('sess::connect()');
+        const until = Date.now() + 30000;
+        while (Date.now() < until && !events.slice(start).some((e) => e.kind === 'connected')) await sleep(500);
+        const connected = events.slice(start).some((e) => e.kind === 'connected');
+        kept.dispose();
+        await sleep(3000);
+        return { spec, connected };
+      }
       if (spec === 'install') {
         const lib = (process.env.R_LIBS_USER || '').split(';')[0];
         const src = path.join(ext.extensionPath, 'dist', 'resources', 'sess').replace(/\\/g, '/');
@@ -83,6 +95,8 @@ async function run() {
         const r = require('child_process').spawnSync(rscript, ['-e', `install.packages("${src}", repos = NULL, type = "source", lib = "${lib}")`], { encoding: 'utf8', windowsHide: true });
         return { spec, status: r.status, tail: (r.stdout + r.stderr).trim().split(/\r?\n/).slice(-2) };
       }
+      const keep = spec.endsWith('+keep');
+      spec = spec.replace(/\+keep$/, '');
       const press = spec.startsWith('press:') ? spec.slice(6) : null;
       fs.rmSync(probe, { force: true });
       const startEvents = events.length;
@@ -108,7 +122,8 @@ async function run() {
       }
       const mine = events.slice(startEvents);
       const result = { spec, terminal: term ? term.name : null, connected: mine.some((e) => e.kind === 'connected'), promptBackMs: answered, probe: probeText, sessNotice, pressed };
-      if (term) { term.dispose(); await sleep(3000); }
+      if (term && keep) kept = term;
+      else if (term) { term.dispose(); await sleep(3000); }
       return result;
     }
     const phases = (process.env.AURA_IT_SESS_PHASES || (process.env.AURA_IT_SESS_PRESS ? 'press:' + process.env.AURA_IT_SESS_PRESS : 'plain')).split(',');

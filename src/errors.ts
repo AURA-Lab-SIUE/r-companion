@@ -34,12 +34,13 @@ export interface ErrorEntry {
 }
 
 /** The fixes the extension can make for the student, with the button label each shows. */
-export type FixIt = 'turn-off-bracketed-paste' | 'close-r-and-install' | 'update-r-extension';
+export type FixIt = 'turn-off-bracketed-paste' | 'close-r-and-install' | 'update-r-extension' | 'connect-r';
 
 export const FIX_IT_LABEL: Record<FixIt, string> = {
   'turn-off-bracketed-paste': 'Turn off bracketed paste for this folder',
   'close-r-and-install': 'Close R terminals and install again',
   'update-r-extension': 'Update the R extension',
+  'connect-r': 'Install what R needs to connect',
 };
 
 const HUB = 'https://aura-lab.siue.edu/v2v-hub/resources';
@@ -61,21 +62,25 @@ export const ERROR_TABLE: ErrorEntry[] = [
     fixIt: 'turn-off-bracketed-paste',
   },
   {
-    // vscode-R before 3.0.0 never attaches to R 4.6 or newer (R stopped calling the .First.sys hook
-    // its session watcher used; REditorSupport/vscode-R issues 1696 and 1723, fixed in 3.0.0). The
-    // ECONNRESET half is the language server process dying (languageserver issues 585 and 677), a
-    // hypothesis for this case, so the steps cover both helpers.
+    // vscode-R 3.0 and newer attaches R through its bundled R package sess, which it asks to install
+    // the first time R opens. Skipped, Not now, Don't ask again (which declines every later request
+    // without asking), or a failed install of sess's imports leaves R "not attached" (toggled on
+    // Pythia 2026-10-23, vscode-R 3.2.0 and R 4.6.1). Before 3.0.0 vscode-R never attaches to R 4.6
+    // (issues 1696 and 1723), and .vsc.attach() belongs to those versions only. The ECONNRESET half
+    // is the language server process dying (languageserver issues 585 and 677), so the steps cover
+    // both helpers.
     id: 'r-not-attached',
     pattern: /R: \(not attached\)|Connection to server got closed|read ECONNRESET|could not find function ["'‘’]?\.vsc\.attach/i,
     title: "'R: (not attached)' or 'Connection to server got closed' in VS Code",
-    why: 'Two helpers run beside R in VS Code. One connects the Workspace panel and plots to your R session, and one powers code completion. This message means one of them did not start. Your code still runs; the panels stay empty.',
+    why: 'R still runs your code, but VS Code is not connected to it, so the Workspace panel and plots stay empty. The R extension connects through a small helper package called sess, which it offers to install the first time R opens; if that was skipped, answered with Not now or Don\'t ask again, or failed, R stays not attached. "Connection to server got closed" is a second helper, languageserver, which powers code completion.',
     fix: [
-      'Open the Extensions view (Ctrl+Shift+X, Cmd+Shift+X on a Mac) and find R by REditorSupport. If it shows an Update button, or its version starts with 2, update it. Versions before 3.0.0 cannot connect to R 4.6.',
-      'Quit VS Code completely. Open R on its own (R x64 from the Start menu, or the R app on a Mac) and run: install.packages("languageserver"). If R asks whether to compile from source, answer No.',
-      'Open VS Code again, open your course folder, and run AURA: Open an R terminal. If VS Code asks to install sess, click Yes.',
-      'Run AURA: Check my setup. The R extension line should read OK with a version of 3.0.0 or newer.',
+      'Look under the bell at the bottom right of VS Code. If the R extension asks to install bundled sess, choose Install bundled sess, then close the R terminal with the bin icon and open a new one.',
+      'No question there, or you chose Don\'t ask again? Quit VS Code completely. Open R on its own (R x64 from the Start menu, or the R app on a Mac) and run: install.packages(c("processx", "later", "jsonlite", "rstudioapi", "languageserver")). If R asks whether to compile from source, answer No.',
+      'Open VS Code again, open your course folder, and run AURA: Check my setup. If the sess line is not OK, choose Install what is missing.',
+      'An R terminal that is already open can connect without restarting: type sess::connect() in it.',
+      'If your R extension version starts with 2, update it in the Extensions view (Ctrl+Shift+X, Cmd+Shift+X on a Mac). Only those older versions use .vsc.attach().',
     ],
-    fixIt: 'update-r-extension',
+    fixIt: 'connect-r',
   },
   {
     id: 'v2v-not-available',

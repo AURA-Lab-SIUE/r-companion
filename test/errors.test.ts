@@ -201,11 +201,27 @@ test('0.5.3: the not-attached messages match that entry and nothing else, and it
   const fixes = Object.fromEntries(ERROR_TABLE.filter((e) => e.fixIt).map((e) => [e.id, e.fixIt]));
   assert.deepEqual(fixes, {
     'bracketed-paste': 'turn-off-bracketed-paste',
-    'r-not-attached': 'update-r-extension',
+    'r-not-attached': 'connect-r',
     'v2v-restored': 'close-r-and-install',
     'file-in-use': 'close-r-and-install',
   });
   const md = explanationMarkdown(explain('R: (not attached)')[0]);
   assert.ok(md.includes('## Or let the R Companion do it'));
-  assert.ok(md.includes('Update the R extension'));
+  assert.ok(md.includes('Install what R needs to connect'));
+});
+
+test('0.5.4: the not-attached steps are for vscode-R 3.x: the bell, the sess imports from plain R, sess::connect()', () => {
+  const e = ERROR_TABLE.find((x) => x.id === 'r-not-attached')!;
+  const all = [e.why, ...e.fix].join('\n');
+  assert.match(all, /bell/);
+  assert.match(all, /Install bundled sess/);
+  assert.match(all, /Don't ask again/);
+  assert.match(all, /install\.packages\(c\("processx", "later", "jsonlite", "rstudioapi", "languageserver"\)\)/);
+  assert.match(all, /Quit VS Code completely/);
+  assert.match(all, /sess::connect\(\)/);
+  // .vsc.attach() survives only as the older-version note
+  const vsc = e.fix.filter((f) => f.includes('.vsc.attach'));
+  assert.equal(vsc.length, 1);
+  assert.match(vsc[0], /starts with 2/);
+  assert.doesNotMatch(all, /—/, 'no em dashes');
 });

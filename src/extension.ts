@@ -26,7 +26,8 @@ import { registerMenus, menuItems, stepsScript } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
-import { checkRExtensionAtStartup, watchAttach } from './rExtension';
+import { checkRExtensionAtStartup, showRExtension, watchAttach } from './rExtension';
+import { SESS_IMPORTS } from './sess';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
 const EXT_ID = 'aura-lab-siue.r-companion';
@@ -460,7 +461,7 @@ class ExplainPages implements vscode.TextDocumentContentProvider {
 }
 const explainPages = new ExplainPages();
 
-async function openExplanation(x: Explanation): Promise<void> {
+async function openExplanation(x: Explanation, offerFix = true): Promise<void> {
   const uri = vscode.Uri.from({ scheme: EXPLAIN_SCHEME, path: `/R error explained - ${x.entry.id}.md` });
   explainPages.put(uri, explanationMarkdown(x));
   output.appendLine(`Explained: ${x.entry.title}`);
@@ -486,7 +487,7 @@ async function openExplanation(x: Explanation): Promise<void> {
   }
   // A Markdown page cannot carry a button, so a fix the extension can make itself is offered here
   const fix = x.entry.fixIt;
-  if (fix) {
+  if (fix && offerFix) {
     void vscode.window
       .showInformationMessage(`The R Companion can do this for you: ${FIX_IT_LABEL[fix]}.`, FIX_IT_LABEL[fix])
       .then((b) => b && runFixIt(fix));
@@ -516,16 +517,41 @@ async function openWorkspaceView(): Promise<void> {
   await vscode.commands.executeCommand('workspaceViewer.focus');
 }
 
-/** R shows (not attached)? The version check, the update, then a fresh R terminal and the steps. */
-async function fixNotAttached(): Promise<void> {
+/** R shows (not attached)? The same steps as the explanation's Fix it button. */
+async function fixNotAttached(): Promise<string> {
+  return runFixIt('connect-r');
+}
+
+/**
+ * The not-attached fix (0.5.4): show the R extension when it is missing or off, update it when it is
+ * older than 3.0, otherwise close the R terminals, install sess and its imports into the student's
+ * library (Install what is missing, limited to those), and open a fresh vscode-R terminal. When
+ * nothing was missing, the explanation opens instead, since the cause is elsewhere.
+ */
+async function connectR(): Promise<string> {
   const version: string | undefined = vscode.extensions.getExtension(VSCODE_R_ID)?.packageJSON?.version;
-  if (!version || versionBelow(version, VSCODE_R_MIN)) {
-    await runFixIt('update-r-extension');
-    return;
+  if (!version) {
+    await showRExtension();
+    return 'R extension missing or off: Extensions view shown';
   }
-  const found = explain('R: (not attached)');
-  if (found[0]) await openExplanation(found[0]);
-  void vscode.commands.executeCommand('r.createRTerm');
+  if (versionBelow(version, VSCODE_R_MIN)) {
+    await installExtension(VSCODE_R_ID);
+    await checkSetupCommand();
+    return 'updated, checked';
+  }
+  const course = await pickCourse(false);
+  if (!course) return 'no course';
+  const closed = rTerminals();
+  closed.forEach((t) => t.dispose());
+  const result = await installMissingCommand({ course, packages: [...SESS_IMPORTS, 'sess'] });
+  if (!result) return `closed ${closed.length}, cancelled`;
+  if (result.attempted.length === 0) {
+    const found = explain('R: (not attached)');
+    if (found[0]) await openExplanation(found[0], false);
+    return `closed ${closed.length}, nothing to install`;
+  }
+  if (result.stillFailing.length === 0) void vscode.commands.executeCommand('r.createRTerm');
+  return `closed ${closed.length}, installed ${result.verified.join(' ')}${result.stillFailing.length ? `, still failing ${result.stillFailing.join(' ')}` : ''}`;
 }
 
 /** R terminals the extension or vscode-R opened. */
@@ -562,6 +588,8 @@ async function runFixIt(fix: FixIt): Promise<string> {
       await checkSetupCommand();
       return 'updated, checked';
     }
+    case 'connect-r':
+      return connectR();
   }
 }
 
