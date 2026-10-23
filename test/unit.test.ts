@@ -565,3 +565,18 @@ test('0.5.3: the R extension line carries its version and needs 3.0.0 or newer',
   assert.match(ext2!.detail, /R extension 3\.2\.0 is installed/);
   assert.equal(renderText(PROFILES.mc427, ok, fresh, new Date()).split('\n').pop(), 'SETUP OK: R and the course packages are working.');
 });
+
+// 0.5.3 (#rgui Rank 8): v2v 0.3.5's setup() adds a VS Code section; the lines are the real
+// cli_fmt() output of v2v 0.3.5 on R 4.6.1 (golden/probe), read the way probe.R reads them.
+test('0.5.3: v2v 0.3.5 setup() lines parse, with the VS Code packages as warnings', () => {
+  const lines = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'golden', 'probe', 'setup-v2v-0.3.5-r4.6.1-lines.json'), 'utf8'));
+  const items = v2vSetupItems(probe({ v2vSetup: { lines, error: null } }));
+  const vs = items.filter((i) => i.detail === 'VS Code');
+  assert.deepEqual(vs.map((i) => [i.name, i.status]), [
+    ['languageserver', 'warn'],
+    ['httpgd', 'warn'],
+    ["VS Code's R extension must be 3.0.0 or newer for R 4.6. Check it in the Extensions view.", 'info'],
+  ]);
+  assert.ok(vs.every((i) => !i.installable), 'the Companion checks these itself, as required lines');
+  assert.ok(items.some((i) => i.name === 'Everything the course needs is installed.' && i.status === 'ok'));
+});

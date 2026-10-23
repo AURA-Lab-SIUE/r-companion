@@ -214,7 +214,8 @@ export function v2vSetupItems(probe: ProbeResult): CheckItem[] {
     const m = /^([vx!i]) (.+)$/.exec(line);
     if (!m) continue;
     const status: Status = m[1] === 'v' ? 'ok' : m[1] === 'x' ? 'missing' : m[1] === '!' ? 'warn' : 'info';
-    const name = m[2].replace(/ \((missing|missing, recommended)\)$/, '');
+    // (missing), (missing, recommended), and since v2v 0.3.5 (missing, needed in VS Code)
+    const name = m[2].replace(/ \(missing[^)]*\)$/, '');
     const item: CheckItem = { name, group: 'v2v::setup()', status, detail: section || 'v2v::setup()' };
     // A package line setup() flags can be installed from CRAN like any other
     if (status !== 'ok' && /R packages/i.test(section) && /^[A-Za-z][A-Za-z0-9.]*$/.test(name)) {
