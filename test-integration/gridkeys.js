@@ -182,12 +182,14 @@ async function run() {
     await typeIntoInput('tone');
     await choose(0); // Allowed values (a dropdown)
     await typeIntoInput('positive, neutral, negative');
+    await choose(0); // Code it once
     await sleep(1500);
     const addedStatus = (await snap()).status;
     check('status after adding tone names the real keys', /type the first letters of a code, then press Enter/.test(addedStatus), addedStatus);
     await viewer.eval(`${VDOC}.getElementById('btn-add').click()`);
     await typeIntoInput('topic');
     await choose(1); // Free text
+    await choose(0); // Code it once
     await sleep(1500);
     log('coding columns', await viewer.eval(`${VWIN}.__auraApi.getColumnDefs().map(function(c){return c.field;}).slice(-2)`));
     const hint = (await snap()).hint;

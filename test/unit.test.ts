@@ -12,11 +12,13 @@ import { explain, ERROR_TABLE } from '../src/errors';
 import { installScript } from '../src/installScript';
 import { mergeRecommendations, SELF_ID } from '../src/courseFiles';
 import { parseCsv, writeCsv, csvField, inferType } from '../src/csv';
-import { chooseRowId, ROW_ID } from '../src/dataTypes';
-import { buildLoaded, stringifyCell } from '../src/dataSource';
-import { serializeCodes, parseCodes, CodeStore, CODES_HEADER } from '../src/codesStore';
-import { rebuildChunk } from '../src/rebuild';
+import { chooseRowId, ROW_ID, ROW_NUMBER } from '../src/dataTypes';
+import { buildLoaded, stringifyCell, rekey, idStampOf, blankColumns, LEGACY } from '../src/dataSource';
+import { serializeCodes, parseCodes, parseIdColumn, CodeStore, CODES_HEADER } from '../src/codesStore';
+import { rebuildChunk, idsAreShortNumbers, codingSheetPath } from '../src/rebuild';
+import { passPairs, reliabilityForPair, gridFileName } from '../src/reliabilityCode';
 import { webviewHtml } from '../src/gridHtml';
+import { viewToR, viewIsSet, viewObjectName } from '../src/viewCode';
 
 function fakeEnv(files: string[], over: Partial<DiscoveryEnv> = {}): DiscoveryEnv {
   const set = new Set(files.map((f) => f.toLowerCase()));
@@ -446,7 +448,7 @@ test('serializeCodes writes the long header and sorts stably', () => {
 
 test('parseCodes reads back what serializeCodes wrote', () => {
   const recs = [{ rowId: '1', column: 'tone', value: 'pos, maybe', codedAt: '2026-10-19T00:00:00Z' }];
-  assert.deepEqual(parseCodes(serializeCodes(recs)), recs);
+  assert.deepEqual(parseCodes(serializeCodes(recs, 'id')), recs);
 });
 
 test('CodeStore set, clear, round-trip through an atomic save', () => {
@@ -468,32 +470,79 @@ test('CodeStore set, clear, round-trip through an atomic save', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test('rebuildChunk follows the house style and adds row_number only when needed', () => {
+test('rebuildChunk follows the house style and adds row_number only when the data has no id', () => {
   const added = rebuildChunk({
     dataRelPath: 'data/sample.csv',
     codesRelPath: 'data/derived/sample-codes.csv',
     addedRowId: true,
     origin: 'csv',
-    codingColumns: ['tone', 'topic'],
   });
   assert.ok(added.includes('library(tidyverse)'));
   assert.ok(added.includes('read_csv("data/sample.csv")'));
   assert.ok(added.includes('mutate(row_id = as.character(row_number()))'));
   assert.ok(added.includes('pivot_wider('));
-  assert.ok(added.includes('left_join(wide_codes, by = "row_id")'));
-  assert.ok(added.includes('tone, topic'));
+  assert.ok(added.includes('left_join(wide_codes, by = join_by(row_id))'));
+  // the codebook is named as a document, never written as data
+  assert.match(added, /The codebook is the document of rules; it is not a data file/);
   // one verb per line after each pipe: no two %>% on the same line
   for (const line of added.split('\n')) assert.ok((line.match(/%>%/g) || []).length <= 1, line);
 
-  const existing = rebuildChunk({
-    dataRelPath: 'd.csv',
-    codesRelPath: 'c.csv',
-    addedRowId: false,
-    origin: 'csv',
-    codingColumns: [],
-  });
-  assert.ok(existing.includes('mutate(row_id = as.character(row_id))'));
+  const existing = rebuildChunk({ dataRelPath: 'd.csv', codesRelPath: 'c.csv', addedRowId: false, origin: 'csv', idColumn: 'row_id' });
+  assert.ok(existing.includes('col_types = cols(row_id = col_character())'));
   assert.ok(!existing.includes('row_number()'));
+});
+
+test('rebuildChunk keys on the item id: short numbers as numbers, long ids as text', () => {
+  const chat = rebuildChunk({ dataRelPath: 'data/coding-sample.csv', codesRelPath: 'data/derived/coding-sample-codes.csv', sheetRelPath: 'data/derived/coding-sheet.csv', addedRowId: false, origin: 'csv', idColumn: 'id', numericIds: true });
+  assert.ok(chat.includes('original <- read_csv("data/coding-sample.csv")'));
+  assert.ok(chat.includes('mutate(row_id = as.numeric(row_id))'));
+  assert.ok(chat.includes('left_join(wide_codes, by = join_by(id == row_id))'));
+  assert.ok(chat.includes('write_csv(coded_data, "data/derived/coding-sheet.csv")'));
+  const tweets = rebuildChunk({ dataRelPath: 'p.csv', codesRelPath: 'c.csv', addedRowId: false, origin: 'csv', idColumn: 'tweet_id', numericIds: false });
+  assert.ok(tweets.includes('col_types = cols(tweet_id = col_character())'));
+  assert.ok(!tweets.includes('as.numeric'));
+  assert.ok(tweets.includes('join_by(tweet_id == row_id)'));
+  assert.equal(idsAreShortNumbers(['89', '551']), true);
+  assert.equal(idsAreShortNumbers(['1353446720806543360']), false);
+  assert.equal(idsAreShortNumbers(['a1']), false);
+  assert.equal(codingSheetPath('coding-sample'), 'data/derived/coding-sheet.csv');
+  assert.equal(codingSheetPath('twitch_chat'), 'data/derived/twitch_chat-coding-sheet.csv');
+});
+
+test('chooseRowId prefers row_id, then id, then a *_id column; legacy keeps the 0.5.4 rule', () => {
+  assert.deepEqual(chooseRowId(['id', 'msg'], [['89', 'a'], ['551', 'b']]), { field: 'id', synthesize: false });
+  assert.deepEqual(chooseRowId(['tweet_id', 'x'], [['1', 'a'], ['2', 'b']]), { field: 'tweet_id', synthesize: false });
+  assert.deepEqual(chooseRowId(['id', 'x'], [['1', 'a'], ['1', 'b']]), { field: ROW_ID, synthesize: true });
+  assert.deepEqual(chooseRowId(['id', 'msg'], [['89', 'a'], ['551', 'b']], true), { field: ROW_ID, synthesize: true });
+});
+
+test('a codes file records its id column, and a 0.5.4 file without one keeps its row numbers', () => {
+  const text = serializeCodes([{ rowId: '89', column: 'tone', value: 'pos', codedAt: 't' }], 'id');
+  assert.equal(parseIdColumn(text), 'id');
+  assert.equal(parseIdColumn('row_id,column,value,coded_at\r\n1,tone,pos,t\r\n'), undefined);
+  const data = buildLoaded('s', '/tmp/s.csv', 'csv', { header: ['id', 'msg'], rows: [['89', 'a'], ['551', 'b']] });
+  assert.equal(data.rowIdField, 'id');
+  const legacy = rekey(data, LEGACY);
+  assert.equal(legacy.addedRowId, true);
+  assert.deepEqual(legacy.rows.map((r) => r.row_id), ['1', '2']);
+  assert.equal(idStampOf(legacy), ROW_NUMBER);
+  const back = rekey(legacy, 'id');
+  assert.equal(back.rowIdField, 'id');
+  assert.equal(back.columns.some((c) => c.field === ROW_ID), false);
+});
+
+test("blankColumns finds the coding sheet template's empty variable columns", () => {
+  const data = buildLoaded('coding-sheet', '/tmp/c.csv', 'csv', { header: ['id', 'text', 'tone', 'coder_notes'], rows: [['1', 'hi', '', ''], ['2', 'yo', '', 'x']] });
+  assert.deepEqual(blankColumns(data), ['tone']);
+});
+
+test('reliability from the coding sheet: pass pairs, and only items coded in both passes', () => {
+  assert.deepEqual(passPairs(['id', 'tone_p1', 'tone_p2', 'topic_p1', 'x_p2']), [{ variable: 'tone', first: 'tone_p1', second: 'tone_p2' }]);
+  const code = reliabilityForPair('mc451', { variable: 'tone', first: 'tone_p1', second: 'tone_p2' });
+  assert.ok(code.includes('tone_passes <- coded_data %>%'));
+  assert.ok(code.includes('filter(!is.na(tone_p1), !is.na(tone_p2))'));
+  assert.ok(code.includes('select(tone_p1, tone_p2) %>%'));
+  assert.equal(gridFileName('tone'), 'reliability-tone.csv');
 });
 
 // ---------- coding sheet keys (0.4.1) ----------
@@ -572,4 +621,42 @@ test('0.5.3: v2v 0.3.5 setup() lines parse, with the VS Code packages as warning
   ]);
   assert.ok(vs.every((i) => !i.installable), 'the Companion checks these itself, as required lines');
   assert.ok(items.some((i) => i.name === 'Everything the course needs is installed.' && i.status === 'ok'));
+});
+
+test('Write this view as R: grid filters and sorts become dplyr that keeps the same rows (code parity)', () => {
+  const columns = [{ field: 'id', type: 'integer' }, { field: 'text', type: 'text' }, { field: 'n_chars', type: 'number' }, { field: 'tone', type: 'text' }];
+  const code = viewToR({
+    fromObject: 'coded_data', dataRelPath: 'data/coding-sample.csv', addedRowId: false, name: 'coding-sample', columns, shownRows: 1234,
+    filterModel: {
+      text: { filterType: 'text', operator: 'OR', conditions: [{ filterType: 'text', type: 'contains', filter: 'GG' }, { filterType: 'text', type: 'notContains', filter: 'lul' }] },
+      n_chars: { filterType: 'number', type: 'inRange', filter: 5, filterTo: 40 },
+      tone: { filterType: 'text', type: 'notBlank' },
+    },
+    sort: [{ colId: 'n_chars', sort: 'desc' }, { colId: 'id', sort: 'asc' }],
+  });
+  assert.match(code, /^coding_sample_view <- coded_data %>%$/m);
+  // text ignores capitals, and "does not contain" keeps a blank cell, as AG Grid does
+  assert.match(code, /filter\(\(str_detect\(str_to_lower\(text\), fixed\("gg"\)\)\) \| \(is\.na\(text\) \| !str_detect\(str_to_lower\(text\), fixed\("lul"\)\)\)\) %>%/);
+  // "between" leaves out both ends (inRangeInclusive is off)
+  assert.match(code, /filter\(n_chars > 5 & n_chars < 40\) %>%/);
+  assert.match(code, /filter\(!is\.na\(tone\)\) %>%/);
+  assert.match(code, /^  arrange\(desc\(n_chars\), id\)$/m);
+  assert.match(code, /showed 1,234 row\(s\)/);
+  assert.match(code, /^nrow\(coding_sample_view\)$/m);
+  assert.ok(!/—/.test(code), 'no em dashes');
+  // read from the file, with a long id kept as text; a name R cannot read bare goes in backticks
+  const fromFile = viewToR({
+    dataRelPath: 'data/MC451-pilot-codes.csv', textIdColumn: 'tweet_id', addedRowId: false, name: 'MC451-pilot-codes', shownRows: 3,
+    columns: [{ field: 'tweet_id', type: 'text' }, { field: 'my col', type: 'number' }],
+    filterModel: { 'my col': { filterType: 'number', type: 'greaterThanOrEqual', filter: 2 } }, sort: [],
+  });
+  assert.match(fromFile, /mc451_pilot_codes_view <- read_csv\("data\/MC451-pilot-codes\.csv", col_types = cols\(tweet_id = col_character\(\)\)\) %>%/);
+  assert.match(fromFile, /^  filter\(`my col` >= 2\)$/m);
+  // row numbers the viewer added are made in R too, before they are used
+  const byRow = viewToR({ dataRelPath: 'x.csv', addedRowId: true, name: 'x', shownRows: 1, columns: [{ field: 'row_id', type: 'integer' }], filterModel: { row_id: { filterType: 'number', type: 'lessThan', filter: 3 } }, sort: [] });
+  assert.match(byRow, /mutate\(row_id = as\.numeric\(row_number\(\)\)\) %>%\n.*\n  filter\(row_id < 3\)/);
+  assert.equal(viewIsSet({}, []), false);
+  assert.equal(viewIsSet({}, [{ colId: 'a', sort: 'asc' }]), true);
+  assert.equal(viewObjectName('2026 chat'), 'x_2026_chat_view');
+  assert.throws(() => viewToR({ dataRelPath: 'x.csv', addedRowId: false, name: 'x', shownRows: 1, columns: [{ field: 'n', type: 'number' }], filterModel: { n: { filterType: 'number', type: 'equals', filter: 'abc' } }, sort: [] }), /not a number/);
 });

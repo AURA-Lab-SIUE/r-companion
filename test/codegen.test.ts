@@ -42,9 +42,16 @@ const generated = manifest.entries.filter((e) => e.generated);
 // 0.5.3 adds 6 (import-xlsx x3, join-tables x3) and removes 9 entries, 8 files (owner q-20261022-0006
 // = A): the wrapper-only MC 451 and MC 501 t-test and chi-square, the three v2v-plain proposals, and
 // the plain date alternative. The plain-call tests are the defaults now, under their own names.
-test('the golden manifest has 94 entries, 88 generated', () => {
-  assert.equal(manifest.entries.length, 94);
-  assert.equal(generated.length, 88);
+// Code parity (2026-10-28) adds 4: the coding sample for mc451, mc501, and mc427, plus the dplyr
+// form on chat with no groups. It adds 3 more: the crosstab of two columns the student picks, for
+// mc427 (plain tidyverse) and mc451, and the MC 427 agreement check of Module 4 DT03; and 2 for the
+// settings block with the student's own variables, with a t-test run on them. 9 more run the
+// Describe tasks on columns picked from the course data, and 32 run every column-taking task on a
+// student's own file, whose column names and types differ from the course data (owner, 2026-10-28:
+// nothing hard-coded to the sample).
+test('the golden manifest has 155 entries, 149 generated', () => {
+  assert.equal(manifest.entries.length, 155);
+  assert.equal(generated.length, 149);
 });
 
 for (const e of generated) {

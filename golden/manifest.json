@@ -1148,6 +1148,57 @@
       "sentence_template": null
     },
     {
+      "id": "mc427.crosstab.chosen",
+      "release": "R3",
+      "task": "crosstab",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.crosstab",
+      "file": "fixtures/mc427/r3-crosstab-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "prop",
+        "pivot_wider|before"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "df",
+        "columns": [
+          "phase",
+          "share_button"
+        ]
+      }
+    },
+    {
+      "id": "mc427.agreement",
+      "release": "R3",
+      "task": "agreement",
+      "profile": "mc427",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc427/r3-agreement.R",
+      "requires": [
+        "fixtures/mc427/_setup-coding-sheet.R"
+      ],
+      "data": [],
+      "must_print": [
+        "share_agree",
+        "A tibble: \\d+ × 3"
+      ],
+      "sentence_template": null
+    },
+    {
       "id": "mc451.crosstab",
       "release": "R3",
       "task": "crosstab",
@@ -1166,6 +1217,33 @@
         "non-gaming"
       ],
       "sentence_template": null
+    },
+    {
+      "id": "mc451.crosstab.chosen",
+      "release": "R3",
+      "task": "crosstab",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.crosstab",
+      "file": "fixtures/v2v/r3-crosstab-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [
+        "prop",
+        "non-gaming"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "columns": [
+          "channel_type",
+          "viewer_band"
+        ]
+      }
     },
     {
       "id": "mc501.crosstab",
@@ -1605,6 +1683,36 @@
       "sentence_template": null
     },
     {
+      "id": "mc451.settings-block.chosen",
+      "release": "R4",
+      "task": "settings-block",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.settings-block",
+      "file": "fixtures/v2v/r4-settings-block-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R"
+      ],
+      "data": [],
+      "must_print": [
+        "outcome",
+        "group3",
+        "cat_b"
+      ],
+      "sentence_template": null,
+      "params": {
+        "columns": [
+          "viewers",
+          "is_gaming",
+          "viewer_band",
+          "median_viewers",
+          "channel_type",
+          "viewer_band"
+        ]
+      }
+    },
+    {
       "id": "mc501.settings-block",
       "release": "R4",
       "task": "settings-block",
@@ -1658,6 +1766,28 @@
       "requires": [
         "fixtures/v2v/_setup-build-analysis.R",
         "fixtures/v2v/r4-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d",
+        "Welch two-sample t-test",
+        "\\bsd\\b"
+      ],
+      "sentence_template": "t-test"
+    },
+    {
+      "id": "mc451.t-test.own-variables",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.t-test",
+      "file": "fixtures/mc451/r4-t-test.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r4-settings-block-chosen.R"
       ],
       "data": [],
       "must_print": [
@@ -1960,6 +2090,1409 @@
         "number in"
       ],
       "sentence_template": null
+    },
+    {
+      "id": "mc451.sample",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-sample.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [
+        "A tibble: \\d+ × 2"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.sample",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-sample.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [
+        "A tibble: \\d+ × 2"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.sample.plain",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.sample",
+      "file": "fixtures/v2v/r2-sample-plain.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [
+        "\\[1\\] 100"
+      ],
+      "sentence_template": null,
+      "params": {
+        "groupBy": "",
+        "n": 100,
+        "seed": 2026
+      }
+    },
+    {
+      "id": "mc427.sample",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc427",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/mc427/r2-sample.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "\\[1\\] 50"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc427.import-csv.student",
+      "release": "R2",
+      "task": "import-csv",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.import-csv",
+      "file": "fixtures/student/mc427-import-csv.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Rows: 240",
+        "Follower Count"
+      ],
+      "sentence_template": null,
+      "params": {
+        "file": "my-posts.csv",
+        "data": "posts"
+      }
+    },
+    {
+      "id": "mc427.filter.student",
+      "release": "R2",
+      "task": "filter",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.filter",
+      "file": "fixtures/student/mc427-filter.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "platform",
+        "value": "TikTok",
+        "result": "tiktok"
+      }
+    },
+    {
+      "id": "mc427.select.student",
+      "release": "R2",
+      "task": "select",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.select",
+      "file": "fixtures/student/mc427-select.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Columns: 3"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "post_id",
+          "platform",
+          "Follower Count"
+        ]
+      }
+    },
+    {
+      "id": "mc427.count.student",
+      "release": "R2",
+      "task": "count",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.count",
+      "file": "fixtures/student/mc427-count.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "TikTok"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "platform"
+      }
+    },
+    {
+      "id": "mc427.frequency.student",
+      "release": "R3",
+      "task": "frequency",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.frequency",
+      "file": "fixtures/student/mc427-frequency.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "percent",
+        "NA"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "tone_code"
+      }
+    },
+    {
+      "id": "mc427.crosstab.student",
+      "release": "R3",
+      "task": "crosstab",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.crosstab",
+      "file": "fixtures/student/mc427-crosstab.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "prop",
+        "TRUE"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform",
+          "has_caption"
+        ]
+      }
+    },
+    {
+      "id": "mc427.agreement.student",
+      "release": "R3",
+      "task": "agreement",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.agreement",
+      "file": "fixtures/student/mc427-agreement.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "share_agree",
+        "post_id"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "tone_code",
+          "tone_code_ai"
+        ],
+        "column": "post_id"
+      }
+    },
+    {
+      "id": "mc427.grouped-summary.student",
+      "release": "R3",
+      "task": "grouped-summary",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.grouped-summary",
+      "file": "fixtures/student/mc427-grouped-summary.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "median",
+        "sd"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform",
+          "watch_minutes"
+        ]
+      }
+    },
+    {
+      "id": "mc427.bar.student",
+      "release": "R3",
+      "task": "bar",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.bar",
+      "file": "fixtures/student/mc427-bar.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "id": "mc427.histogram.student",
+      "release": "R3",
+      "task": "histogram",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.histogram",
+      "file": "fixtures/student/mc427-histogram.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "Follower Count"
+        ]
+      }
+    },
+    {
+      "id": "mc427.boxplot.student",
+      "release": "R3",
+      "task": "boxplot",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.boxplot",
+      "file": "fixtures/student/mc427-boxplot.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "views",
+          "has_caption"
+        ]
+      }
+    },
+    {
+      "id": "mc427.sample.student",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.sample",
+      "file": "fixtures/student/mc427-sample.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "platform"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "groupBy": "platform",
+        "n": 10,
+        "seed": 77,
+        "file": "posts-sample.csv"
+      }
+    },
+    {
+      "id": "mc451.import-csv.student",
+      "release": "R2",
+      "task": "import-csv",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.import-csv",
+      "file": "fixtures/student/mc451-import-csv.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R"
+      ],
+      "data": [],
+      "must_print": [
+        "follower_count"
+      ],
+      "sentence_template": null,
+      "params": {
+        "file": "data/my-posts.csv",
+        "data": "posts",
+        "cleanNames": true
+      }
+    },
+    {
+      "id": "mc451.filter.student",
+      "release": "R2",
+      "task": "filter",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.filter",
+      "file": "fixtures/student/mc451-filter.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "has_caption",
+        "value": "TRUE",
+        "rawValue": true,
+        "result": "captioned"
+      }
+    },
+    {
+      "id": "mc451.select.student",
+      "release": "R2",
+      "task": "select",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.select",
+      "file": "fixtures/student/mc451-select.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Columns: 3"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "post_id",
+          "platform",
+          "follower_count"
+        ]
+      }
+    },
+    {
+      "id": "mc451.count.student",
+      "release": "R2",
+      "task": "count",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.count",
+      "file": "fixtures/student/mc451-count.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "TikTok"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "platform"
+      }
+    },
+    {
+      "id": "mc451.frequency.student",
+      "release": "R3",
+      "task": "frequency",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.frequency",
+      "file": "fixtures/student/mc451-frequency.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "percent"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "column": "platform"
+      }
+    },
+    {
+      "id": "mc451.crosstab.student",
+      "release": "R3",
+      "task": "crosstab",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.crosstab",
+      "file": "fixtures/student/mc451-crosstab.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "prop"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform",
+          "tone_code"
+        ]
+      }
+    },
+    {
+      "id": "mc451.grouped-summary.student",
+      "release": "R3",
+      "task": "grouped-summary",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.grouped-summary",
+      "file": "fixtures/student/mc451-grouped-summary.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "median",
+        "sd"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform",
+          "views"
+        ]
+      }
+    },
+    {
+      "id": "mc451.bar.student",
+      "release": "R3",
+      "task": "bar",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.bar",
+      "file": "fixtures/student/mc451-bar.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "tone_code"
+        ]
+      }
+    },
+    {
+      "id": "mc451.histogram.student",
+      "release": "R3",
+      "task": "histogram",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.histogram",
+      "file": "fixtures/student/mc451-histogram.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "watch_minutes"
+        ]
+      }
+    },
+    {
+      "id": "mc451.boxplot.student",
+      "release": "R3",
+      "task": "boxplot",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.boxplot",
+      "file": "fixtures/student/mc451-boxplot.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "follower_count",
+          "platform"
+        ]
+      }
+    },
+    {
+      "id": "mc451.line.student",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.line",
+      "file": "fixtures/student/mc451-line.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "posted_at"
+        ],
+        "unit": "hour",
+        "groupBy": "platform"
+      }
+    },
+    {
+      "id": "mc451.line.student-by-day",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.line",
+      "file": "fixtures/student/mc451-line-by-day.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "post_day"
+        ],
+        "unit": "day",
+        "groupBy": ""
+      }
+    },
+    {
+      "id": "mc451.sample.student",
+      "release": "R2",
+      "task": "sample",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.sample",
+      "file": "fixtures/student/mc451-sample.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "platform"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "groupBy": "platform",
+        "n": 10,
+        "seed": 77,
+        "file": "data/posts-sample.csv"
+      }
+    },
+    {
+      "id": "mc451.export-rds.student",
+      "release": "R2",
+      "task": "export-rds",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.export-rds",
+      "file": "fixtures/student/mc451-export-rds.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "file": "data/my-posts.RDS"
+      }
+    },
+    {
+      "id": "mc451.settings-block.student",
+      "release": "R4",
+      "task": "settings-block",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.settings-block",
+      "file": "fixtures/student/mc451-settings-block.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R"
+      ],
+      "data": [],
+      "must_print": [
+        "outcome",
+        "group3",
+        "cat_b"
+      ],
+      "sentence_template": null,
+      "params": {
+        "file": "data/my-posts.RDS",
+        "columns": [
+          "views",
+          "has_caption",
+          "platform",
+          "watch_minutes",
+          "platform",
+          "tone_code"
+        ]
+      }
+    },
+    {
+      "id": "mc451.t-test.student",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.t-test",
+      "file": "fixtures/student/mc451-t-test.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R",
+        "fixtures/student/mc451-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d"
+      ],
+      "sentence_template": null,
+      "params": {}
+    },
+    {
+      "id": "mc451.chi-square.student",
+      "release": "R4",
+      "task": "chi-square",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.chi-square",
+      "file": "fixtures/student/mc451-chi-square.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R",
+        "fixtures/student/mc451-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "p.value",
+        "Cramer's V"
+      ],
+      "sentence_template": null,
+      "params": {}
+    },
+    {
+      "id": "mc451.anova.student",
+      "release": "R4",
+      "task": "anova",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.anova",
+      "file": "fixtures/student/mc451-anova.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R",
+        "fixtures/student/mc451-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Residuals",
+        "eta_sq"
+      ],
+      "sentence_template": null,
+      "params": {}
+    },
+    {
+      "id": "mc451.regression.student",
+      "release": "R4",
+      "task": "regression",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.regression",
+      "file": "fixtures/student/mc451-regression.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R",
+        "fixtures/student/mc451-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Multiple R-squared"
+      ],
+      "sentence_template": null,
+      "params": {}
+    },
+    {
+      "id": "mc451.correlation.student",
+      "release": "R4",
+      "task": "correlation",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.correlation",
+      "file": "fixtures/student/mc451-correlation.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc451-import-csv.R",
+        "fixtures/student/mc451-export-rds.R",
+        "fixtures/student/mc451-settings-block.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate",
+        "conf.low"
+      ],
+      "sentence_template": null,
+      "params": {}
+    },
+    {
+      "id": "mc427.bar.chosen-sample",
+      "release": "R3",
+      "task": "bar",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.bar",
+      "file": "fixtures/mc427/r3-bar-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "df",
+        "columns": [
+          "posted_from"
+        ]
+      }
+    },
+    {
+      "id": "mc427.histogram.chosen-sample",
+      "release": "R3",
+      "task": "histogram",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.histogram",
+      "file": "fixtures/mc427/r3-histogram-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "df",
+        "columns": [
+          "word_count"
+        ]
+      }
+    },
+    {
+      "id": "mc427.boxplot.chosen-sample",
+      "release": "R3",
+      "task": "boxplot",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.boxplot",
+      "file": "fixtures/mc427/r3-boxplot-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "df",
+        "columns": [
+          "like_count",
+          "share_button"
+        ]
+      }
+    },
+    {
+      "id": "mc427.grouped-summary.chosen-sample",
+      "release": "R3",
+      "task": "grouped-summary",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.grouped-summary",
+      "file": "fixtures/mc427/r3-grouped-summary-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "median",
+        "sd"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "df",
+        "columns": [
+          "share_button",
+          "like_count"
+        ]
+      }
+    },
+    {
+      "id": "mc451.bar.chosen-sample",
+      "release": "R3",
+      "task": "bar",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.bar",
+      "file": "fixtures/v2v/r3-bar-chosen.R",
+      "requires": [
+        "fixtures/v2v/r2-import-course-dataset.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "chat",
+        "columns": [
+          "channel"
+        ]
+      }
+    },
+    {
+      "id": "mc451.histogram.chosen-sample",
+      "release": "R3",
+      "task": "histogram",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.histogram",
+      "file": "fixtures/v2v/r3-histogram-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "columns": [
+          "message_length"
+        ]
+      }
+    },
+    {
+      "id": "mc451.boxplot.chosen-sample",
+      "release": "R3",
+      "task": "boxplot",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.boxplot",
+      "file": "fixtures/v2v/r3-boxplot-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "columns": [
+          "message_length",
+          "viewer_band"
+        ]
+      }
+    },
+    {
+      "id": "mc451.grouped-summary.chosen-sample",
+      "release": "R3",
+      "task": "grouped-summary",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.grouped-summary",
+      "file": "fixtures/v2v/r3-grouped-summary-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [
+        "median",
+        "sd"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "columns": [
+          "viewer_band",
+          "message_length"
+        ]
+      }
+    },
+    {
+      "id": "mc451.line.chosen-sample",
+      "release": "R3",
+      "task": "line",
+      "profile": "mc451",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc451.line",
+      "file": "fixtures/v2v/r3-line-chosen.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "analysis",
+        "columns": [
+          "ts"
+        ],
+        "unit": "hour",
+        "groupBy": "channel_type"
+      }
+    },
+    {
+      "id": "mc427.t-test.student",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.t-test",
+      "file": "fixtures/student/mc427-t-test.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "views",
+          "has_caption"
+        ]
+      }
+    },
+    {
+      "id": "mc427.chi-square.student",
+      "release": "R4",
+      "task": "chi-square",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.chi-square",
+      "file": "fixtures/student/mc427-chi-square.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "X-squared",
+        "Cramer's V"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "platform",
+          "has_caption"
+        ]
+      }
+    },
+    {
+      "id": "mc427.anova.student",
+      "release": "R4",
+      "task": "anova",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.anova",
+      "file": "fixtures/student/mc427-anova.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Residuals",
+        "eta_sq"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "views",
+          "platform"
+        ]
+      }
+    },
+    {
+      "id": "mc427.regression.student",
+      "release": "R4",
+      "task": "regression",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.regression",
+      "file": "fixtures/student/mc427-regression.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "r.squared",
+        "nobs"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "views",
+          "Follower Count"
+        ]
+      }
+    },
+    {
+      "id": "mc427.correlation.student",
+      "release": "R4",
+      "task": "correlation",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.correlation",
+      "file": "fixtures/student/mc427-correlation.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate",
+        "conf.low"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "watch_minutes",
+          "views"
+        ]
+      }
+    },
+    {
+      "id": "mc427.t-test.chosen-sample",
+      "release": "R4",
+      "task": "t-test",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.t-test",
+      "file": "fixtures/mc427/r4-t-test-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "estimate1",
+        "Cohen's d"
+      ],
+      "sentence_template": "t-test",
+      "params": {
+        "data": "df",
+        "columns": [
+          "like_count",
+          "share_button"
+        ]
+      }
+    },
+    {
+      "id": "mc427.regression.chosen-sample",
+      "release": "R4",
+      "task": "regression",
+      "profile": "mc427",
+      "generated": true,
+      "role": "alternative",
+      "alternative_to": "mc427.regression",
+      "file": "fixtures/mc427/r4-regression-chosen.R",
+      "requires": [
+        "fixtures/mc427/r2-import-csv.R"
+      ],
+      "data": [
+        {
+          "name": "mc427-practice-tweets",
+          "canonical": "O:/10-teaching/2026_Fall/MC427/modules/mod05/mod05-E01-practice-tweets.csv",
+          "as": "mod05-E01-practice-tweets.csv"
+        }
+      ],
+      "must_print": [
+        "r.squared",
+        "nobs"
+      ],
+      "sentence_template": "regression",
+      "params": {
+        "data": "df",
+        "columns": [
+          "like_count",
+          "word_count"
+        ]
+      }
+    },
+    {
+      "id": "mc427.join-tables.student",
+      "release": "R2",
+      "task": "join-tables",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.join-tables",
+      "file": "fixtures/student/mc427-join-tables.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/_setup-platform-lookup.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "240"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "right": "platform_info",
+        "column": "platform"
+      }
+    },
+    {
+      "id": "mc451.join-tables.student",
+      "release": "R2",
+      "task": "join-tables",
+      "profile": "mc451",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc451.join-tables",
+      "file": "fixtures/student/mc451-join-tables.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/_setup-platform-lookup.R",
+        "fixtures/student/mc451-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "240"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "right": "platform_info",
+        "column": "platform"
+      }
+    },
+    {
+      "id": "mc427.export-csv.student",
+      "release": "R2",
+      "task": "export-csv",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.export-csv",
+      "file": "fixtures/student/mc427-export-csv.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "file": "my-posts-out.csv"
+      }
+    },
+    {
+      "id": "mc427.t-test-missing.student",
+      "release": "R4",
+      "task": "t-test-missing",
+      "profile": "mc427",
+      "generated": true,
+      "role": "student-data",
+      "alternative_to": "mc427.t-test-missing",
+      "file": "fixtures/student/mc427-t-test-missing.R",
+      "requires": [
+        "fixtures/student/_setup-student-data.R",
+        "fixtures/student/mc427-import-csv.R"
+      ],
+      "data": [],
+      "must_print": [
+        "estimate1",
+        "Cohen's d"
+      ],
+      "sentence_template": null,
+      "params": {
+        "data": "posts",
+        "columns": [
+          "watch_minutes",
+          "has_caption"
+        ]
+      }
     }
   ]
 }

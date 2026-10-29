@@ -1,4 +1,7 @@
-// The long-format codes file: one row per coded cell, row_id, column, value, coded_at.
+// The long-format codes file: one row per coded cell, row_id, column, value, coded_at, and (since
+// the code parity work, 2026-10-28) id_column, which names the data column the row_id values come
+// from (`row_number` when they are row positions). A file with no id_column was written by 0.5.4 or
+// earlier and is read with that release's rule, so its codes stay on the rows they were entered on.
 //
 // The original data file is never written. All coding lives here, at
 // data/derived/<name>-codes.csv. The writer is atomic (temp file then rename) so a VS Code that
@@ -9,7 +12,7 @@ import * as path from 'path';
 import { parseCsv, writeCsv } from './csv';
 import { CodeRecord } from './dataTypes';
 
-export const CODES_HEADER = ['row_id', 'column', 'value', 'coded_at'];
+export const CODES_HEADER = ['row_id', 'column', 'value', 'coded_at', 'id_column'];
 
 /** Sorts records by column then numeric-or-text row id, for a diff that does not churn. */
 function sortRecords(records: CodeRecord[]): CodeRecord[] {
@@ -22,9 +25,17 @@ function sortRecords(records: CodeRecord[]): CodeRecord[] {
   });
 }
 
-export function serializeCodes(records: CodeRecord[]): string {
-  const rows = sortRecords(records).map((r) => [r.rowId, r.column, r.value, r.codedAt]);
+export function serializeCodes(records: CodeRecord[], idColumn = ''): string {
+  const rows = sortRecords(records).map((r) => [r.rowId, r.column, r.value, r.codedAt, idColumn]);
   return writeCsv(CODES_HEADER, rows);
+}
+
+/** The id_column a codes file records, or undefined for a file from 0.5.4 or earlier. */
+export function parseIdColumn(text: string): string | undefined {
+  const { header, rows } = parseCsv(text);
+  const i = header.indexOf('id_column');
+  if (i < 0) return undefined;
+  return rows.find((r) => r[i])?.[i];
 }
 
 export function parseCodes(text: string): CodeRecord[] {
@@ -47,13 +58,17 @@ export function parseCodes(text: string): CodeRecord[] {
 export class CodeStore {
   // rowId -> column -> {value, codedAt}
   private cells = new Map<string, Map<string, { value: string; codedAt: string }>>();
+  /** The data column the row ids come from; read from the file, set by the viewer, saved with every row. */
+  idColumn: string | undefined;
 
   constructor(readonly filePath: string) {}
 
   static load(filePath: string): CodeStore {
     const store = new CodeStore(filePath);
     if (fs.existsSync(filePath)) {
-      for (const rec of parseCodes(fs.readFileSync(filePath, 'utf8'))) {
+      const text = fs.readFileSync(filePath, 'utf8');
+      store.idColumn = parseIdColumn(text);
+      for (const rec of parseCodes(text)) {
         if (rec.value === '') continue;
         store.put(rec.rowId, rec.column, rec.value, rec.codedAt);
       }
@@ -106,7 +121,7 @@ export class CodeStore {
   save(): void {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     const tmp = this.filePath + `.tmp-${process.pid}`;
-    fs.writeFileSync(tmp, serializeCodes(this.toRecords()));
+    fs.writeFileSync(tmp, serializeCodes(this.toRecords(), this.idColumn ?? ''));
     fs.renameSync(tmp, this.filePath);
   }
 }

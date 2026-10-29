@@ -5,7 +5,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseCsv, inferType, writeCsv, ParsedCsv, ColumnType } from './csv';
-import { DataColumn, LoadedData, chooseRowId, ROW_ID } from './dataTypes';
+import { DataColumn, LoadedData, chooseRowId, ROW_ID, ROW_NUMBER } from './dataTypes';
 
 /** Builds the viewer model from parsed CSV cells. Pure: synthesizes the row id when the data has none. */
 export function buildLoaded(
@@ -14,15 +14,23 @@ export function buildLoaded(
   origin: LoadedData['origin'],
   parsed: ParsedCsv,
   sourceExpr?: string,
+  idStamp?: string,
 ): LoadedData {
   const { header, rows } = parsed;
-  const { synthesize } = chooseRowId(header, rows);
+  // A codes file names the column its ids came from (the stamp); without one, the 0.5.4 rule
+  const chosen =
+    idStamp === ROW_NUMBER
+      ? { field: ROW_ID, synthesize: true }
+      : idStamp && header.includes(idStamp)
+        ? { field: idStamp, synthesize: false }
+        : chooseRowId(header, rows, idStamp === LEGACY);
+  const { synthesize } = chosen;
   const columns: DataColumn[] = [];
   if (synthesize) columns.push({ field: ROW_ID, type: 'integer' });
   header.forEach((field, i) => {
     const values = rows.map((r) => r[i] ?? '');
     // The row id column always sorts and filters as an integer
-    const type: ColumnType = field === ROW_ID && !synthesize ? 'integer' : inferType(values);
+    const type: ColumnType = field === chosen.field && !synthesize && INT_ID.test(values[0] ?? '') ? 'integer' : inferType(values);
     columns.push({ field, type });
   });
   const objects: Record<string, string>[] = rows.map((r, idx) => {
@@ -33,7 +41,34 @@ export function buildLoaded(
     });
     return o;
   });
-  return { columns, rows: objects, rowIdField: ROW_ID, addedRowId: synthesize, name, sourcePath, origin, sourceExpr };
+  return { columns, rows: objects, rowIdField: chosen.field, addedRowId: synthesize, name, sourcePath, origin, sourceExpr };
+}
+
+/** The stamp that asks buildLoaded for the 0.5.4 key rule (a codes file from before the stamp). */
+export const LEGACY = '(legacy)';
+
+const INT_ID = /^[+-]?\d+$/;
+
+/** The id stamp a codes file records for this data: the id column, or row_number. */
+export function idStampOf(data: LoadedData): string {
+  return data.addedRowId ? ROW_NUMBER : data.rowIdField;
+}
+
+/**
+ * Columns of the data that are empty in every row, apart from the id. The coding sheet template
+ * (one empty column per codebook variable) has them; the viewer turns each into a coding column.
+ */
+export function blankColumns(data: LoadedData): string[] {
+  return data.columns
+    .map((c) => c.field)
+    .filter((f) => f !== data.rowIdField && data.rows.length > 0 && data.rows.every((r) => (r[f] ?? '') === ''));
+}
+
+/** Re-read already parsed data with another key (used when a codes file asks for one). */
+export function rekey(data: LoadedData, idStamp: string): LoadedData {
+  const fields = data.columns.map((c) => c.field).filter((f) => !(data.addedRowId && f === ROW_ID));
+  const rows = data.rows.map((r) => fields.map((f) => r[f] ?? ''));
+  return buildLoaded(data.name, data.sourcePath, data.origin, { header: fields, rows }, data.sourceExpr, idStamp);
 }
 
 /** Reads a CSV file from disk into the viewer model. */

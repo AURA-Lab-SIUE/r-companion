@@ -31,14 +31,38 @@
     if (vscode) vscode.postMessage(msg);
   }
 
-  // A numeric sort for number columns; blanks sort last. Text columns use the default.
-  function numericComparator(a, b) {
-    var na = a === '' || a == null ? null : Number(a);
-    var nb = b === '' || b == null ? null : Number(b);
-    if (na === null && nb === null) return 0;
-    if (na === null) return 1;
-    if (nb === null) return -1;
-    return na - nb;
+  // Sorting puts blank cells last in both directions, as R's arrange() puts NA last, so "Write
+  // this view as R" sorts the same way (code parity, 2026-10-28). AG Grid flips a comparator's
+  // answer for a descending sort, so a blank's answer is flipped back here.
+  function isBlankCell(v) {
+    return v == null || String(v).trim() === '';
+  }
+  function blanksLast(a, b, isDescending) {
+    var ba = isBlankCell(a);
+    var bb = isBlankCell(b);
+    if (ba && bb) return 0;
+    if (ba) return isDescending ? -1 : 1;
+    if (bb) return isDescending ? 1 : -1;
+    return null;
+  }
+  // Numbers sort as numbers
+  function numericComparator(a, b, nodeA, nodeB, isDescending) {
+    var blank = blanksLast(a, b, isDescending);
+    if (blank !== null) return blank;
+    return Number(a) - Number(b);
+  }
+  // Text sorts letter by letter (character codes), as arrange() does in its "C" locale
+  function textComparator(a, b, nodeA, nodeB, isDescending) {
+    var blank = blanksLast(a, b, isDescending);
+    if (blank !== null) return blank;
+    var sa = String(a);
+    var sb = String(b);
+    return sa < sb ? -1 : sa > sb ? 1 : 0;
+  }
+  // A number column filters as numbers, so "more than 20" means 20 and not the text "20"
+  function numberFilterValue(p) {
+    var v = p.data ? p.data[p.colDef.field] : null;
+    return isBlankCell(v) ? null : Number(v);
   }
 
   function dataColumnDef(col) {
@@ -53,9 +77,12 @@
     };
     if (col.type === 'number' || col.type === 'integer') {
       def.comparator = numericComparator;
+      def.filter = 'agNumberColumnFilter';
+      def.filterValueGetter = numberFilterValue;
       def.type = 'rightAligned';
       def.headerTooltip = col.field + ' (number)';
     } else {
+      def.comparator = textComparator;
       def.headerTooltip = col.field + ' (' + col.type + ')';
     }
     return def;
@@ -287,6 +314,7 @@
       sortable: true,
       resizable: true,
       filter: 'agTextColumnFilter',
+      comparator: textComparator,
       minWidth: 120,
       headerClass: 'aura-coding-header',
       cellClass: 'aura-coding-cell',
@@ -385,6 +413,38 @@
       var el = document.getElementById(id);
       if (el) el.addEventListener('click', function () { post({ type: map[id] }); });
     });
+    var hide = document.getElementById('btn-hide-p1');
+    if (hide) hide.addEventListener('click', togglePass1);
+    var view = document.getElementById('btn-view-code');
+    if (view) view.addEventListener('click', postView);
+  }
+
+  // Write this view as R: the filters and sorts go to the host, which writes them as dplyr
+  function postView() {
+    if (!api) return;
+    var sort = api.getColumnState()
+      .filter(function (c) { return c.sort; })
+      .sort(function (a, b) { return (a.sortIndex || 0) - (b.sortIndex || 0); })
+      .map(function (c) { return { colId: c.colId, sort: c.sort }; });
+    post({ type: 'viewCode', filterModel: api.getFilterModel() || {}, sort: sort, shown: api.getDisplayedRowCount() });
+  }
+
+  // Hide pass 1 (owner decision U6): the _p1 coding columns leave the screen while pass 2 is coded,
+  // so the second pass is independent. Only the view changes; no code is touched.
+  var pass1Hidden = false;
+  function togglePass1() {
+    if (!api || !state) return;
+    var p1 = (state.codingColumns || []).map(function (c) { return c.name; }).filter(function (n) { return /_p1$/.test(n); });
+    if (!p1.length) {
+      setStatus('No pass 1 columns yet. Add a coding column and choose Code it twice.');
+      return;
+    }
+    pass1Hidden = !pass1Hidden;
+    api.setColumnsVisible(p1, !pass1Hidden);
+    var btn = document.getElementById('btn-hide-p1');
+    btn.textContent = pass1Hidden ? 'Show pass 1' : 'Hide pass 1';
+    btn.setAttribute('aria-pressed', pass1Hidden ? 'true' : 'false');
+    setStatus(pass1Hidden ? 'Pass 1 is hidden: ' + p1.join(', ') + '. Code pass 2 now.' : 'Pass 1 is showing again.');
   }
 
   // Add one coding column live (host validated it), then move focus to its first cell.
