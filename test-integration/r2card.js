@@ -201,11 +201,17 @@ async function run() {
     log('7 R: count table', r7.split(/\r?\n/).filter((l) => /^\s*\d+ \S+\s+\d+\s*$|more rows/.test(l)).slice(-4));
     log('7 R: errors', r7.split('\n').filter((l) => /^Error/.test(l)));
 
-    // 8. The reliability grid (sixteenth R2 item)
+    // 8. The reliability grid (seventeenth R2 item since the coding sample joined the menu). The
+    // Reliability item first asks where the codes are (the grid is the only route with no coding
+    // sheet yet), then the variable, its codebook values, and the number of items: the defaults.
     await editor.edit((b) => b.insert(new vscode.Position(editor.document.lineCount, 0), '\n'));
     end();
     const w8 = vscode.commands.executeCommand('auraR.writeCode');
-    await choose(15);
+    await choose(16);
+    await choose(0); // The reliability grid
+    await choose(0); // variable: tone
+    await choose(0); // values: calm, high-energy
+    await choose(0); // items: 20
     await w8;
     await sleep(3000);
     log('8 open tabs', vscode.window.tabGroups.all.flatMap((g) => g.tabs.map((t) => t.label)));
@@ -247,7 +253,7 @@ async function run() {
       g.close();
       await acceptToast();
       await sleep(4000);
-      const csv = path.join(ws, 'data', 'reliability-pilot.csv');
+      const csv = path.join(ws, 'data', 'derived', 'reliability-tone.csv');
       log('8 csv exists', fs.existsSync(csv));
       if (fs.existsSync(csv)) log('8 csv', fs.readFileSync(csv, 'utf8').split('\n'));
       const doc = vscode.workspace.textDocuments.find((d) => d.fileName === wrangle);

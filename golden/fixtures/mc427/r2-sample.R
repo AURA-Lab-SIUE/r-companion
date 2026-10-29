@@ -1,0 +1,14 @@
+# ---- Draw your coding sample, with a seed ----
+# A random sample from df: 50 rows, named coding_sample. The seed (427) makes the draw
+# repeatable: run these lines again and you get the same rows. Write the seed in your sampling
+# plan. Prints nothing.
+set.seed(427)
+coding_sample <- df %>%
+  slice_sample(n = 50)
+
+# How many rows the sample has.
+nrow(coding_sample)
+
+# Save the sample as a CSV file. This is the file you open in the data viewer to code. Prints
+# nothing.
+write_csv(coding_sample, "coding-sample.csv")

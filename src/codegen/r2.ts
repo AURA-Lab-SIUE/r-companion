@@ -3,6 +3,7 @@
 
 import { lines, banner, comment } from './house';
 import { GenParams, Template } from './types';
+import { rName } from './chosen';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
 /** A filter value as R reads it: quoted text, or TRUE, FALSE, and numbers as they are. */
@@ -84,7 +85,7 @@ const mc427ImportXlsx: Template = (p) => {
 const mc427Filter: Template = (p) => {
   const data = d(p, 'df');
   const result = p.result ?? 'next_posts';
-  const column = p.column ?? 'update';
+  const column = rName(p.column ?? 'update');
   const value = p.value ?? 'NEXT';
   return lines(
     banner('Keep the rows you want: filter()'),
@@ -100,7 +101,7 @@ const mc427Filter: Template = (p) => {
 
 const mc427Select: Template = (p) => {
   const data = d(p, 'df');
-  const cols = (p.columns ?? ['update', 'posted_from', 'like_count']).join(', ');
+  const cols = (p.columns ?? ['update', 'posted_from', 'like_count']).map(rName).join(', ');
   return lines(
     banner('Keep the columns you want: select()'),
     '# Keep three columns, then look at them. The rows are all still there.',
@@ -128,7 +129,7 @@ const mc427Mutate: Template = (p) => {
 
 const mc427Count: Template = (p) => {
   const data = d(p, 'df');
-  const column = p.column ?? 'posted_from';
+  const column = rName(p.column ?? 'posted_from');
   return lines(
     banner('Count the rows in each group: count()'),
     `# One row per value of ${column}, largest first. The n column adds up to the rows in ${data}.`,
@@ -250,7 +251,7 @@ const v2vImportRds: Template = (p) => {
 const v2vFilter: Template = (p) => {
   const data = d(p, 'analysis');
   const result = p.result ?? 'gaming';
-  const column = p.column ?? 'channel_type';
+  const column = rName(p.column ?? 'channel_type');
   const value = p.value ?? 'gaming';
   const what =
     column === 'channel_type' && value === 'gaming'
@@ -270,7 +271,7 @@ const v2vFilter: Template = (p) => {
 
 const v2vSelect: Template = (p) => {
   const data = d(p, 'analysis');
-  const cols = (p.columns ?? ['channel', 'channel_type', 'message_length']).join(', ');
+  const cols = (p.columns ?? ['channel', 'channel_type', 'message_length']).map(rName).join(', ');
   return lines(
     banner('Keep the columns you want: select()'),
     '# Keep three columns, then look at them. The rows are all still there.',
@@ -299,7 +300,7 @@ const v2vMutate: Template = (p) => {
 // menu lists it (R2 card step 7, 2026-10-19). The menu offers analysis once that table exists.
 const v2vCount: Template = (p) => {
   const data = d(p, 'chat');
-  const column = p.column ?? 'channel';
+  const column = rName(p.column ?? 'channel');
   return lines(
     banner('Count the rows in each group: count()'),
     `# One row per value of ${column}, largest first. The n column adds up to the rows in ${data}.`,
@@ -496,6 +497,68 @@ const v2vReliability: Template = (p) => {
   );
 };
 
+// ---------------- Draw a coding sample (code parity, 2026-10-28) ----------------
+
+/**
+ * A random sample with a seed, saved as a CSV the student codes in the data viewer. The course
+ * corpus by channel goes through v2v::sample_messages(), as guide 06 and the decks show; any other
+ * table, or another grouping, is the same draw written in dplyr (set.seed, then slice_sample).
+ * The seed is what makes it reproducible: rerun the block and the same rows come back.
+ */
+function sampleBlock(p: GenParams, defaults: { data: string; n: number; seed: number; groupBy: string; file: string; v2v: boolean }): string {
+  const data = d(p, defaults.data);
+  const n = p.n ?? defaults.n;
+  const seed = p.seed ?? defaults.seed;
+  const by = p.groupBy ?? defaults.groupBy;
+  const byR = by ? rName(by) : by;
+  const file = p.file ?? defaults.file;
+  const result = p.result ?? 'coding_sample';
+  const each = by ? ` from each ${by}` : '';
+  const head = [
+    banner('Draw your coding sample, with a seed'),
+    ...comment(
+      `A random sample from ${data}: ${n} rows${each}, named ${result}. The seed (${seed}) makes the draw ` +
+        'repeatable: run these lines again and you get the same rows. Write the seed in your sampling plan. ' +
+        'Prints nothing.',
+    ),
+  ];
+  const draw =
+    defaults.v2v && data === 'chat' && by === 'channel'
+      ? [
+          '# sample_messages() sets the seed, then groups by channel and draws with slice_sample().',
+          `${result} <- sample_messages(${data}, n_per_channel = ${n}, seed = ${seed})`,
+        ]
+      : by
+        ? [
+            `set.seed(${seed})`,
+            `${result} <- ${data} %>%`,
+            `  group_by(${byR}) %>%`,
+            `  slice_sample(n = ${n}) %>%`,
+            '  ungroup()',
+          ]
+        : [`set.seed(${seed})`, `${result} <- ${data} %>%`, `  slice_sample(n = ${n})`];
+  const check = by
+    ? ['', `# How many rows came from each ${by}.`, `${result} %>%`, `  count(${byR})`]
+    : ['', '# How many rows the sample has.', `nrow(${result})`];
+  // The workspace template has no data folder, and write_csv() does not make one
+  const folder = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '';
+  const makeFolder = folder ? [`dir.create("${folder}", showWarnings = FALSE)   # makes the ${folder} folder if it is not there yet`] : [];
+  return lines(
+    ...head,
+    ...draw,
+    ...check,
+    '',
+    ...comment(`Save the sample as a CSV file. This is the file you open in the data viewer to code. Prints nothing.`),
+    ...makeFolder,
+    `write_csv(${result}, "${file}")`,
+  );
+}
+
+const v2vSample: Template = (p) =>
+  sampleBlock(p, { data: 'chat', n: 30, seed: 409, groupBy: 'channel', file: 'data/coding-sample.csv', v2v: true });
+const mc427Sample: Template = (p) =>
+  sampleBlock(p, { data: 'df', n: 50, seed: 427, groupBy: '', file: 'coding-sample.csv', v2v: false });
+
 // ---------------- Join two tables by a shared column (0.5.3, both dialects) ----------------
 
 /**
@@ -539,6 +602,7 @@ const mc427JoinTables: Template = (p) => joinTables(p, d(p, 'df'), p.right ?? 'a
 const v2vJoinTables: Template = (p) => joinTables(p, d(p, 'chat'), p.right ?? 'channel_type', p.column ?? 'channel');
 
 export const MC427_R2: Record<string, Template> = {
+  sample: mc427Sample,
   'join-tables': mc427JoinTables,
   'import-xlsx': mc427ImportXlsx,
   'import-csv': mc427ImportCsv,
@@ -551,6 +615,7 @@ export const MC427_R2: Record<string, Template> = {
 };
 
 export const V2V_R2: Record<string, Template> = {
+  sample: v2vSample,
   'join-tables': v2vJoinTables,
   'import-xlsx': v2vImportXlsx,
   'import-csv': v2vImportCsv,

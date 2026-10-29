@@ -22,7 +22,7 @@ import { explain, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from '
 import { pickAdapter, TerminalAdapter } from './adapters';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
-import { registerMenus, menuItems, stepsScript } from './menus';
+import { registerMenus, menuItems, stepsScript, appendToSteps } from './menus';
 import { registerPanel, AuraPanel } from './panel';
 import { openDataViewer, ViewerDeps } from './dataViewer';
 import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
@@ -135,6 +135,7 @@ export function activate(context: vscode.ExtensionContext) {
     bridgeScript: resourcePath('bridge.R'),
     mediaRoot: path.join(context.extensionPath, 'media', 'grid'),
     output,
+    appendToSteps,
   };
   reg('auraR.openDataViewer', (file?: string) => openDataViewer(context, viewerDeps, typeof file === 'string' ? file : undefined));
   // For tests and support: which run adapter and install source this copy sees

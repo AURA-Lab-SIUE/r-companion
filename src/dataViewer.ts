@@ -13,10 +13,11 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import { LoadedData, CodingColumn } from './dataTypes';
-import { loadCsvFile, loadRDataFrame, runRscriptSync } from './dataSource';
+import { loadCsvFile, loadRDataFrame, runRscriptSync, rekey, idStampOf, blankColumns, LEGACY } from './dataSource';
 import { CodeStore } from './codesStore';
-import { rebuildChunk } from './rebuild';
+import { rebuildChunk, codingSheetPath, idsAreShortNumbers } from './rebuild';
 import { webviewHtml } from './gridHtml';
+import { viewToR, viewIsSet, viewObjectName, FilterModel, SortItem } from './viewCode';
 import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
 import { dataFileKind, probeExpr, sheetListExpr, tableNameFromFile } from './importFile';
 
@@ -28,6 +29,8 @@ export interface ViewerDeps {
   /** Absolute path to the extension's media/grid folder. */
   mediaRoot: string;
   output: vscode.OutputChannel;
+  /** Adds a block to the end of the student's steps script unless it already holds `marker` (menus.ts). */
+  appendToSteps?: (code: string, marker: string) => Promise<{ file: string; already: boolean } | undefined>;
 }
 
 const panels = new Map<string, DataViewerPanel>();
@@ -207,7 +210,17 @@ class DataViewerPanel {
     this.folder = folderFor(data.sourcePath);
     const codesPath = path.join(this.folder, 'data', 'derived', `${data.name}-codes.csv`);
     this.store = CodeStore.load(codesPath);
+    // Key the data the way its codes file was keyed: the stamp it records, or the 0.5.4 rule for a
+    // file written before the stamp, so no code moves to another row
+    const stamp = this.store.idColumn ?? (this.store.toRecords().length ? LEGACY : undefined);
+    if (stamp) this.data = rekey(this.data, stamp);
+    this.store.idColumn = idStampOf(this.data);
     this.coding = this.restoreCoding();
+    // The coding sheet template's empty columns (one per codebook variable) are where codes go
+    for (const name of blankColumns(this.data)) {
+      if (!this.coding.some((c) => c.name === name)) this.coding.push({ name, kind: 'free' });
+    }
+    this.hideCodingColumnsFromData();
     this.originalHash = this.hashSource();
 
     this.panel = vscode.window.createWebviewPanel('auraDataViewer', `Data: ${data.name}`, vscode.ViewColumn.Active, {
@@ -225,6 +238,12 @@ class DataViewerPanel {
 
   reveal() {
     this.panel.reveal();
+  }
+
+  // A coding column that is also an (empty) column of the file shows once, as the coding column
+  private hideCodingColumnsFromData() {
+    const codingNames = new Set(this.coding.map((c) => c.name));
+    this.data.columns = this.data.columns.filter((c) => !codingNames.has(c.field));
   }
 
   onDispose(cb: () => void) {
@@ -291,7 +310,53 @@ class DataViewerPanel {
       case 'insertRebuild':
         void this.insertRebuild();
         break;
+      case 'viewCode':
+        void this.writeViewCode(m.filterModel ?? {}, Array.isArray(m.sort) ? m.sort : [], Number(m.shown) || 0);
+        break;
     }
+  }
+
+  // Write this view as R (code parity, 2026-10-28): the grid's filters and sorts as dplyr at the end
+  // of the steps script, so the rows the student looked at can be got again from the top
+  private async writeViewCode(filterModel: FilterModel, sort: SortItem[], shown: number) {
+    if (!viewIsSet(filterModel, sort)) {
+      void vscode.window.showInformationMessage('Set a filter or a sort in the viewer first (the menu on a column heading), then select Write this view as R.');
+      return;
+    }
+    const coded = this.store.columnsWithData();
+    const used = [...Object.keys(filterModel), ...sort.map((s) => s.colId)];
+    const empty = used.filter((c) => this.coding.some((k) => k.name === c) && !coded.includes(c));
+    if (empty.length) {
+      void vscode.window.showWarningMessage(`${empty.join(', ')} has no codes yet, so R has no column to filter or sort. Enter a code first.`);
+      return;
+    }
+    const numericIds = idsAreShortNumbers(this.data.rows.map((r) => String(r[this.data.rowIdField] ?? '')));
+    let code: string;
+    try {
+      code = viewToR({
+        fromObject: coded.length ? 'coded_data' : undefined,
+        dataRelPath: relForward(this.folder, this.data.sourcePath),
+        textIdColumn: !this.data.addedRowId && !numericIds ? this.data.rowIdField : undefined,
+        addedRowId: this.data.addedRowId,
+        name: this.data.name,
+        columns: this.data.columns.map((c) => ({ field: c.field, type: c.type })),
+        filterModel,
+        sort,
+        shownRows: shown,
+      });
+    } catch (e: any) {
+      void vscode.window.showWarningMessage(`That view cannot be written as R yet: ${e?.message ?? e}.`);
+      return;
+    }
+    if (!this.deps.appendToSteps) return;
+    if (coded.length) await this.recordInSteps();
+    // Every click adds the view, even one written before: a marker no script holds
+    const where = await this.deps.appendToSteps(code, '\u0000');
+    if (!where) return;
+    this.deps.output.appendLine(`Data viewer: the R for a view of ${this.data.name} went to the end of ${where.file}.`);
+    void vscode.window.showInformationMessage(
+      `The R for this view (${shown.toLocaleString('en-US')} rows) is now at the end of ${path.basename(where.file)}, as ${viewObjectName(this.data.name)}.`,
+    );
   }
 
   private postInit() {
@@ -301,6 +366,44 @@ class DataViewerPanel {
   private onCodeChange(rowId: string, column: string, value: string) {
     this.store.set(rowId, column, value, nowIso());
     this.scheduleSave();
+    void this.recordInSteps();
+  }
+
+  private recorded = false;
+
+  /** The rebuild block for this data and its codes file. */
+  private rebuildCode(): string {
+    return rebuildChunk({
+      dataRelPath: relForward(this.folder, this.data.sourcePath),
+      codesRelPath: relForward(this.folder, this.store.filePath),
+      sheetRelPath: codingSheetPath(this.data.name),
+      addedRowId: this.data.addedRowId,
+      origin: this.data.origin,
+      sourceExpr: this.data.sourceExpr,
+      idColumn: this.data.rowIdField,
+      numericIds: idsAreShortNumbers(this.data.rows.map((r) => String(r[this.data.rowIdField] ?? ''))),
+    });
+  }
+
+  // The first code entered leaves R behind (code parity, 2026-10-28): the rebuild block goes to the
+  // end of the student's steps script once, and keeps working as more codes are entered because it
+  // reads the codes file. A script that already holds this codes file's path is left as it is.
+  private async recordInSteps() {
+    if (this.recorded || !this.deps.appendToSteps) return;
+    this.recorded = true;
+    try {
+      const marker = relForward(this.folder, this.store.filePath);
+      const where = await this.deps.appendToSteps(this.rebuildCode(), `"${marker}"`);
+      if (!where || where.already) return;
+      const file = path.basename(where.file);
+      this.deps.output.appendLine(`Coding sheet: the rebuild block went to the end of ${where.file}.`);
+      void vscode.window.showInformationMessage(
+        `Your codes save to ${marker}. The R that rebuilds your coding sheet from them is now at the end of ${file}, so Run my steps from the top gives the same coding sheet.`,
+      );
+    } catch (e: any) {
+      this.recorded = false;
+      this.deps.output.appendLine(`Could not add the rebuild block to your steps: ${e?.message ?? e}`);
+    }
   }
 
   private scheduleSave() {
@@ -367,7 +470,8 @@ class DataViewerPanel {
     if (kindPick.colKind === 'list') {
       const raw = await vscode.window.showInputBox({
         title: `Allowed values for "${name.trim()}"`,
-        prompt: 'Type or paste your codebook values, separated by commas',
+        // The Companion does not read the codebook file; the student copies its values in
+        prompt: 'Copy the values for this variable from your codebook and paste or type them here, separated by commas',
         placeHolder: 'positive, neutral, negative',
         ignoreFocusOut: true,
         validateInput: (v) => (v.split(',').map((s) => s.trim()).filter(Boolean).length ? null : 'List at least one value.'),
@@ -375,10 +479,31 @@ class DataViewerPanel {
       if (raw === undefined) return;
       values = [...new Set(raw.split(',').map((s) => s.trim()).filter(Boolean))];
     }
-    const column: CodingColumn = { name: name.trim(), kind: kindPick.colKind, values };
-    this.coding.push(column);
+    // Coding twice is how a solo coder checks reliability: tone_p1 and tone_p2, as in the course's
+    // pilot example, with Hide pass 1 keeping the first pass out of sight during the second
+    const passes = await vscode.window.showQuickPick(
+      [
+        { label: 'Code it once', detail: `One column, ${name.trim()}`, twice: false },
+        {
+          label: 'Code it twice, for the reliability check',
+          detail: `Two columns, ${name.trim()}_p1 and ${name.trim()}_p2. Use Hide pass 1 while you code pass 2.`,
+          twice: true,
+        },
+      ],
+      { title: `Coding column "${name.trim()}"`, placeHolder: 'Will you code this variable twice to check your reliability?' },
+    );
+    if (!passes) return;
+    const names = passes.twice ? [`${name.trim()}_p1`, `${name.trim()}_p2`] : [name.trim()];
+    if (names.some((n) => taken.has(n.toLowerCase()))) {
+      vscode.window.showWarningMessage(`${names.join(' or ')} is already a column. Pick another name.`);
+      return;
+    }
+    for (const n of names) {
+      const column: CodingColumn = { name: n, kind: kindPick.colKind, values };
+      this.coding.push(column);
+      void this.panel.webview.postMessage({ type: 'columnAdded', column });
+    }
     await this.persistCoding();
-    void this.panel.webview.postMessage({ type: 'columnAdded', column });
   }
 
   private async refresh() {
@@ -387,7 +512,8 @@ class DataViewerPanel {
         this.data.origin === 'csv'
           ? { kind: 'csv', path: this.data.sourcePath }
           : { kind: 'rdataframe', expr: this.data.sourceExpr!, name: this.data.name };
-      this.data = loadSource(source, this.deps);
+      this.data = rekey(loadSource(source, this.deps), this.store.idColumn ?? idStampOf(this.data));
+      this.hideCodingColumnsFromData();
       this.originalHash = this.hashSource();
       this.postInit();
       void this.panel.webview.postMessage({ type: 'status', text: 'Refreshed from disk.' });
@@ -398,15 +524,23 @@ class DataViewerPanel {
   }
 
   private async insertRebuild() {
-    const chunk = rebuildChunk({
-      dataRelPath: relForward(this.folder, this.data.sourcePath),
-      codesRelPath: relForward(this.folder, this.store.filePath),
-      addedRowId: this.data.addedRowId,
-      origin: this.data.origin,
-      sourceExpr: this.data.sourceExpr,
-      codingColumns: this.coding.map((c) => c.name),
-    });
+    const chunk = this.rebuildCode();
     const editor = vscode.window.visibleTextEditors.find((e) => /\.(R|r|qmd|Rmd)$/.test(e.document.uri.fsPath));
+    const marker = `"${relForward(this.folder, this.store.filePath)}"`;
+    if (editor && editor.document.getText().includes(marker)) {
+      const line = editor.document.positionAt(editor.document.getText().indexOf(marker)).line;
+      const pick = await vscode.window.showInformationMessage(
+        `${path.basename(editor.document.fileName)} already rebuilds this coding sheet (line ${line + 1}).`,
+        'Show it',
+        'Insert another copy here',
+      );
+      if (pick === 'Show it') {
+        const pos = new vscode.Position(line, 0);
+        await vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, selection: new vscode.Selection(pos, pos) });
+        return;
+      }
+      if (pick !== 'Insert another copy here') return;
+    }
     if (editor) {
       // In a Quarto document the code goes in an R chunk, or it would be prose (seen in the 0.4.0
       // command-API run, 2026-10-19): the cursor's own chunk, or a new one

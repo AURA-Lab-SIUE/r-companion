@@ -8,3 +8,4 @@ dist/
 .rlib-install*.log
 verify-run-*.json
 verify-apa-*.json
+verify-steps.json

@@ -185,6 +185,8 @@ async function run() {
       editor.selection = new vscode.Selection(last, 0, last, 0);
       const p = vscode.commands.executeCommand('auraR.writeCode');
       await choose(m451.indexOf(task));
+      // The Describe charts open with Choose my columns / Use the course example (code parity)
+      if (task === 'line') await choose(1);
       await acceptToast(); // Run it
       await p;
       await sleep(wait);
@@ -237,6 +239,7 @@ async function run() {
     editor.selection = new vscode.Selection(lastLine, 0, lastLine, 0);
     const pNoRun = vscode.commands.executeCommand('auraR.writeCode');
     await choose(m451.indexOf('line'));
+    await choose(1); // Use the course example
     await sleep(1500);
     await vscode.commands.executeCommand('notifications.clearAll');
     await pNoRun;

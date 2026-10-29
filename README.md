@@ -9,8 +9,9 @@ R stays visible. Every menu writes the code into your own script, with a comment
 - **The AURA panel.** An icon in the Activity Bar lists every task for your course: setup, data, charts, tests, your steps, and help.
 - **Setup.** Finds R, checks every package your course needs, installs what is missing, and checks again from your R library.
 - **Write R code.** Menus for importing a CSV or Excel file, wrangling, joining two tables, describing, charts, and the course's statistical tests. Each writes the same code the course pages teach, into the script you have open (or `steps.R` when none is open), so you can run every step again from the top.
-- **Data viewer and coding sheet.** Opens a data file in a grid, and lets you code rows from your codebook. Your original file is never changed.
-- **Reliability grid** (MC 451 and MC 501). Enter two coding passes and get Cohen's kappa and Krippendorff's alpha.
+- **Coding sample.** Draws a random sample to code, with a seed you pick, and saves it as a CSV file. The same seed draws the same rows every time.
+- **Data viewer and coding sheet.** Opens a data file in a grid, and lets you code rows from your codebook, once or twice for a reliability check. The R that rebuilds your coding sheet goes into your steps by itself, and Write this view as R does the same for the filters and sorts you set. Your original file is never changed.
+- **Reliability.** Cohen's kappa and Krippendorff's alpha from the two passes in your coding sheet, or from the reliability grid (MC 451 and MC 501).
 - **Explain an R error.** Paste what R printed and get a plain-English cause and the steps to fix it, with a one-click fix where the Companion can make it.
 
 ## Install

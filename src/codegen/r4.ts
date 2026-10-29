@@ -5,6 +5,7 @@
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';
+import { chosenAnova, chosenChiSquare, chosenCorrelation, chosenRegression, chosenTTest } from './chosen';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
 
@@ -12,6 +13,7 @@ const d = (p: GenParams, def: string) => p.data ?? def;
 
 const mc427TTest: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenTTest(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Welch t-test: like_count by share_button'),
     '# The size, mean, and standard deviation of each group. The write-up needs all three,',
@@ -37,6 +39,7 @@ const mc427TTest: Template = (p) => {
 
 const mc427TTestMissing: Template = (p) => {
   const data = d(p, 'steam');
+  if (p.columns && p.columns.length === 2) return chosenTTest(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Welch t-test: playtime_at_review_min by voted_up'),
     '# One or more rows have no playtime_at_review_min. Drop them first, so every line below',
@@ -64,6 +67,7 @@ const mc427TTestMissing: Template = (p) => {
 
 const mc427ChiSquare: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenChiSquare(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Chi-square test: update by posted_from'),
     '# The observed counts: one row per update, one column per app.',
@@ -95,6 +99,7 @@ const mc427ChiSquare: Template = (p) => {
 
 const mc427Anova: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenAnova(data, p.columns[0], p.columns[1]);
   return lines(
     banner('One-way ANOVA: log_likes by update'),
     '# The size, mean, and standard deviation of each group.',
@@ -130,6 +135,7 @@ const mc427Anova: Template = (p) => {
 
 const mc427Regression: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenRegression(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Regression: does word_count predict like_count?'),
     '# Fit the line and name it fit, so the lines below reuse it. Prints nothing.',
@@ -150,6 +156,7 @@ const mc427Regression: Template = (p) => {
 
 const mc427Correlation: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenCorrelation(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Correlation: word_count and like_count'),
     "# Pearson's r as a one-row table: estimate is r, statistic is t, parameter is the df,",
@@ -161,8 +168,18 @@ const mc427Correlation: Template = (p) => {
 
 // ---------------- v2v shared: the settings block ----------------
 
-const v2vSettingsBlock: Template = () =>
-  lines(
+// The six names the tests use, in order (code parity, 2026-10-28: the student may pick their own
+// column for each; factor() makes the four category roles categories).
+export const SETTINGS_ROLES = ['outcome', 'group2', 'group3', 'predictor', 'cat_a', 'cat_b'] as const;
+const COURSE_SETTINGS = ['message_length', 'factor(channel_type)', 'factor(viewer_band)', 'hour(ts)', 'factor(viewer_band)', 'factor(channel_type)'];
+
+const v2vSettingsBlock: Template = (p) => {
+  const bt = (n: string) => (/^[A-Za-z.][A-Za-z0-9._]*$/.test(n) ? n : '`' + n + '`');
+  const chosen = p.columns && p.columns.length === SETTINGS_ROLES.length ? p.columns : undefined;
+  const exprs = chosen
+    ? chosen.map((c, i) => (i === 0 || i === 3 ? bt(c) : `factor(${bt(c)})`))
+    : COURSE_SETTINGS;
+  return lines(
     banner('Settings block: load the data and name the variables the tests use'),
     '# To run this script on other data, change only this block.',
     'library(tidyverse)',
@@ -171,19 +188,15 @@ const v2vSettingsBlock: Template = () =>
     '# Load the analysis file, then keep the columns the tests use under the names they use.',
     '# outcome is a number; group2 has two groups; group3 has three or more; predictor is a',
     '# number; cat_a and cat_b are categories. factor() makes a column a category.',
-    'analysis <- read_rds("data/twitch_analysis.RDS") %>%',
+    `analysis <- read_rds(${JSON.stringify(p.file ?? 'data/twitch_analysis.RDS')}) %>%`,
     '  transmute(',
-    '    outcome = message_length,',
-    '    group2 = factor(channel_type),',
-    '    group3 = factor(viewer_band),',
-    '    predictor = hour(ts),',
-    '    cat_a = factor(viewer_band),',
-    '    cat_b = factor(channel_type)',
+    ...SETTINGS_ROLES.map((r, i) => `    ${r} = ${exprs[i]}${i < SETTINGS_ROLES.length - 1 ? ',' : ''}`),
     '  )',
     '',
     '# Check the names and types.',
     'glimpse(analysis)',
   );
+};
 
 // ---------------- MC 451 (v2v wrappers, rubric form) ----------------
 

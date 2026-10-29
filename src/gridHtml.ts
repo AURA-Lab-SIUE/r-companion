@@ -33,7 +33,9 @@ function body(title: string): string {
     <div class="aura-actions" role="toolbar" aria-label="Data viewer actions">
       <button type="button" id="btn-refresh" class="aura-btn" title="Re-read the data file from disk">Refresh</button>
       <button type="button" id="btn-add" class="aura-btn">Add coding column</button>
+      <button type="button" id="btn-hide-p1" class="aura-btn" aria-pressed="false" title="Hide the pass 1 columns while you code pass 2">Hide pass 1</button>
       <button type="button" id="btn-rebuild" class="aura-btn">Insert rebuild code</button>
+      <button type="button" id="btn-view-code" class="aura-btn" title="Write the filters and sorts you set as R code in your steps">Write this view as R</button>
     </div>
   </header>
   <p id="aura-status" class="aura-status" role="status" aria-live="polite"></p>
@@ -42,8 +44,8 @@ function body(title: string): string {
     Data values are read only. Coding columns are on the right. In a column with a list of codes, type
     the first letters of a code and press Enter to save it and move down, or Tab to save it and move right.
     Escape cancels, F2 or a double-click shows the whole list, and Delete clears a cell. In a free-text
-    column, type and press Enter. Your work saves by itself to the codes file. Press Ctrl+Z (Cmd+Z on a
-    Mac) to undo.
+    column, type and press Enter. Your work saves by itself to the codes file, and the R that rebuilds your
+    coding sheet from it is added to your steps. Press Ctrl+Z (Cmd+Z on a Mac) to undo.
   </p>
   <span id="aura-loadtime" aria-hidden="true" hidden></span>`;
 }

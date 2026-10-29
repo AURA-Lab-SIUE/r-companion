@@ -3,6 +3,7 @@
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';
+import { chosenBar, chosenBoxplot, chosenGroupedSummary, chosenHistogram, chosenLine, rName } from './chosen';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
 
@@ -10,7 +11,7 @@ const d = (p: GenParams, def: string) => p.data ?? def;
 
 const mc427Frequency: Template = (p) => {
   const data = d(p, 'df');
-  const column = p.column ?? 'posted_from';
+  const column = rName(p.column ?? 'posted_from');
   return lines(
     banner('Frequency table: count() and a percent column'),
     `# Count each value of ${column}, then add each count's share of the total, in percent.`,
@@ -22,6 +23,7 @@ const mc427Frequency: Template = (p) => {
 
 const mc427Crosstab: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.columns.length === 2) return chosenCrosstab(data, p.columns[0], p.columns[1], false);
   return lines(
     banner('Crosstab: count every pair of two columns'),
     '# One row per pair of update and posted_from, with its count, then prop: the share of',
@@ -39,8 +41,40 @@ const mc427Crosstab: Template = (p) => {
   );
 };
 
+// A crosstab of the two columns the student picked (code parity, 2026-10-28), such as their own
+// codes against the AI's codes on the coding sheet. Plain tidyverse in every course. MC 451 and
+// MC 501 drop rows missing either column first, as their default block does; MC 427 keeps them,
+// so a blank code shows up as NA in the count, as in Module 4 DT03.
+function chosenCrosstab(data: string, rows: string, cols: string, dropMissing: boolean): string {
+  // a name with a space or other sign goes in backticks, as R needs
+  const bt = (n: string) => (/^[A-Za-z.][A-Za-z0-9._]*$/.test(n) ? n : '`' + n + '`');
+  rows = bt(rows);
+  cols = bt(cols);
+  const drop = dropMissing ? [`  filter(!is.na(${rows}), !is.na(${cols})) %>%`] : [];
+  return lines(
+    banner(`Crosstab: count every pair of ${rows} and ${cols}`),
+    ...(dropMissing ? ['# Drop the rows missing either column first.'] : []),
+    `# One row per pair of ${rows} and ${cols}, with n, how many rows have that pair, then prop:`,
+    `# the share of each ${rows} value's rows in each ${cols} value (prop adds up to 1 within`,
+    `# each ${rows} value).${dropMissing ? '' : ' A blank cell counts as NA.'}`,
+    `${data} %>%`,
+    ...drop,
+    `  count(${rows}, ${cols}) %>%`,
+    `  group_by(${rows}) %>%`,
+    '  mutate(prop = round(n / sum(n), 3)) %>%',
+    '  ungroup()',
+    '',
+    `# The same counts spread into a grid: one row per ${rows} value, one column per ${cols} value.`,
+    `${data} %>%`,
+    ...drop,
+    `  count(${rows}, ${cols}) %>%`,
+    `  pivot_wider(names_from = ${cols}, values_from = n, values_fill = 0)`,
+  );
+}
+
 const mc427GroupedSummary: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns) return chosenGroupedSummary(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Summary by group: group_by() and summarize()'),
     '# For each value of share_button: how many posts, and the mean, median, and',
@@ -58,6 +92,7 @@ const mc427GroupedSummary: Template = (p) => {
 
 const mc427Bar: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns) return chosenBar(false, data, p.columns[0]);
   return lines(
     banner('Bar chart: one bar per category'),
     '# Count the posts from each app, then draw one bar per app, longest at the top.',
@@ -81,6 +116,7 @@ const mc427Bar: Template = (p) => {
 
 const mc427Histogram: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns) return chosenHistogram(false, data, p.columns[0]);
   return lines(
     banner('Histogram: how one number is spread out'),
     '# Each bar counts the posts whose word_count falls in a 5-word band.',
@@ -100,6 +136,7 @@ const mc427Histogram: Template = (p) => {
 
 const mc427Boxplot: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns) return chosenBoxplot(false, data, p.columns[0], p.columns[1]);
   return lines(
     banner('Boxplot: one number, compared across groups'),
     '# One box per value of share_button. The line in each box is the median; the box holds',
@@ -122,7 +159,7 @@ const mc427Boxplot: Template = (p) => {
 
 const v2vFrequency: Template = (p) => {
   const data = d(p, 'analysis');
-  const column = p.column ?? 'channel_type';
+  const column = rName(p.column ?? 'channel_type');
   return lines(
     banner('Frequency table: count() and a percent column'),
     "# Count each channel type, then add each count's share of the total, in percent.",
@@ -134,6 +171,7 @@ const v2vFrequency: Template = (p) => {
 
 const v2vCrosstab: Template = (p) => {
   const data = d(p, 'analysis');
+  if (p.columns && p.columns.length === 2) return chosenCrosstab(data, p.columns[0], p.columns[1], true);
   return lines(
     banner('Crosstab: count every pair of two columns'),
     '# Drop the rows missing either column, then one row per pair with its count, then prop:',
@@ -155,6 +193,7 @@ const v2vCrosstab: Template = (p) => {
 
 const v2vGroupedSummary: Template = (p) => {
   const data = d(p, 'analysis');
+  if (p.columns) return chosenGroupedSummary(data, p.columns[0], p.columns[1]);
   return lines(
     banner('Summary by group: group_by() and summarize()'),
     '# For each channel type: how many messages, and the mean, median, and standard deviation',
@@ -171,8 +210,9 @@ const v2vGroupedSummary: Template = (p) => {
   );
 };
 
-const v2vBar: Template = () =>
-  lines(
+const v2vBar: Template = (p) => {
+  if (p.columns) return chosenBar(true, d(p, 'streams'), p.columns[0]);
+  return lines(
     banner('Bar chart: one bar per category'),
     '# Count the stream snapshots in each game, keep the ten largest, then draw one bar per game,',
     '# longest at the top. Inside ggplot() the pieces join with +, not the pipe. The bars share',
@@ -199,9 +239,11 @@ const v2vBar: Template = () =>
     'dir.create("figures", showWarnings = FALSE)',
     'ggsave("figures/top-games-bar.png", width = 7, height = 5)',
   );
+};
 
 const v2vHistogram: Template = (p) => {
   const data = d(p, 'analysis');
+  if (p.columns) return chosenHistogram(true, data, p.columns[0]);
   return lines(
     banner('Histogram: how one number is spread out'),
     '# Each bar counts the messages whose length falls in a 5-character band. Lengths over 200',
@@ -230,6 +272,7 @@ const v2vHistogram: Template = (p) => {
 
 const v2vBoxplot: Template = (p) => {
   const data = d(p, 'analysis');
+  if (p.columns) return chosenBoxplot(true, data, p.columns[0], p.columns[1]);
   return lines(
     banner('Boxplot: one number, compared across groups'),
     '# One box per channel type. The line in each box is the median; the box holds the middle',
@@ -261,8 +304,9 @@ const v2vBoxplot: Template = (p) => {
 // s23 and w12 shape this chart. ts is rebuilt from date here rather than assumed: in a describing
 // session streams comes fresh from twitch_streams() with no ts column, and a bare ts would then
 // find stats::ts() instead of a column. On a streams that already has ts the values are the same.
-const v2vLine: Template = () =>
-  lines(
+const v2vLine: Template = (p) => {
+  if (p.columns) return chosenLine(true, d(p, 'streams'), p.columns[0], p.unit ?? 'hour', p.groupBy || undefined);
+  return lines(
     banner('Line chart: a total over time'),
     '# Bucket the stream snapshots into six-hour blocks, keep the five biggest game categories and',
     '# lump the rest into "Other", then add up the viewers in each block. clean_dates() makes the',
@@ -302,6 +346,7 @@ const v2vLine: Template = () =>
     'dir.create("figures", showWarnings = FALSE)',
     'ggsave("figures/viewers-over-time-line.png", width = 7, height = 5)',
   );
+};
 
 const v2vHistogramGrouped: Template = (p) => {
   const data = d(p, 'analysis');
@@ -336,7 +381,34 @@ const v2vHistogramGrouped: Template = (p) => {
   );
 };
 
+// How often two code columns match (code parity, 2026-10-28): the three checks of MC 427 Module 4
+// DT03, on the columns the student picks. Plain tidyverse (owner q-20261028-0007 = A).
+const mc427Agreement: Template = (p) => {
+  const data = d(p, 'codes');
+  const [mine, theirs] = (p.columns && p.columns.length === 2 ? p.columns : ['sentiment', 'ai_sentiment']).map(rName);
+  const id = rName(p.column ?? 'review_id');
+  return lines(
+    banner(`Agreement: how often ${mine} and ${theirs} match`),
+    `# ${mine} == ${theirs} is TRUE or FALSE for each row; mean() of that is the share TRUE,`,
+    '# because R counts TRUE as 1 and FALSE as 0. Prints one number between 0 and 1.',
+    `${data} %>%`,
+    `  summarize(share_agree = mean(${mine} == ${theirs}))`,
+    '',
+    `# Every pair of codes, with n, how many rows got that pair. The rows where the two codes`,
+    '# are the same are the agreements.',
+    `${data} %>%`,
+    `  count(${mine}, ${theirs})`,
+    '',
+    `# The rows where the two codes differ (!= means "is not equal to"), with ${id} so you can`,
+    '# find each one.',
+    `${data} %>%`,
+    `  filter(${mine} != ${theirs}) %>%`,
+    `  select(${id}, ${mine}, ${theirs})`,
+  );
+};
+
 export const MC427_R3: Record<string, Template> = {
+  agreement: mc427Agreement,
   frequency: mc427Frequency,
   crosstab: mc427Crosstab,
   'grouped-summary': mc427GroupedSummary,

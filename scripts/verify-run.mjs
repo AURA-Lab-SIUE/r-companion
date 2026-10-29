@@ -102,5 +102,5 @@ for (const e of manifest.entries) {
 
 const clean = results.filter((r) => r.clean).length;
 fs.writeFileSync(path.join(ROOT, 'verify-run-0.3.3.json'), JSON.stringify(results, null, 2));
-console.log(`\n${clean} clean of ${results.length} (v2v 0.3.3)`);
+console.log(`\n${clean} clean of ${results.length} (the blocks need v2v 0.3.3 or later)`);
 process.exit(clean === results.length ? 0 : 2);

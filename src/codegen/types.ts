@@ -33,6 +33,14 @@ export interface GenParams {
   right?: string;
   /** Join with inner_join(): keep only the rows that match on both sides. */
   keepOnlyMatches?: boolean;
+  /** How many rows a sample draws (per group when the sample has groups). */
+  n?: number;
+  /** The seed that makes a random draw repeatable. */
+  seed?: number;
+  /** The time unit a line chart counts by: hour for a date-time column, day for a date. */
+  unit?: 'hour' | 'day';
+  /** Draw the sample within each value of this column; '' draws from the whole table. */
+  groupBy?: string;
 }
 
 /** A template: golden-reproducing when given no overrides. */

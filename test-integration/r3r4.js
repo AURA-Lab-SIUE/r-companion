@@ -208,14 +208,14 @@ async function run() {
     await write('frequency', { extra: [0] }); // Use the course default columns
     await sleep(6000);
     await shot('2 frequency table chunk and its table in the R terminal', out);
-    await write('bar', { run: false });
+    await write('bar', { run: false, extra: [1] }); // Use the course example
     const t2 = editor.document.getText().replace(/\r\n/g, '\n');
     log('2 chunk fences and banners', t2.split('\n').filter((l) => /^```|^# ----|^#\| /.test(l)));
     log('2 bar chunk has fig-alt first and alt in labs()', /```\{r\}\n#\| fig-alt: "YOUR TURN[^\n]*\n# ---- Bar chart/.test(t2) && /alt = "YOUR TURN: one sentence/.test(t2));
     await shot('3 bar chart chunk with the fig-alt line and alt in labs()', out);
 
     // 3. Tests: the settings block, then chi-square, t-test, ANOVA, regression, and the APA numbers
-    await write('settings-block');
+    await write('settings-block', { extra: [0] }); // Use the course variables
     await sleep(8000);
     await write('chi-square');
     await sleep(8000);
@@ -294,6 +294,7 @@ async function run() {
       await typeIntoInput(workbench, 'tone');
       await choose(0); // Allowed values (a dropdown)
       await typeIntoInput(workbench, 'positive, neutral, negative');
+      await choose(0); // Code it once (the second choice codes it twice, for reliability)
       await sleep(1500);
       log('11 coding columns', await viewer.eval(`${VWIN}.__auraApi.getColumnDefs().map(function(c){return c.field;}).slice(-2)`));
       log('11 set codes', await viewer.eval(`(function(){var a=${VWIN}.__auraApi;var out=[];a.forEachNode(function(n){if(n.rowIndex===0||n.rowIndex===2){n.setDataValue('tone', n.rowIndex===0?'positive':'negative');out.push(n.id);}});return out;})()`));
@@ -301,13 +302,18 @@ async function run() {
       const codes = path.join(ws, 'data', 'derived', 'practice-tweets-codes.csv');
       log('11 codes file', fs.existsSync(codes) ? fs.readFileSync(codes, 'utf8').trim().split(/\r?\n/) : 'missing');
       await shot('11 coding column tone with two codes', out);
-      // Rebuild code goes into analysis.qmd, at its end
+      // The first code puts the rebuild block at the end of analysis.qmd by itself (code parity);
+      // Insert rebuild code then only offers to show it
       editor = await vscode.window.showTextDocument(editor.document, vscode.ViewColumn.Two);
+      const autoAppended = editor.document.getText().includes('"data/derived/practice-tweets-codes.csv"');
+      log('12 rebuild block added by the first code', autoAppended);
       end();
       await viewer.eval(`${VDOC}.getElementById('btn-rebuild').click()`);
       await sleep(3000);
+      await shot('12 Insert rebuild code offers to show the block already there', out);
       await clearToasts();
       const withRebuild = editor.document.getText().replace(/\r\n/g, '\n');
+      log('12 rebuild blocks in analysis.qmd', withRebuild.split('"data/derived/practice-tweets-codes.csv"').length - 1);
       const rebuild = withRebuild.slice(withRebuild.lastIndexOf('```{r'));
       log('12 rebuild chunk', rebuild.split('\n'));
       showLastChunk();
@@ -336,6 +342,7 @@ async function run() {
     }
     await shot('13 MC 427 Write R code at the R4 Test heading', out);
     await vscode.commands.executeCommand('workbench.action.acceptSelectedQuickOpenItem');
+    await choose(1); // Use the course example (code parity: Choose the table and the columns is first)
     await sleep(2500);
     await shot('14 MC 427 t-test inserted, with the cross-check reminder', out);
     await clearToasts();
