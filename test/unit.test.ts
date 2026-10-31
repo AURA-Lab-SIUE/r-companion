@@ -660,3 +660,13 @@ test('Write this view as R: grid filters and sorts become dplyr that keeps the s
   assert.equal(viewObjectName('2026 chat'), 'x_2026_chat_view');
   assert.throws(() => viewToR({ dataRelPath: 'x.csv', addedRowId: false, name: 'x', shownRows: 1, columns: [{ field: 'n', type: 'number' }], filterModel: { n: { filterType: 'number', type: 'equals', filter: 'abc' } }, sort: [] }), /not a number/);
 });
+
+test('the setup report prints each group heading once, in a fixed order (MC 451 had three repeats)', () => {
+  for (const course of [PROFILES.mc427, PROFILES.mc451, PROFILES.mc501]) {
+    const items = buildChecklist(course, probe(), { rscript: 'R', rSource: 'PATH', vscodeRInstalled: true, inPositron: false, quartoExtension: false });
+    const text = renderText(course, probe(), items, new Date());
+    const headings = text.split('\n').filter((l) => l && !l.startsWith(' ') && !/^(AURA|Checked|RESULT|SETUP)/.test(l));
+    assert.equal(new Set(headings).size, headings.length, `${course.id}: ${headings.join(' | ')}`);
+    assert.equal(items[0].name, 'R');
+  }
+});

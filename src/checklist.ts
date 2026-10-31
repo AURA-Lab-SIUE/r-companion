@@ -207,8 +207,16 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
   if (profile.runV2vSetup) {
     items.push(...v2vSetupItems(probe));
   }
-  return items;
+  // One heading per group: rows were pushed in check order, so a course's extra required package
+  // (effectsize) and the Git row came after other groups, and the report printed "Required R
+  // packages", "Programs", and "VS Code" twice each (testbench, MC 451, 2026-10-31)
+  return items
+    .map((it, i) => ({ it, i }))
+    .sort((a, b) => GROUP_ORDER.indexOf(a.it.group) - GROUP_ORDER.indexOf(b.it.group) || a.i - b.i)
+    .map((x) => x.it);
 }
+
+const GROUP_ORDER: CheckItem['group'][] = ['R', 'Required R packages', 'Recommended R packages', 'Programs', 'VS Code', 'v2v::setup()'];
 
 /** v2v::setup() output, one checklist line per tick or cross. Headings become groups in the text. */
 export function v2vSetupItems(probe: ProbeResult): CheckItem[] {
