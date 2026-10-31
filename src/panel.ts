@@ -5,7 +5,7 @@
 
 import * as vscode from 'vscode';
 import { CourseId } from './profiles';
-import { panelTree, scriptBanners, PanelNode, MenuItem } from './panelModel';
+import { panelTree, scriptBanners, spokenLabel, PanelNode, MenuItem } from './panelModel';
 
 export interface PanelHost {
   currentCourse: () => CourseId | undefined;
@@ -67,7 +67,7 @@ export class AuraPanel implements vscode.TreeDataProvider<PanelNode> {
     item.tooltip = node.tooltip ?? node.label;
     // A screen reader reads the label and its description, never the tooltip (which is a URL or a
     // hint): without this the status line was announced as its tooltip
-    item.accessibilityInformation = { label: node.description ? `${node.label}, ${node.description}` : node.label };
+    item.accessibilityInformation = { label: spokenLabel(node) };
     if (node.icon) item.iconPath = new vscode.ThemeIcon(node.icon);
     if (node.command) item.command = { title: node.label, command: node.command.command, arguments: node.command.args };
     return item;
