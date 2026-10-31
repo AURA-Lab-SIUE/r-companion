@@ -88,6 +88,8 @@ const CASES: Case[] = [
   { id: 'quarto-check-no-r', msg: 'quarto check says R was not found' },
   { id: 'failed-to-spawn-rscript', msg: "ERROR: Failed to spawn 'Rscript'" },
   { id: 'yaml-render-error', msg: 'ERROR: Render failed due to a YAML error in the front matter' },
+  // The yaml PACKAGE is not a YAML error: an install log names it on every new machine
+  { id: 'no-package', msg: "Error in loadNamespace(x) : there is no package called 'yaml'", course: 'mc451' },
   { id: 'unc-share', msg: 'The drive or UNC share does not exist' },
   { id: 'permission-denied-publickey', msg: 'git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.' },
   { id: 'author-identity-unknown', msg: 'fatal: unable to auto-detect email address\nAuthor identity unknown' },

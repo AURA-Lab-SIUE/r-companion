@@ -576,7 +576,8 @@ export const ERROR_TABLE: ErrorEntry[] = [
   },
   {
     id: 'yaml-render-error',
-    pattern: /\byaml\b|_quarto\.yml|did not find expected key|mapping values are not allowed here/i,
+    // Not a bare "yaml": that is also the name of an R package every install log mentions
+    pattern: /\bYAML ?(?:error|exception)|_quarto\.yml|did not find expected key|mapping values are not allowed here|bad indentation of a mapping entry/i,
     title: 'Render fails with a YAML error',
     why: 'The block of settings at the top of your .qmd, between the --- lines, is misread. YAML is strict about spaces and colons.',
     fix: [
