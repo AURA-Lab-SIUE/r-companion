@@ -55,7 +55,8 @@ export function scriptPath(file: string, folder?: string): { path: string; outsi
 }
 
 export const OUTSIDE_NOTICE =
-  'This file is outside your course folder, so the path in your script only works on this computer. Copy it into data/ to keep the project portable.';
+  // No "data/": MC 427 course folders keep their files at the top level and have no data folder.
+  'This file is outside your course folder, so your script will find it only on this computer, not in your copy on GitHub or on your instructor\'s computer. Copy the file into your course folder, then import it again from there.';
 
 /** The R expression the column probe reads the chosen file with. */
 export function probeExpr(file: string, sheet?: string): string {
