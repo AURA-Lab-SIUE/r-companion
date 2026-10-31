@@ -4,7 +4,7 @@
 // `?v2v::common_errors` wording for the symptom-only cases. See src/errors.ts for sources.
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { explain, ERROR_TABLE, explanationMarkdown } from '../src/errors';
+import { explain, explainPrefill, ERROR_TABLE, explanationMarkdown } from '../src/errors';
 import { CourseId } from '../src/profiles';
 
 interface Case {
@@ -233,4 +233,19 @@ test('0.5.4: the not-attached steps are for vscode-R 3.x: the bell, the sess imp
   assert.equal(vsc.length, 1);
   assert.match(vsc[0], /starts with 2/);
   assert.doesNotMatch(all, /—/, 'no em dashes');
+});
+
+test('Explain an R error starts with the selection, else an R-looking clipboard, else an empty box', () => {
+  const sel = explainPrefill('object chat not found', 'anything', 'mc451');
+  assert.equal(sel.value, 'object chat not found');
+  assert.match(sel.prompt, /selected in the editor/);
+  // What testbench's clipboard held during the 2026-10-31 run: not R, so the box starts empty
+  const shell = explainPrefill('', 'bash ./run.sh --down', 'mc451');
+  assert.equal(shell.value, '');
+  assert.match(shell.prompt, /^Paste the message R printed/);
+  const rErr = explainPrefill('', "Error in `count()`:\n! Must group by variables found in `.data`.\n✖ Column `chanel` is not found.", 'mc451');
+  assert.ok(rErr.value.startsWith('Error in'));
+  assert.match(rErr.prompt, /copied last/);
+  // A message from the table counts even without the word Error
+  assert.ok(explainPrefill('', "there is no package called 'janitor'", 'mc451').value.length > 0);
 });

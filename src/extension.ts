@@ -18,7 +18,7 @@ import { discoverR, systemEnv, RCandidate } from './rDiscovery';
 import { STATUS_WORD } from './checklist';
 import { ActionItem, CheckResult, initSetup, installMissingCommand, installExtension, checkSetupCommand, runCheck, RunResult, SilentOpts } from './setup';
 import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
-import { explain, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
+import { explain, explainPrefill, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
@@ -435,10 +435,11 @@ async function explainErrorCommand(text?: string): Promise<string[]> {
     const editor = vscode.window.activeTextEditor;
     const sel = editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection) : '';
     const clip = sel ? '' : (await vscode.env.clipboard.readText()).slice(0, 2000);
+    const start = explainPrefill(sel, clip, currentCourse());
     input = await vscode.window.showInputBox({
       title: 'Explain an R error',
-      prompt: 'Paste the message R printed (copy it from the terminal first), then press Enter',
-      value: sel || clip,
+      prompt: start.prompt,
+      value: start.value,
       ignoreFocusOut: true,
     });
     if (input === undefined) return [];

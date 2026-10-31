@@ -683,6 +683,20 @@ export function explain(text: string, course?: CourseId): Explanation[] {
   return out;
 }
 
+/**
+ * What Explain an R error's box starts with. The editor selection wins, and the prompt says it is the
+ * selection. The clipboard is used only when it looks like something R printed: on the test box it
+ * held an unrelated shell command, which sat selected in the box as if it were the error.
+ */
+export function explainPrefill(selection: string, clipboard: string, course?: CourseId): { value: string; prompt: string } {
+  if (selection) {
+    return { value: selection, prompt: 'This is the text you selected in the editor. Replace it with the message R printed if that is not it, then press Enter.' };
+  }
+  if (clipboard && (explain(clipboard, course).length > 0 || /\b(Error|Warning|Fehler|Erreur)\b/.test(clipboard))) {
+    return { value: clipboard, prompt: 'This is what you copied last. Press Enter to explain it, or paste the message R printed instead.' };
+  }
+  return { value: '', prompt: 'Paste the message R printed (copy it from the terminal first), then press Enter' };
+}
 /** Escape Markdown punctuation so R code, paths, and Git's <<<<<<< markers show as typed. */
 function mdText(s: string): string {
   return s.replace(/[\\`*_{}[\]()<>#+\-.!|~]/g, (c) => '\\' + c);
