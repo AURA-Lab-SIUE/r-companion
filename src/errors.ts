@@ -227,6 +227,17 @@ export const ERROR_TABLE: ErrorEntry[] = [
     fix: ['Type yes each time it asks.', 'AURA: Install what is missing creates that folder for you.'],
   },
   {
+    // install.packages() with no prompt to answer (Rscript, or a lib = R cannot write to), R 4.6.1 2026-10-31
+    id: 'lib-not-writable',
+    pattern: /['‘’"]?lib = [^\n]*['‘’"]? is not writable|unable to install packages/i,
+    title: 'R cannot save packages in that folder',
+    why: 'R tried to install into a folder your account cannot change, usually the R program folder, and there was no question for you to answer, so it stopped without installing anything.',
+    fix: [
+      'Run AURA: Install what is missing. It installs into your personal R library, a folder in your own account.',
+      'If you typed install.packages() yourself, leave out lib = and try again in an R terminal; when R asks about a personal library, type yes.',
+    ],
+  },
+  {
     id: 'update-prompt',
     pattern: /These packages have more recent versions available|Enter one or more numbers, or an empty line to skip updates/i,
     title: 'These packages have more recent versions available',

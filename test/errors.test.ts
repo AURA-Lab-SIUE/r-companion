@@ -37,6 +37,7 @@ const CASES: Case[] = [
   { id: 'cannot-open-file', msg: "cannot open file 'mc427-setup-chek.R': No such file or directory", course: 'mc427' },
   { id: 'cran-mirror', msg: '--- Please select a CRAN mirror for use in this session ---' },
   { id: 'personal-library', msg: 'Would you like to use a personal library instead?  (yes/No/cancel)' },
+  { id: 'lib-not-writable', msg: 'Warning in install.packages("praise", lib = "C:/Program Files/R/R-4.6.1/library",  :\n  \'lib = "C:/Program Files/R/R-4.6.1/library"\' is not writable\nError in install.packages("praise", lib = "C:/Program Files/R/R-4.6.1/library",  : \n  unable to install packages' },
   { id: 'update-prompt', msg: 'These packages have more recent versions available.\nEnter one or more numbers, or an empty line to skip updates:' },
   { id: 'object-r-not-found', msg: "Error in library(v2v-r) : object 'r' not found", course: 'mc501' },
   { id: 'git-clone-missing', msg: "'git' is not recognized as an internal or external command" },
