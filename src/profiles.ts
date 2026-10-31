@@ -64,8 +64,10 @@ const V2V_PACKAGES: PackageSpec[] = [
     source: 'github',
     repo: 'AURA-Lab-SIUE/v2v-r',
     // 0.3.3 from R2 on (owner q-20261018-0047 = A): its join_chat_streams() returns ts and
-    // snapshot_ts, which the generated wrangling code reads
-    minVersion: '0.3.3',
+    // snapshot_ts, which the generated wrangling code reads. 0.3.6 since the portfolio unit:
+    // before it, v2v::deploy_portfolio() published to Posit Connect and every deploy ended in
+    // "Publish failed:", while Check my setup still said OK.
+    minVersion: '0.3.6',
   },
   { name: 'quarto', why: 'the R side of Quarto, used to publish your portfolio', level: 'recommended', source: 'cran' },
 ];

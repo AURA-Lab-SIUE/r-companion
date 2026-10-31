@@ -37,6 +37,7 @@ const CASES: Case[] = [
   { id: 'cannot-open-file', msg: "cannot open file 'mc427-setup-chek.R': No such file or directory", course: 'mc427' },
   { id: 'cran-mirror', msg: '--- Please select a CRAN mirror for use in this session ---' },
   { id: 'personal-library', msg: 'Would you like to use a personal library instead?  (yes/No/cancel)' },
+  { id: 'lib-not-writable', msg: 'Warning in install.packages("praise", lib = "C:/Program Files/R/R-4.6.1/library",  :\n  \'lib = "C:/Program Files/R/R-4.6.1/library"\' is not writable\nError in install.packages("praise", lib = "C:/Program Files/R/R-4.6.1/library",  : \n  unable to install packages' },
   { id: 'update-prompt', msg: 'These packages have more recent versions available.\nEnter one or more numbers, or an empty line to skip updates:' },
   { id: 'object-r-not-found', msg: "Error in library(v2v-r) : object 'r' not found", course: 'mc501' },
   { id: 'git-clone-missing', msg: "'git' is not recognized as an internal or external command" },
@@ -76,11 +77,19 @@ const CASES: Case[] = [
   { id: 'setup-quarto-false-alarm', msg: 'x Quarto CLI not found', course: 'mc451' },
   { id: 'kappa-lower-than-expected', msg: "Cohen's kappa is much lower than I expected", course: 'mc451' },
   { id: 'twitch-sample-not-found', msg: "Error in data(twitch_chat_sample) : data set 'twitch_chat_sample' not found", course: 'mc451' },
+  // v2v 0.3.6's own stop messages, as R 4.6.1 prints them (2026-10-31)
+  { id: 't-test-two-levels', msg: 'Error in `v2v::run_t_test()`:\n! `g` must have exactly two non-NA levels; found 3.', course: 'mc451' },
+  { id: 'v2v-clean-dates-not-numeric', msg: 'Error in `v2v::clean_dates()`:\n! `x` must be a numeric vector of Unix epoch ms.', course: 'mc451' },
+  { id: 'v2v-missing-columns', msg: 'Error in `v2v::join_chat_streams()`:\n! `chat` is missing columns: "channel" and "ts".', course: 'mc501' },
+  { id: 'v2v-missing-columns', msg: 'Error in `v2v::sample_messages()`:\n! `chat` must have a channel column.', course: 'mc451' },
+  { id: 'v2v-portfolio-exists', msg: "Error in `v2v::new_portfolio()`:\n! 'C:\\Users\\student\\Documents/white-paper' already exists and is\nnot empty.\nℹ Your project is already made. Open it rather than building it again.", course: 'mc501' },
   // Quarto and Git/GitHub (all courses)
   { id: 'quarto-command-not-found', msg: 'bash: quarto: command not found' },
   { id: 'quarto-check-no-r', msg: 'quarto check says R was not found' },
   { id: 'failed-to-spawn-rscript', msg: "ERROR: Failed to spawn 'Rscript'" },
   { id: 'yaml-render-error', msg: 'ERROR: Render failed due to a YAML error in the front matter' },
+  // The yaml PACKAGE is not a YAML error: an install log names it on every new machine
+  { id: 'no-package', msg: "Error in loadNamespace(x) : there is no package called 'yaml'", course: 'mc451' },
   { id: 'unc-share', msg: 'The drive or UNC share does not exist' },
   { id: 'permission-denied-publickey', msg: 'git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.' },
   { id: 'author-identity-unknown', msg: 'fatal: unable to auto-detect email address\nAuthor identity unknown' },

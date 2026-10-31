@@ -368,7 +368,11 @@ async function finishInstall(
   const stillFailing = attempted.filter((n) => !verified.includes(n));
   host.output.appendLine(`Verified from the library: ${verified.join(', ') || 'none'}`);
   if (stillFailing.length) host.output.appendLine(`Still not installed: ${stillFailing.join(', ')}`);
-  for (const e of explanations) host.output.appendLine(`Possible cause: ${e.entry.title}. ${e.entry.fix.join(' ')}`);
+  // Only when something is still missing: a clean install log names the yaml package and prints
+  // remotes' "Rtools is required" warning, so a successful install printed two wrong causes.
+  if (stillFailing.length) {
+    for (const e of explanations) host.output.appendLine(`Possible cause: ${e.entry.title}. ${e.entry.fix.join(' ')}`);
+  }
 
   if (!opts?.silent) {
     const pkgs = verified.filter((n) => !extNames.includes(n));

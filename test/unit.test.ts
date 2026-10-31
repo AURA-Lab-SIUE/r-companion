@@ -140,20 +140,20 @@ test('MC 451 checklist flags an old v2v as NEEDS UPDATE and plans a GitHub insta
   assert.ok(!plan.some((p) => p.name === 'quarto'), 'recommended packages wait for the second button');
 });
 
-test('MC 451 and MC 501 need v2v 0.3.3 from R2 on: 0.3.2 is NEEDS UPDATE, 0.3.3 is OK', () => {
+test('MC 451 and MC 501 need v2v 0.3.6 (it publishes the portfolio): 0.3.5 is NEEDS UPDATE, 0.3.6 is OK', () => {
   for (const course of [PROFILES.mc451, PROFILES.mc501]) {
     const probeAt = (version: string) =>
       probe({ packages: [{ name: 'v2v', installed: true, version, loads: true, error: null }], quarto: 'q' });
     const check = (version: string) =>
       buildChecklist(course, probeAt(version), { rscript: 'R', rSource: 'PATH', vscodeRInstalled: true, inPositron: false });
-    const old = check('0.3.2');
+    const old = check('0.3.5');
     const item = old.find((i) => i.name === 'v2v');
     assert.equal(item?.status, 'outdated');
-    assert.ok(renderText(course, probeAt('0.3.2'), old, new Date()).includes('[NEEDS UPDATE] v2v'));
-    assert.ok(item?.detail.includes('0.3.3 or newer'));
+    assert.ok(renderText(course, probeAt('0.3.5'), old, new Date()).includes('[NEEDS UPDATE] v2v'));
+    assert.ok(item?.detail.includes('0.3.6 or newer'));
     const script = installScript(installPlan(old, false), 'https://cloud.r-project.org');
     assert.ok(script.includes('remotes::install_github("AURA-Lab-SIUE/v2v-r", upgrade = "never", force = TRUE, lib = lib)'));
-    assert.equal(check('0.3.3').find((i) => i.name === 'v2v')?.status, 'ok');
+    assert.equal(check('0.3.6').find((i) => i.name === 'v2v')?.status, 'ok');
   }
 });
 

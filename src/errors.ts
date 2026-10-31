@@ -227,6 +227,17 @@ export const ERROR_TABLE: ErrorEntry[] = [
     fix: ['Type yes each time it asks.', 'AURA: Install what is missing creates that folder for you.'],
   },
   {
+    // install.packages() with no prompt to answer (Rscript, or a lib = R cannot write to), R 4.6.1 2026-10-31
+    id: 'lib-not-writable',
+    pattern: /['‘’"]?lib = [^\n]*['‘’"]? is not writable|unable to install packages/i,
+    title: 'R cannot save packages in that folder',
+    why: 'R tried to install into a folder your account cannot change, usually the R program folder, and there was no question for you to answer, so it stopped without installing anything.',
+    fix: [
+      'Run AURA: Install what is missing. It installs into your personal R library, a folder in your own account.',
+      'If you typed install.packages() yourself, leave out lib = and try again in an R terminal; when R asks about a personal library, type yes.',
+    ],
+  },
+  {
     id: 'update-prompt',
     pattern: /These packages have more recent versions available|Enter one or more numbers, or an empty line to skip updates/i,
     title: 'These packages have more recent versions available',
@@ -373,7 +384,8 @@ export const ERROR_TABLE: ErrorEntry[] = [
   },
   {
     id: 't-test-two-levels',
-    pattern: /must have exactly 2 levels/i,
+    // Base R says "exactly 2 levels"; v2v::run_t_test() says "exactly two non-NA levels; found 3."
+    pattern: /must have exactly (?:2|two)(?: non-NA)? levels/i,
     title: 'grouping factor must have exactly 2 levels',
     why: 'A t-test compares exactly two groups. The grouping column has three or more values, or it has NAs that R counts as a level.',
     fix: [
@@ -490,6 +502,44 @@ export const ERROR_TABLE: ErrorEntry[] = [
     courses: V2V,
   },
 
+  // The v2v package's own stop messages (v2v 0.3.6, printed as "Error in `v2v::fn()`: ! ...",
+  // reproduced in R 4.6.1). No public page covers them, so they carry their fix steps alone.
+  {
+    id: 'v2v-clean-dates-not-numeric',
+    pattern: /must be a numeric vector of Unix epoch ms/i,
+    title: 'clean_dates() needs the number column',
+    why: 'clean_dates() turns the Twitch date column, one long number that counts milliseconds since 1970, into a date and time. It was given text, or a column that is already a date and time.',
+    fix: [
+      'Give it the original number column: mutate(ts = clean_dates(date)).',
+      'If you already ran clean_dates() on this table, the new column is a date and time already, so use it as it is.',
+      'If your own data writes dates as text, such as 2018-05-01 14:00, read them with lubridate::ymd_hm() instead.',
+    ],
+    courses: V2V,
+  },
+  {
+    id: 'v2v-missing-columns',
+    pattern: /is missing columns:|must have a channel column/i,
+    title: 'A v2v helper cannot find the columns it needs',
+    why: 'join_chat_streams() needs a channel column and a ts column in both tables, and sample_messages() needs a channel column. One was renamed, dropped, or not made yet.',
+    fix: [
+      'Run glimpse() on the table named in the message to see the columns it has.',
+      'For join_chat_streams(), make ts in each table first: mutate(ts = clean_dates(date)).',
+      'If your column has another name, rename it first: rename(channel = your_column).',
+    ],
+    courses: V2V,
+  },
+  {
+    id: 'v2v-portfolio-exists',
+    pattern: /already exists and is\s+not empty/i,
+    title: 'new_portfolio(): the folder already has files',
+    why: 'new_portfolio() will not build over a folder that already has files in it, so it can never erase your work.',
+    fix: [
+      'Your project is already made. Open it with File, then Open Folder, instead of building it again.',
+      'To start a separate project, give it a new name, such as new_portfolio("white-paper-2").',
+    ],
+    courses: V2V,
+  },
+
   // Quarto and Git/GitHub (publishing and setup; all courses).
   {
     id: 'quarto-command-not-found',
@@ -526,7 +576,8 @@ export const ERROR_TABLE: ErrorEntry[] = [
   },
   {
     id: 'yaml-render-error',
-    pattern: /\byaml\b|_quarto\.yml|did not find expected key|mapping values are not allowed here/i,
+    // Not a bare "yaml": that is also the name of an R package every install log mentions
+    pattern: /\bYAML ?(?:error|exception)|_quarto\.yml|did not find expected key|mapping values are not allowed here|bad indentation of a mapping entry/i,
     title: 'Render fails with a YAML error',
     why: 'The block of settings at the top of your .qmd, between the --- lines, is misread. YAML is strict about spaces and colons.',
     fix: [
