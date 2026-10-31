@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
 import * as path from 'path';
-import { panelTree, scriptBanners, PanelNode } from '../src/panelModel';
+import { panelTree, scriptBanners, spokenLabel, PanelNode } from '../src/panelModel';
 import { menuItems } from '../src/catalog';
 
 const menuItemsPure = (c: 'mc427' | 'mc451' | 'mc501') => menuItems(c, true);
@@ -97,4 +97,15 @@ test('Run my steps from the top: source() for an R script, knitr::purl() first f
     runStepsCode(path.join(folder, 'journal.qmd'), folder),
     'source(knitr::purl("journal.qmd", output = tempfile(fileext = ".R"), quiet = TRUE), echo = TRUE)',
   );
+});
+
+test('a screen reader hears that a Help link opens the web browser, and other nodes keep their label', () => {
+  const nodes = flat(panelTree({ course: 'mc451', items: menuItemsPure('mc451'), crossCheck: false, banners: [] }));
+  const links = nodes.filter((n) => n.command?.command === 'auraR.openLink');
+  assert.ok(links.length > 0);
+  for (const n of links) assert.ok(spokenLabel(n).endsWith(', opens in your web browser'), spokenLabel(n));
+  for (const n of nodes.filter((n) => n.command?.command !== 'auraR.openLink')) {
+    assert.ok(!spokenLabel(n).includes('web browser'), spokenLabel(n));
+    assert.ok(spokenLabel(n).startsWith(n.label));
+  }
 });

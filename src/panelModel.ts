@@ -23,6 +23,15 @@ export interface PanelNode {
   children?: PanelNode[];
 }
 
+/**
+ * What a screen reader says for a node. It reads the label and description, never the tooltip, so a
+ * Help link that opens the browser has to say so here (NVDA pass on testbench, 2026-10-24).
+ */
+export function spokenLabel(node: PanelNode): string {
+  const base = node.description ? `${node.label}, ${node.description}` : node.label;
+  return node.command?.command === 'auraR.openLink' ? `${base}, opens in your web browser` : base;
+}
+
 /** One Write R code item, as menus.ts lists it for the course. */
 export interface MenuItem {
   task: string;

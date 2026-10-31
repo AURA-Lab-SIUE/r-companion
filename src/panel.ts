@@ -1,11 +1,11 @@
 // The AURA panel (0.5.3, #rgui Rank 4): an Activity Bar view with My setup, Data, Describe, Test,
 // Your steps, and Help. A native tree view, so it is keyboard and screen-reader accessible as
 // VS Code's own trees are (arrow keys, type-ahead, the tree role) and has a Focus command in the
-// Command Palette ("AURA: Focus on R Companion View"). The tree itself comes from panelModel.ts.
+// Command Palette ("AURA Lab R Companion: Focus on AURA Lab R Companion View"). The tree itself comes from panelModel.ts.
 
 import * as vscode from 'vscode';
 import { CourseId } from './profiles';
-import { panelTree, scriptBanners, PanelNode, MenuItem } from './panelModel';
+import { panelTree, scriptBanners, spokenLabel, PanelNode, MenuItem } from './panelModel';
 
 export interface PanelHost {
   currentCourse: () => CourseId | undefined;
@@ -67,7 +67,7 @@ export class AuraPanel implements vscode.TreeDataProvider<PanelNode> {
     item.tooltip = node.tooltip ?? node.label;
     // A screen reader reads the label and its description, never the tooltip (which is a URL or a
     // hint): without this the status line was announced as its tooltip
-    item.accessibilityInformation = { label: node.description ? `${node.label}, ${node.description}` : node.label };
+    item.accessibilityInformation = { label: spokenLabel(node) };
     if (node.icon) item.iconPath = new vscode.ThemeIcon(node.icon);
     if (node.command) item.command = { title: node.label, command: node.command.command, arguments: node.command.args };
     return item;
