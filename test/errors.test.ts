@@ -76,6 +76,12 @@ const CASES: Case[] = [
   { id: 'setup-quarto-false-alarm', msg: 'x Quarto CLI not found', course: 'mc451' },
   { id: 'kappa-lower-than-expected', msg: "Cohen's kappa is much lower than I expected", course: 'mc451' },
   { id: 'twitch-sample-not-found', msg: "Error in data(twitch_chat_sample) : data set 'twitch_chat_sample' not found", course: 'mc451' },
+  // v2v 0.3.6's own stop messages, as R 4.6.1 prints them (2026-10-31)
+  { id: 't-test-two-levels', msg: 'Error in `v2v::run_t_test()`:\n! `g` must have exactly two non-NA levels; found 3.', course: 'mc451' },
+  { id: 'v2v-clean-dates-not-numeric', msg: 'Error in `v2v::clean_dates()`:\n! `x` must be a numeric vector of Unix epoch ms.', course: 'mc451' },
+  { id: 'v2v-missing-columns', msg: 'Error in `v2v::join_chat_streams()`:\n! `chat` is missing columns: "channel" and "ts".', course: 'mc501' },
+  { id: 'v2v-missing-columns', msg: 'Error in `v2v::sample_messages()`:\n! `chat` must have a channel column.', course: 'mc451' },
+  { id: 'v2v-portfolio-exists', msg: "Error in `v2v::new_portfolio()`:\n! 'C:\\Users\\student\\Documents/white-paper' already exists and is\nnot empty.\nℹ Your project is already made. Open it rather than building it again.", course: 'mc501' },
   // Quarto and Git/GitHub (all courses)
   { id: 'quarto-command-not-found', msg: 'bash: quarto: command not found' },
   { id: 'quarto-check-no-r', msg: 'quarto check says R was not found' },

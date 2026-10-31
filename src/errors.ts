@@ -373,7 +373,8 @@ export const ERROR_TABLE: ErrorEntry[] = [
   },
   {
     id: 't-test-two-levels',
-    pattern: /must have exactly 2 levels/i,
+    // Base R says "exactly 2 levels"; v2v::run_t_test() says "exactly two non-NA levels; found 3."
+    pattern: /must have exactly (?:2|two)(?: non-NA)? levels/i,
     title: 'grouping factor must have exactly 2 levels',
     why: 'A t-test compares exactly two groups. The grouping column has three or more values, or it has NAs that R counts as a level.',
     fix: [
@@ -487,6 +488,44 @@ export const ERROR_TABLE: ErrorEntry[] = [
       'If it still fails, reinstall: remotes::install_github("AURA-Lab-SIUE/v2v-r", upgrade = "never", force = TRUE). v2v is not on CRAN, so install.packages() cannot find it.',
     ],
     link: { label: 'Installing the v2v package: when it fails', url: `${HUB}/install-v2v.html#when-it-fails` },
+    courses: V2V,
+  },
+
+  // The v2v package's own stop messages (v2v 0.3.6, printed as "Error in `v2v::fn()`: ! ...",
+  // reproduced in R 4.6.1). No public page covers them, so they carry their fix steps alone.
+  {
+    id: 'v2v-clean-dates-not-numeric',
+    pattern: /must be a numeric vector of Unix epoch ms/i,
+    title: 'clean_dates() needs the number column',
+    why: 'clean_dates() turns the Twitch date column, one long number that counts milliseconds since 1970, into a date and time. It was given text, or a column that is already a date and time.',
+    fix: [
+      'Give it the original number column: mutate(ts = clean_dates(date)).',
+      'If you already ran clean_dates() on this table, the new column is a date and time already, so use it as it is.',
+      'If your own data writes dates as text, such as 2018-05-01 14:00, read them with lubridate::ymd_hm() instead.',
+    ],
+    courses: V2V,
+  },
+  {
+    id: 'v2v-missing-columns',
+    pattern: /is missing columns:|must have a channel column/i,
+    title: 'A v2v helper cannot find the columns it needs',
+    why: 'join_chat_streams() needs a channel column and a ts column in both tables, and sample_messages() needs a channel column. One was renamed, dropped, or not made yet.',
+    fix: [
+      'Run glimpse() on the table named in the message to see the columns it has.',
+      'For join_chat_streams(), make ts in each table first: mutate(ts = clean_dates(date)).',
+      'If your column has another name, rename it first: rename(channel = your_column).',
+    ],
+    courses: V2V,
+  },
+  {
+    id: 'v2v-portfolio-exists',
+    pattern: /already exists and is\s+not empty/i,
+    title: 'new_portfolio(): the folder already has files',
+    why: 'new_portfolio() will not build over a folder that already has files in it, so it can never erase your work.',
+    fix: [
+      'Your project is already made. Open it with File, then Open Folder, instead of building it again.',
+      'To start a separate project, give it a new name, such as new_portfolio("white-paper-2").',
+    ],
     courses: V2V,
   },
 
