@@ -1,7 +1,7 @@
 // The AURA panel (0.5.3, #rgui Rank 4): an Activity Bar view with My setup, Data, Describe, Test,
 // Your steps, and Help. A native tree view, so it is keyboard and screen-reader accessible as
 // VS Code's own trees are (arrow keys, type-ahead, the tree role) and has a Focus command in the
-// Command Palette ("AURA: Focus on R Companion View"). The tree itself comes from panelModel.ts.
+// Command Palette ("AURA Lab R Companion: Focus on AURA Lab R Companion View"). The tree itself comes from panelModel.ts.
 
 import * as vscode from 'vscode';
 import { CourseId } from './profiles';

@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased (code parity: everything you do in the Companion leaves R that redoes it)
+## 0.6.0 (code parity: everything you do in the Companion leaves R that redoes it)
+
+- **Ctrl+Enter runs in the same R as Run it.** The R Companion now turns on the R extension's `r.alwaysUseActiveTerminal` by default. Before, the first Ctrl+Enter after Run it asked "Choose where to run the selected code", and its first choice started a new, empty R session without your tables. You can still change the setting back.
+- **One install path.** The R extension no longer asks on its own to install languageserver (`r.lsp.promptToInstall` is off by default). Check my setup and Install what is missing install it with everything else.
+- **One name.** The Activity Bar icon and the panel are both called AURA Lab R Companion, as on the Marketplace. The Write R code menu groups keep their names (R2 Data, R3 Describe, R4 Test).
+- **Install what is missing** prints "Possible cause" only when something is still missing. A clean install used to end with two causes that did not apply.
+- **Check my setup** lists each group once, and asks for v2v 0.3.6 or newer in MC 451 and MC 501 (earlier versions cannot publish your portfolio).
+- **Explain an R error** recognizes the v2v package's own errors (`run_t_test()` with three groups, `clean_dates()` on text, `join_chat_streams()` missing a column, `new_portfolio()` on a folder that already exists) and "lib is not writable". It no longer mistakes the yaml package's name for a YAML error, starts empty unless what you copied looks like R output, and says when it is explaining the text you selected.
+- **Importing a file outside your course folder** says in plain words why to copy it in, without naming a `data` folder MC 427 does not have.
+- **Screen readers** hear that a Help link opens your web browser.
 
 - **Every action leaves R in your steps.** The goal of this release: whatever you do with the Companion, Run my steps from the top gets the same result again, with the same file, seed, rows, and codes. That includes the things you do by hand in the data viewer.
 - **Draw a coding sample (with a seed).** A new Data task picks the table (or a data file), the column to sample within (the same number from each channel, for example) or no groups, how many rows, and a seed, then saves the sample as a CSV file for coding. MC 451 and MC 501 sampling the course chat by channel get `v2v::sample_messages()`, as the course guide shows; any other table gets `set.seed()` and `slice_sample()`. MC 427 gets plain tidyverse.
