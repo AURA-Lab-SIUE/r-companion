@@ -192,7 +192,9 @@ test('0.5.3: every Load block sets options(scipen = 10) right after the library(
 
 test('0.5.3: the grouped histogram shows shares, and the Twitch count axes use commas', () => {
   for (const course of ['mc451', 'mc501'] as const) {
-    assert.ok(generate(course, 'histogram-grouped').includes('ggplot(aes(x = length_shown, y = after_stat(density), fill = is_gaming)) +'));
+    // density * width is each band's share of its group (bars sum to 1), which is what the y label
+    // says; density alone is share per character, a fifth of that at binwidth 5 (#mc451501-improve G-a)
+    assert.ok(generate(course, 'histogram-grouped').includes('ggplot(aes(x = length_shown, y = after_stat(density * width), fill = is_gaming)) +'));
     for (const t of ['line', 'bar', 'histogram']) {
       assert.ok(generate(course, t).includes('  scale_y_continuous(labels = scales::label_comma()) +'), `${course} ${t}`);
     }
