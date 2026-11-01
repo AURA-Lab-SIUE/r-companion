@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { activateR, ActivateDeps, InFlight, pickRTarget, RNotActiveError, sameEditor } from '../src/rTarget';
+import { activateR, ActivateDeps, EditorSnapshot, InFlight, pickRTarget, RClosedError, RNotActiveError, runKey, RunKeyDeps, sameEditor, waitForR } from '../src/rTarget';
 
 test('no terminal at all: open R (AURA)', () => {
   assert.deepEqual(pickRTarget([], -1), { kind: 'open' });
@@ -151,4 +151,145 @@ test('sameEditor: the same document, version, and selections only', () => {
   assert.equal(sameEditor(a, { ...a, selections: [[1, 0, 1, 0], [3, 0, 3, 4]] }), false);
   assert.equal(sameEditor(a, undefined), false);
   assert.equal(sameEditor(undefined, undefined), true);
+});
+
+// ---- Copilot review of #6: a start that outlives its terminal, and the trust wait ----
+
+function fakeTerminal(noProcess = false) {
+  const closers: Array<() => void> = [];
+  const t = {
+    closed: false,
+    processId: Promise.resolve(noProcess ? undefined : 1),
+    exited: () => t.closed,
+    onClose: (cb: () => void) => {
+      closers.push(cb);
+      return { dispose: () => closers.splice(closers.indexOf(cb), 1) };
+    },
+    close: () => {
+      t.closed = true;
+      for (const cb of [...closers]) cb();
+    },
+  };
+  return t;
+}
+
+/** A delay the test releases by hand. */
+function manualDelay() {
+  let release!: () => void;
+  const delay = () =>
+    new Promise<void>((r) => {
+      release = r;
+    });
+  return { delay, release: () => release() };
+}
+
+test('waitForR: resolves once R has its process and the banner wait has passed', async () => {
+  const t = fakeTerminal();
+  const d = manualDelay();
+  const p = waitForR(t, 4000, d.delay);
+  await new Promise((r) => setImmediate(r));
+  d.release();
+  await p;
+});
+
+test('waitForR: R closes during the banner wait: rejects with RClosedError at once', async () => {
+  const t = fakeTerminal();
+  const d = manualDelay();
+  const p = waitForR(t, 4000, d.delay);
+  await new Promise((r) => setImmediate(r));
+  t.close();
+  await assert.rejects(p, RClosedError);
+});
+
+test('waitForR: R never got a process, or had already closed: rejects', async () => {
+  await assert.rejects(waitForR(fakeTerminal(true), 10, async () => {}), RClosedError);
+  const gone = fakeTerminal();
+  gone.close();
+  await assert.rejects(waitForR(gone, 10, async () => {}), RClosedError);
+});
+
+test('a second Run it that joins a start whose R then closes is refused too, not sent to the closed terminal', async () => {
+  const gate = new InFlight<string>();
+  const t = fakeTerminal();
+  const d = manualDelay();
+  const start = () => waitForR(t, 4000, d.delay).then(() => 'R (AURA)');
+  const first = gate.run(start);
+  const second = gate.run(start);
+  await new Promise((r) => setImmediate(r));
+  t.close();
+  await assert.rejects(first, RClosedError);
+  await assert.rejects(second, RClosedError);
+  assert.equal(gate.running, false);
+});
+
+test('RClosedError is an RNotActiveError, so every caller that stops on one stops on both', () => {
+  assert.ok(new RClosedError() instanceof RNotActiveError);
+  assert.match(new RClosedError().message, /closed/);
+});
+
+function keyDeps(snaps: Array<EditorSnapshot | undefined>, trusted: boolean) {
+  const log: string[] = [];
+  let rerun: (() => unknown) | undefined;
+  let i = 0;
+  const d: RunKeyDeps = {
+    snapshot: () => snaps[Math.min(i++, snaps.length - 1)],
+    requireTrust: async (r) => {
+      if (trusted) return true;
+      rerun = r;
+      return false;
+    },
+    activate: async () => {
+      log.push('activate');
+      return 'R';
+    },
+    execute: async () => {
+      log.push('execute');
+    },
+    warn: (m) => log.push(`warn ${m}`),
+  };
+  return { d, log, rerun: () => rerun?.(), trust: () => (trusted = true) };
+}
+
+const S1 = { uri: 'file:///w/s.R', version: 1, selections: [[0, 0, 0, 0]] };
+const S2 = { uri: 'file:///w/s.R', version: 1, selections: [[5, 0, 5, 0]] };
+
+test('runKey: trusted and the editor unchanged: activate R, then run', async () => {
+  const k = keyDeps([S1, S1], true);
+  assert.equal(await runKey(k.d), 'ran');
+  assert.deepEqual(k.log, ['activate', 'execute']);
+});
+
+test('runKey: the selection changed during the trust wait: the resumed run stops with a message', async () => {
+  // snapshot at the key press = S1; the student moves the cursor while the trust question is open
+  const k = keyDeps([S1, S2], false);
+  assert.equal(await runKey(k.d), 'waiting-for-trust');
+  assert.equal(k.log.length, 0);
+  k.trust();
+  assert.equal(await k.rerun(), 'changed');
+  assert.ok(!k.log.includes('execute'));
+  assert.ok(k.log.some((l) => l.startsWith('warn ')));
+});
+
+test('runKey: unchanged through the trust wait: the resumed run runs once', async () => {
+  const k = keyDeps([S1, S1], false);
+  await runKey(k.d);
+  k.trust();
+  assert.equal(await k.rerun(), 'ran');
+  assert.deepEqual(k.log, ['activate', 'execute']);
+});
+
+test('runKey: R closed while starting: stop with its message, run nothing', async () => {
+  const k = keyDeps([S1, S1], true);
+  k.d.activate = async () => {
+    throw new RClosedError();
+  };
+  assert.equal(await runKey(k.d), 'not-active');
+  assert.deepEqual(k.log, [`warn ${new RClosedError().message}`]);
+});
+
+test('runKey: R not found: run nothing', async () => {
+  const k = keyDeps([S1, S1], true);
+  k.d.activate = async () => undefined;
+  assert.equal(await runKey(k.d), 'no-r');
+  assert.ok(!k.log.includes('execute'));
 });
