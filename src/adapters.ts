@@ -9,6 +9,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { InFlight } from './rTarget';
 
 export interface RunAdapter {
   readonly id: 'positron' | 'vscode-r' | 'terminal';
@@ -62,6 +63,8 @@ export class TerminalAdapter implements RunAdapter {
   readonly id = 'terminal' as const;
   readonly label = 'R terminal';
   private terminal: vscode.Terminal | undefined;
+  /** R starting in the terminal: every caller that finds it starting waits for the same start. */
+  private starting = new InFlight<vscode.Terminal>();
   constructor(private rterm: () => string | undefined, private storageDir: string) {}
 
   /** True while the companion's own R terminal is open. */
@@ -96,18 +99,29 @@ export class TerminalAdapter implements RunAdapter {
     return this.terminal;
   }
 
-  /** Opens the terminal if needed and shows it without taking focus; on a fresh start, waits for R. */
+  /** True for this extension's terminal while R is still starting in it. */
+  isStarting(t: vscode.Terminal): boolean {
+    return this.starting.running && t === this.terminal;
+  }
+
+  /**
+   * Opens the terminal if needed and shows it without taking focus; on a fresh start, waits for R.
+   * A call while R is still starting waits for that same start rather than returning early.
+   */
   async ready(): Promise<vscode.Terminal> {
+    const inFlight = this.starting.current;
+    if (inFlight) return inFlight;
     const fresh = !this.terminal || this.terminal.exitStatus !== undefined;
     const t = this.open();
     t.show(true);
-    if (fresh) {
+    if (!fresh) return t;
+    return this.starting.run(async () => {
       // Text sent before R has started is lost (seen on Windows 2026-10-18: the line never
       // reached R). Wait for the process, then give R time to print its banner and prompt.
       await t.processId;
       await new Promise((r) => setTimeout(r, 4000));
-    }
-    return t;
+      return t;
+    });
   }
 
   async runCode(code: string): Promise<void> {

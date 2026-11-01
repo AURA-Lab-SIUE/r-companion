@@ -87,3 +87,29 @@ test("vscode-R's own run keys are removed in R files, so the Companion's win", (
     assert.ok(kb.some((k) => k.key.toLowerCase() === key && k.command === `-${cmd}` && k.when === when), `remove ${key} ${cmd} [${when}]`);
   }
 });
+
+test("macOS: the run keys use vscode-R 3.2.2's mac keys, removed and replaced (Copilot review of #5)", () => {
+  // VS Code reads `mac` in place of `key` on macOS. vscode-R 3.2.2 binds Cmd+Enter and the rest
+  // there, so a rule with only `key` neither removes nor replaces its binding on a Mac.
+  const UPSTREAM: Array<[string, string, string]> = [
+    ['r.runSelection', 'cmd+enter', "editorTextFocus && editorLangId == 'r'"],
+    ['r.runSelection', 'cmd+enter', "editorTextFocus && editorLangId == 'rmd'"],
+    ['r.runSelectionRetainCursor', 'option+enter', "editorTextFocus && editorLangId == 'r'"],
+    ['r.runCurrentChunk', 'cmd+shift+enter', "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"],
+    ['r.runAboveChunks', 'cmd+alt+p', "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"],
+    ['r.runSource', 'shift+cmd+s', "editorTextFocus && editorLangId == 'r'"],
+    ['r.runSourcewithEcho', 'shift+cmd+enter', "editorTextFocus && editorLangId == 'r'"],
+    ['r.runFromBeginningToLine', 'cmd+alt+b', "editorTextFocus && editorLangId == 'r'"],
+    ['r.runFromLineToEnd', 'cmd+alt+e', "editorTextFocus && editorLangId == 'r'"],
+  ];
+  const kb: Array<{ key: string; mac?: string; command: string; args?: unknown; when?: string }> = manifest.contributes.keybindings ?? [];
+  const macKey = (k: { key: string; mac?: string }) => (k.mac ?? k.key).toLowerCase();
+  for (const [cmd, mac, when] of UPSTREAM) {
+    assert.ok(kb.some((k) => k.command === `-${cmd}` && k.when === when && macKey(k) === mac), `mac removal ${mac} ${cmd} [${when}]`);
+    assert.ok(kb.some((k) => k.command === 'auraR.runInR' && k.args === cmd && macKey(k) === mac), `mac replacement ${mac} -> ${cmd}`);
+  }
+  for (const k of kb.filter((x) => x.command === 'auraR.runInR' || x.command.startsWith('-r.'))) {
+    const cmd = k.command === 'auraR.runInR' ? k.args : k.command.slice(1);
+    assert.ok(UPSTREAM.some(([c, mac]) => c === cmd && mac === macKey(k)), `${k.command} ${String(k.args ?? '')}: mac key ${macKey(k)} is not vscode-R's`);
+  }
+});

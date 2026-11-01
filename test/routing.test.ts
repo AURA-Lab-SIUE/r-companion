@@ -32,3 +32,29 @@ test("the run keys activate an R terminal before running vscode-R's command", ()
   const run = b.indexOf('executeCommand(cmd)');
   assert.ok(activate >= 0 && run > activate);
 });
+
+test('the run keys and the Run button ask for Workspace Trust before starting R, and resume the same command', () => {
+  const b = body('runInR');
+  const trust = b.search(/requireTrust\([^;]*,\s*\(\)\s*=>\s*runInR\(cmd\)\)/);
+  const activate = b.indexOf('activateRTerminal(');
+  assert.ok(trust >= 0, 'runInR must call requireTrust with a callback that reruns the same command');
+  assert.ok(activate > trust, 'trust comes before any terminal is activated or started');
+});
+
+test('the run keys read the editor at the key press and run nothing if it changed while R started', () => {
+  const b = body('runInR');
+  const before = b.indexOf('snapshotEditor()');
+  const trust = b.indexOf('requireTrust(');
+  const activate = b.indexOf('activateRTerminal(');
+  const check = b.indexOf('sameEditor(');
+  const run = b.indexOf('executeCommand(cmd)');
+  assert.ok(before >= 0 && before < trust && before < activate, 'snapshot first');
+  assert.ok(check > activate && run > check, 'compare after activation, before running');
+});
+
+test('Run it and the run keys stop, with a message, when R is not the active terminal', () => {
+  for (const name of ['runInR', 'runInSession']) {
+    const b = body(name);
+    assert.ok(/catch\s*\(\s*e\s*\)[\s\S]*RNotActiveError/.test(b), `${name} handles RNotActiveError`);
+  }
+});

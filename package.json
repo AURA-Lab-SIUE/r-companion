@@ -439,99 +439,117 @@
     "keybindings": [
       {
         "key": "ctrl+enter",
+        "mac": "cmd+enter",
         "command": "-r.runSelection",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+enter",
+        "mac": "cmd+enter",
         "command": "-r.runSelection",
         "when": "editorTextFocus && editorLangId == 'rmd'"
       },
       {
         "key": "alt+enter",
+        "mac": "option+enter",
         "command": "-r.runSelectionRetainCursor",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
         "command": "-r.runCurrentChunk",
         "when": "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"
       },
       {
         "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
         "command": "-r.runAboveChunks",
         "when": "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"
       },
       {
         "key": "shift+ctrl+s",
+        "mac": "shift+cmd+s",
         "command": "-r.runSource",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "shift+ctrl+enter",
+        "mac": "shift+cmd+enter",
         "command": "-r.runSourcewithEcho",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b",
         "command": "-r.runFromBeginningToLine",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
         "command": "-r.runFromLineToEnd",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+enter",
+        "mac": "cmd+enter",
         "command": "auraR.runInR",
         "args": "r.runSelection",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+enter",
+        "mac": "cmd+enter",
         "command": "auraR.runInR",
         "args": "r.runSelection",
         "when": "editorTextFocus && editorLangId == 'rmd'"
       },
       {
         "key": "alt+enter",
+        "mac": "option+enter",
         "command": "auraR.runInR",
         "args": "r.runSelectionRetainCursor",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
         "command": "auraR.runInR",
         "args": "r.runCurrentChunk",
         "when": "editorTextFocus && editorLangId == 'rmd'"
       },
       {
         "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
         "command": "auraR.runInR",
         "args": "r.runAboveChunks",
         "when": "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"
       },
       {
         "key": "shift+ctrl+s",
+        "mac": "shift+cmd+s",
         "command": "auraR.runInR",
         "args": "r.runSource",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "shift+ctrl+enter",
+        "mac": "shift+cmd+enter",
         "command": "auraR.runInR",
         "args": "r.runSourcewithEcho",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b",
         "command": "auraR.runInR",
         "args": "r.runFromBeginningToLine",
         "when": "editorTextFocus && editorLangId == 'r'"
       },
       {
         "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
         "command": "auraR.runInR",
         "args": "r.runFromLineToEnd",
         "when": "editorTextFocus && editorLangId == 'r'"
