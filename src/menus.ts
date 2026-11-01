@@ -14,6 +14,7 @@ import { TEST_LABEL } from './testChoice';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint, fillProbe } from './columnProbe';
 import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION, wrapChunk } from './insert';
 import { CHART_TASKS, watchSavedChart } from './chartWatch';
+import { alreadyShown } from './rTarget';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
 import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
@@ -193,7 +194,12 @@ async function runSteps(context: vscode.ExtensionContext, deps: MenuDeps): Promi
   const code = runStepsCode(doc.fileName, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
   const run = async () => {
     deps.output.appendLine(`Run my steps from the top: ${code}`);
-    await deps.runInSession(code);
+    try {
+      await deps.runInSession(code);
+    } catch (e) {
+      if (alreadyShown(e)) return;
+      throw e;
+    }
   };
   if (!(await deps.requireTrust('running your steps', run))) return;
   await run();
@@ -1044,6 +1050,8 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
         await deps.runInSession(code);
       } catch (e) {
         chart?.cancel();
+        // Already explained in its own message; returning here also leaves the block uncounted
+        if (alreadyShown(e)) return;
         throw e;
       }
       for (const name of [...(MAKES[task ?? ''] ?? []), ...makes]) ranTables.add(name);

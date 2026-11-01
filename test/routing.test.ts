@@ -60,3 +60,23 @@ test('the Companion terminal sends nothing to a closed R: ready() waits with wai
   const send = run.indexOf('sendText(');
   assert.ok(check >= 0 && send > check, 'runCode checks the terminal is live before sending');
 });
+
+// On testbench (2026-10-31, 728000e) a Run it that stopped showed its message twice: the Companion's
+// own, and VS Code's for the command that the rethrown error rejected. The menu callers end quietly
+// on an error that was already explained, and still do not count the block as run.
+const menus = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'menus.ts'), 'utf8');
+
+test('Run it ends quietly after its own message, and does not count the block as run', () => {
+  const i = menus.indexOf('const runIt = async () => {');
+  assert.ok(i >= 0, 'runIt not found');
+  const b = menus.slice(i, menus.indexOf('\n    };', i));
+  const quiet = b.search(/catch \(e\) \{[\s\S]*?if \(alreadyShown\(e\)\) return;[\s\S]*?throw e;/);
+  const counted = b.indexOf('ranTables.add(');
+  assert.ok(quiet >= 0, 'the catch returns on an already-shown error before rethrowing anything else');
+  assert.ok(counted > quiet, 'the block is counted only after the try, so a stopped run is not counted');
+});
+
+test('Run my steps ends quietly after its own message', () => {
+  const b = body('runSteps', menus);
+  assert.ok(/catch \(e\) \{\s*if \(alreadyShown\(e\)\) return;\s*throw e;/.test(b));
+});
