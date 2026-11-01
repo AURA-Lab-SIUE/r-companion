@@ -76,7 +76,7 @@ export class InFlight<V> {
 /** R was not the live, active terminal when the code was about to be sent, so nothing was run. */
 export class RNotActiveError extends Error {
   constructor() {
-    super('R was not the active terminal, so nothing was run.');
+    super('R was not the active terminal when the code was ready to run, so nothing was run. Select the R terminal and try again.');
     this.name = 'RNotActiveError';
   }
 }
@@ -118,4 +118,107 @@ export async function activateR<T>(d: ActivateDeps<T>): Promise<T | undefined> {
   const ok = await d.waitActive(t, 2000);
   if (!ok || d.active() !== t || !d.isLive(t)) throw new RNotActiveError();
   return t;
+}
+
+// ---- R closing while it starts, and the trust wait (Copilot review of #6) ----
+
+/** R closed while it was starting, so nothing was sent to it. Every caller that stops on RNotActiveError stops on this too. */
+export class RClosedError extends RNotActiveError {
+  constructor() {
+    super();
+    this.message = 'R closed while it was starting, so nothing was run. Try again to start R.';
+    this.name = 'RClosedError';
+  }
+}
+
+/** No R was found, so nothing was run. */
+export class RNotFoundError extends Error {
+  constructor() {
+    super('R was not found. Run AURA: Check my setup to see why.');
+    this.name = 'RNotFoundError';
+  }
+}
+
+/** The parts of a starting terminal that waitForR reads. */
+export interface StartingTerminal {
+  readonly processId: PromiseLike<number | undefined>;
+  exited(): boolean;
+  /** Calls back when this terminal closes; dispose to stop listening. */
+  onClose(cb: () => void): { dispose(): void };
+}
+
+/**
+ * Waits for R to start in `t`: its process, then `ms` for R's banner and prompt. Rejects with
+ * RClosedError as soon as `t` closes (or if it never got a process), so neither the caller that
+ * started R nor one that joined the same start sends code to a closed terminal.
+ */
+export function waitForR(
+  t: StartingTerminal,
+  ms: number,
+  delay: (n: number) => Promise<void> = (n) => new Promise((r) => setTimeout(r, n)),
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let sub: { dispose(): void } | undefined;
+    const finish = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      sub?.dispose();
+      if (err) reject(err);
+      else resolve();
+    };
+    if (t.exited()) return finish(new RClosedError());
+    sub = t.onClose(() => finish(new RClosedError()));
+    Promise.resolve(t.processId).then(
+      async (pid) => {
+        if (pid === undefined || t.exited()) return finish(new RClosedError());
+        await delay(ms);
+        finish(t.exited() ? new RClosedError() : undefined);
+      },
+      () => finish(new RClosedError()),
+    );
+  });
+}
+
+export const CHANGED_MESSAGE = 'The script or the selection changed before R was ready, so nothing was run. Press the key again.';
+
+export type RunKeyResult = 'ran' | 'waiting-for-trust' | 'changed' | 'not-active' | 'no-r';
+
+export interface RunKeyDeps {
+  /** The active editor's document, version, and selections. */
+  snapshot(): EditorSnapshot | undefined;
+  /** True when the folder is trusted; otherwise asks, and calls `rerun` once trust is granted. */
+  requireTrust(rerun: () => unknown): Promise<boolean>;
+  /** Makes R the active terminal: undefined when R is not found; throws RNotActiveError (or RClosedError). */
+  activate(): Promise<unknown>;
+  /** Runs vscode-R's own command, which reads the editor itself. */
+  execute(): PromiseLike<unknown>;
+  warn(message: string): void;
+}
+
+/**
+ * One press of a run key. The editor is read at the key press, and the trust resume carries that
+ * same reading, so a change while trust is asked for or while R starts stops the run with a message
+ * instead of running different code.
+ */
+export async function runKey(d: RunKeyDeps, atKeyPress?: { before: EditorSnapshot | undefined }): Promise<RunKeyResult> {
+  const before = atKeyPress ? atKeyPress.before : d.snapshot();
+  if (!(await d.requireTrust(() => runKey(d, { before })))) return 'waiting-for-trust';
+  let r: unknown;
+  try {
+    r = await d.activate();
+  } catch (e) {
+    if (e instanceof RNotActiveError) {
+      d.warn(e.message);
+      return 'not-active';
+    }
+    throw e;
+  }
+  if (r === undefined) return 'no-r';
+  if (!sameEditor(before, d.snapshot())) {
+    d.warn(CHANGED_MESSAGE);
+    return 'changed';
+  }
+  await d.execute();
+  return 'ran';
 }

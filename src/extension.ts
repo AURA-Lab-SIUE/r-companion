@@ -20,7 +20,7 @@ import { ActionItem, CheckResult, initSetup, installMissingCommand, installExten
 import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
 import { explain, explainPrefill, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
-import { activateR, EditorSnapshot, R_RUN_COMMANDS, RNotActiveError, sameEditor } from './rTarget';
+import { activateR, EditorSnapshot, R_RUN_COMMANDS, RNotActiveError, RNotFoundError, runKey } from './rTarget';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus, menuItems, stepsScript, appendToSteps } from './menus';
@@ -706,27 +706,25 @@ async function openRTerminal() {
  * companion's terminal.
  */
 async function runInSession(code: string): Promise<void> {
-  const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
-  if (adapter.id === 'positron') return adapter.runCode(code);
-  if (adapter.id === 'vscode-r' && vscodeRTerminalOpen()) {
-    // r.runCommand sends to the active terminal (r.alwaysUseActiveTerminal), which can be a shell
-    try {
-      await activateRTerminal('Run it');
-    } catch (e) {
-      // Rethrown so the caller does not count the block as run
-      if (e instanceof RNotActiveError) void vscode.window.showWarningMessage(NOT_ACTIVE_MESSAGE);
-      throw e;
+  try {
+    const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
+    if (adapter.id === 'positron') return await adapter.runCode(code);
+    if (adapter.id === 'vscode-r' && vscodeRTerminalOpen()) {
+      // r.runCommand sends to the active terminal (r.alwaysUseActiveTerminal), which can be a shell
+      if (!(await activateRTerminal('Run it'))) throw new RNotFoundError();
+      return await adapter.runCode(code);
     }
-    return adapter.runCode(code);
-  }
-  if (adapter.id === 'vscode-r' && !terminalAdapter.isOpen()) {
-    if (!findR()[0]?.rterm) {
-      vscode.window.showErrorMessage('R was not found. Run AURA: Check my setup to see why.');
-      return;
+    if (adapter.id === 'vscode-r' && !terminalAdapter.isOpen()) {
+      if (!findR()[0]?.rterm) throw new RNotFoundError();
+      output.appendLine('No R terminal was open: opened the R (AURA) terminal and waited for R before running the block.');
     }
-    output.appendLine('No R terminal was open: opened the R (AURA) terminal and waited for R before running the block.');
+    return await terminalAdapter.runCode(code);
+  } catch (e) {
+    // Rethrown so the caller does not count the block as run
+    if (e instanceof RNotActiveError) void vscode.window.showWarningMessage(e.message);
+    else if (e instanceof RNotFoundError) void vscode.window.showErrorMessage(e.message);
+    throw e;
   }
-  return terminalAdapter.runCode(code);
 }
 
 /**
@@ -740,28 +738,17 @@ async function runInSession(code: string): Promise<void> {
  */
 async function runInR(command: unknown): Promise<void> {
   const cmd = typeof command === 'string' && R_RUN_COMMANDS.includes(command) ? command : 'r.runSelection';
-  const before = snapshotEditor();
-  // Starting R in an untrusted folder would run that folder's .Rprofile
-  if (!(await requireTrust('running R code', () => runInR(cmd)))) return;
-  let terminal: vscode.Terminal | undefined;
-  try {
-    terminal = await activateRTerminal(cmd);
-  } catch (e) {
-    if (e instanceof RNotActiveError) {
-      void vscode.window.showWarningMessage(NOT_ACTIVE_MESSAGE);
-      return;
-    }
-    throw e;
-  }
-  if (!terminal) return;
-  if (!sameEditor(before, snapshotEditor())) {
-    void vscode.window.showWarningMessage('The script or the selection changed while R was starting, so nothing was run. Press the key again.');
-    return;
-  }
-  await vscode.commands.executeCommand(cmd);
+  // runKey asks for Workspace Trust before starting R (R in an untrusted folder would run its
+  // .Rprofile), keeps the key-press reading of the editor through the trust wait, and runs nothing
+  // if the editor changed or R is not the live, active terminal once it is ready
+  await runKey({
+    snapshot: snapshotEditor,
+    requireTrust: (rerun) => requireTrust('running R code', rerun),
+    activate: () => activateRTerminal(cmd),
+    execute: () => vscode.commands.executeCommand(cmd),
+    warn: (m) => void vscode.window.showWarningMessage(m),
+  });
 }
-
-const NOT_ACTIVE_MESSAGE = 'R was not the active terminal when the code was ready to run, so nothing was run. Select the R terminal and try again.';
 
 /** The active editor's document, version, and selections, or undefined when no editor is active. */
 function snapshotEditor(): EditorSnapshot | undefined {
@@ -838,7 +825,15 @@ async function runCourseSetupCheck() {
   // depend on it. The plain terminal was verified to run the script on Windows.
   const chosen = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
   const adapter = chosen.id === 'positron' ? chosen : terminalAdapter;
-  await adapter.runCode(code);
+  try {
+    await adapter.runCode(code);
+  } catch (e) {
+    if (e instanceof RNotActiveError) {
+      void vscode.window.showWarningMessage(e.message);
+      return;
+    }
+    throw e;
+  }
 }
 
 // ---------- Course files for an existing workspace (U9) ----------

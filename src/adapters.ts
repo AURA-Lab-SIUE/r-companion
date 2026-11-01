@@ -9,7 +9,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { InFlight } from './rTarget';
+import { InFlight, RClosedError, waitForR } from './rTarget';
 
 export interface RunAdapter {
   readonly id: 'positron' | 'vscode-r' | 'terminal';
@@ -117,15 +117,27 @@ export class TerminalAdapter implements RunAdapter {
     if (!fresh) return t;
     return this.starting.run(async () => {
       // Text sent before R has started is lost (seen on Windows 2026-10-18: the line never
-      // reached R). Wait for the process, then give R time to print its banner and prompt.
-      await t.processId;
-      await new Promise((r) => setTimeout(r, 4000));
+      // reached R). Wait for the process, then give R time to print its banner and prompt. If R
+      // closes first, this rejects, for this caller and for any that joined the same start.
+      await waitForR(
+        {
+          processId: t.processId,
+          exited: () => t.exitStatus !== undefined,
+          onClose: (cb) =>
+            vscode.window.onDidCloseTerminal((x) => {
+              if (x === t) cb();
+            }),
+        },
+        4000,
+      );
       return t;
     });
   }
 
   async runCode(code: string): Promise<void> {
     const t = await this.ready();
+    // Never report a run that went to a closed terminal
+    if (t.exitStatus !== undefined) throw new RClosedError();
     // One line at a time and never wrapped in paste markers
     for (const line of code.split(/\r?\n/)) {
       t.sendText(line, true);
