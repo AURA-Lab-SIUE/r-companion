@@ -2,6 +2,9 @@
 
 ## 0.6.0 (code parity: everything you do in the Companion leaves R that redoes it)
 
+- **Histogram comparing two groups** draws each bar as the share of its group's messages, as its
+  label says: `y = after_stat(density * width)`. It drew `after_stat(density)`, which is share per
+  character, so with 5-character bands a bar read 0.04 where the share was 0.20.
 - **Ctrl+Enter runs in the same R as Run it.** The R Companion now turns on the R extension's `r.alwaysUseActiveTerminal` by default. Before, the first Ctrl+Enter after Run it asked "Choose where to run the selected code", and its first choice started a new, empty R session without your tables. You can still change the setting back.
 - **One install path.** The R extension no longer asks on its own to install languageserver (`r.lsp.promptToInstall` is off by default). Check my setup and Install what is missing install it with everything else.
 - **One name.** The Activity Bar icon and the panel are both called AURA Lab R Companion, as on the Marketplace. The Write R code menu groups keep their names (R2 Data, R3 Describe, R4 Test).
