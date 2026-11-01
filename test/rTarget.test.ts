@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { pickRTarget } from '../src/rTarget';
+import { activateR, ActivateDeps, InFlight, pickRTarget, RNotActiveError, sameEditor } from '../src/rTarget';
 
 test('no terminal at all: open R (AURA)', () => {
   assert.deepEqual(pickRTarget([], -1), { kind: 'open' });
@@ -28,4 +28,127 @@ test("a shell is active and both kinds of R are open: vscode-R's, where Run it s
 
 test('a terminal merely containing R in its name is not R', () => {
   assert.deepEqual(pickRTarget(['Run Task', 'Rscript build'], 0), { kind: 'open' });
+});
+
+// ---- Copilot review of #5: shared start, abort unless R is active, editor unchanged ----
+
+type T = { name: string; live: boolean };
+
+function deps(over: Partial<ActivateDeps<T>> & { terms: T[]; activeT?: T }): ActivateDeps<T> & { log: string[] } {
+  const log: string[] = [];
+  let active = over.activeT;
+  const d: ActivateDeps<T> & { log: string[] } = {
+    log,
+    live: () => over.terms.filter((t) => t.live),
+    active: () => active,
+    name: (t: T) => t.name,
+    isStarting: () => false,
+    start: async () => {
+      const t = { name: 'R (AURA)', live: true };
+      over.terms.push(t);
+      log.push('start');
+      return t;
+    },
+    show: (t: T) => {
+      log.push(`show ${t.name}`);
+      active = t;
+    },
+    waitActive: async (t: T) => active === t,
+    isLive: (t: T) => t.live,
+  };
+  const { terms: _t, activeT: _a, ...rest } = over;
+  return Object.assign(d, rest);
+}
+
+test('InFlight: a second call while the first is starting shares it and starts nothing new', async () => {
+  const gate = new InFlight<number>();
+  let starts = 0;
+  let release!: () => void;
+  const f = () => {
+    starts++;
+    return new Promise<number>((r) => {
+      release = () => r(7);
+    });
+  };
+  const a = gate.run(f);
+  const b = gate.run(f);
+  assert.equal(gate.running, true);
+  release();
+  assert.deepEqual(await Promise.all([a, b]), [7, 7]);
+  assert.equal(starts, 1);
+  assert.equal(gate.running, false);
+});
+
+test('activateR: R (AURA) still starting from another key press: wait for that start before showing it', async () => {
+  const aura = { name: 'R (AURA)', live: true };
+  const d = deps({ terms: [aura], isStarting: (t) => t === aura });
+  d.start = async () => {
+    d.log.push('joined');
+    return aura;
+  };
+  const t = await activateR(d);
+  assert.equal(t, aura);
+  assert.deepEqual(d.log, ['joined', 'show R (AURA)']);
+});
+
+test('activateR: R is not the active terminal after the wait: throw, so nothing is run', async () => {
+  const shell = { name: 'powershell', live: true };
+  const d = deps({ terms: [shell], activeT: shell, waitActive: async () => false });
+  await assert.rejects(activateR(d), RNotActiveError);
+});
+
+test('activateR: the student switched to a shell during the wait: throw even if the wait said yes', async () => {
+  const shell = { name: 'powershell', live: true };
+  const aura = { name: 'R (AURA)', live: true };
+  let active: T = shell;
+  const d = deps({
+    terms: [aura, shell],
+    active: () => active,
+    show: () => {
+      active = aura;
+    },
+    waitActive: async () => {
+      active = shell;
+      return true;
+    },
+  });
+  await assert.rejects(activateR(d), RNotActiveError);
+});
+
+test('activateR: R exited during the wait: throw', async () => {
+  const aura = { name: 'R (AURA)', live: true };
+  const d = deps({
+    terms: [aura],
+    activeT: aura,
+    waitActive: async (t) => {
+      t.live = false;
+      return true;
+    },
+  });
+  await assert.rejects(activateR(d), RNotActiveError);
+});
+
+test('activateR: no R terminal and R not found: undefined, nothing shown', async () => {
+  const d = deps({ terms: [], start: async () => undefined });
+  assert.equal(await activateR(d), undefined);
+  assert.deepEqual(d.log, []);
+});
+
+test('activateR: a shell is active and no R is open: start R (AURA), show it, return it', async () => {
+  const shell = { name: 'powershell', live: true };
+  const d = deps({ terms: [shell], activeT: shell });
+  const t = await activateR(d);
+  assert.equal(t?.name, 'R (AURA)');
+  assert.deepEqual(d.log, ['start', 'show R (AURA)']);
+});
+
+test('sameEditor: the same document, version, and selections only', () => {
+  const a = { uri: 'file:///w/s.R', version: 3, selections: [[1, 0, 1, 0]] };
+  assert.equal(sameEditor(a, { ...a, selections: [[1, 0, 1, 0]] }), true);
+  assert.equal(sameEditor(a, { ...a, uri: 'file:///w/t.R' }), false);
+  assert.equal(sameEditor(a, { ...a, version: 4 }), false);
+  assert.equal(sameEditor(a, { ...a, selections: [[2, 0, 2, 0]] }), false);
+  assert.equal(sameEditor(a, { ...a, selections: [[1, 0, 1, 0], [3, 0, 3, 4]] }), false);
+  assert.equal(sameEditor(a, undefined), false);
+  assert.equal(sameEditor(undefined, undefined), true);
 });
