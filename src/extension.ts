@@ -720,7 +720,7 @@ async function runInSession(code: string): Promise<void> {
     }
     return await terminalAdapter.runCode(code);
   } catch (e) {
-    // Rethrown so the caller does not count the block as run
+    // Rethrown so the caller does not count the block as run; the menu callers end quietly on it
     if (e instanceof RNotActiveError) void vscode.window.showWarningMessage(e.message);
     else if (e instanceof RNotFoundError) void vscode.window.showErrorMessage(e.message);
     throw e;

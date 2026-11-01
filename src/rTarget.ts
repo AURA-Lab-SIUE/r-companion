@@ -222,3 +222,12 @@ export async function runKey(d: RunKeyDeps, atKeyPress?: { before: EditorSnapsho
   await d.execute();
   return 'ran';
 }
+
+/**
+ * True for an error the Companion has already explained in its own message. A menu action ends
+ * quietly on one: rethrowing it to the command made VS Code show the same text a second time
+ * (testbench, 2026-10-31).
+ */
+export function alreadyShown(e: unknown): boolean {
+  return e instanceof RNotActiveError || e instanceof RNotFoundError;
+}

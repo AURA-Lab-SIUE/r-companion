@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { activateR, ActivateDeps, EditorSnapshot, InFlight, pickRTarget, RClosedError, RNotActiveError, runKey, RunKeyDeps, sameEditor, waitForR } from '../src/rTarget';
+import { activateR, ActivateDeps, alreadyShown, EditorSnapshot, InFlight, pickRTarget, RClosedError, RNotActiveError, RNotFoundError, runKey, RunKeyDeps, sameEditor, waitForR } from '../src/rTarget';
 
 test('no terminal at all: open R (AURA)', () => {
   assert.deepEqual(pickRTarget([], -1), { kind: 'open' });
@@ -292,4 +292,14 @@ test('runKey: R not found: run nothing', async () => {
   k.d.activate = async () => undefined;
   assert.equal(await runKey(k.d), 'no-r');
   assert.ok(!k.log.includes('execute'));
+});
+
+// ---- One message per stopped run (testbench 2026-10-31, 728000e) ----
+
+test('alreadyShown: the errors the Companion has already explained in its own message', () => {
+  assert.equal(alreadyShown(new RNotActiveError()), true);
+  assert.equal(alreadyShown(new RClosedError()), true);
+  assert.equal(alreadyShown(new RNotFoundError()), true);
+  assert.equal(alreadyShown(new Error('something else')), false);
+  assert.equal(alreadyShown('a string'), false);
 });
