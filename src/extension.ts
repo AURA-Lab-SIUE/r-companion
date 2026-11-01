@@ -20,6 +20,7 @@ import { ActionItem, CheckResult, initSetup, installMissingCommand, installExten
 import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
 import { explain, explainPrefill, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
+import { pickRTarget, R_RUN_COMMANDS } from './rTarget';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus, menuItems, stepsScript, appendToSteps } from './menus';
@@ -121,6 +122,8 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.checkSetup', (opts?: SilentOpts) => checkSetupCommand(opts));
   reg('auraR.installMissing', (opts?: SilentOpts) => installMissingCommand(opts));
   reg('auraR.pickCourse', () => pickCourse(true));
+  reg('auraR.runInR', (command?: unknown) => runInR(command));
+  reg('auraR.runFileInR', () => runInR('r.runSource'));
   reg('auraR.openCourseWorkspace', () => openCourseWorkspace());
   reg('auraR.getHelp', () => getHelp());
   reg('auraR.explainError', (text?: string) => explainErrorCommand(text));
@@ -705,7 +708,11 @@ async function openRTerminal() {
 async function runInSession(code: string): Promise<void> {
   const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);
   if (adapter.id === 'positron') return adapter.runCode(code);
-  if (adapter.id === 'vscode-r' && vscodeRTerminalOpen()) return adapter.runCode(code);
+  if (adapter.id === 'vscode-r' && vscodeRTerminalOpen()) {
+    // r.runCommand sends to the active terminal (r.alwaysUseActiveTerminal), which can be a shell
+    await activateRTerminal('Run it');
+    return adapter.runCode(code);
+  }
   if (adapter.id === 'vscode-r' && !terminalAdapter.isOpen()) {
     if (!findR()[0]?.rterm) {
       vscode.window.showErrorMessage('R was not found. Run AURA: Check my setup to see why.');
@@ -714,6 +721,50 @@ async function runInSession(code: string): Promise<void> {
     output.appendLine('No R terminal was open: opened the R (AURA) terminal and waited for R before running the block.');
   }
   return terminalAdapter.runCode(code);
+}
+
+/**
+ * Ctrl+Enter and vscode-R's other run keys in R files (keybindings in package.json). With
+ * r.alwaysUseActiveTerminal on, vscode-R 3.2.2 sends to the active terminal of any kind: on testbench
+ * (2026-10-31) a line went into an active PowerShell terminal, and with no terminal open vscode-R
+ * asked where to run instead of using R (AURA). So first make an R terminal the active one (R (AURA),
+ * opened and waited for if there is none), then run vscode-R's own command, which keeps its
+ * selection and expression handling.
+ */
+async function runInR(command: unknown): Promise<void> {
+  const cmd = typeof command === 'string' && R_RUN_COMMANDS.includes(command) ? command : 'r.runSelection';
+  if (await activateRTerminal(cmd)) await vscode.commands.executeCommand(cmd);
+}
+
+/** Makes an R terminal the active one, never a shell; opens R (AURA) when none is open. Undefined when R is not found. */
+async function activateRTerminal(why: string): Promise<vscode.Terminal | undefined> {
+  const live = vscode.window.terminals.filter((t) => t.exitStatus === undefined);
+  const active = vscode.window.activeTerminal ? live.indexOf(vscode.window.activeTerminal) : -1;
+  const target = pickRTarget(live.map((t) => t.name), active);
+  let terminal: vscode.Terminal;
+  if (target.kind === 'existing') {
+    terminal = live[target.index];
+    terminal.show(true);
+  } else {
+    if (!findR()[0]?.rterm) {
+      vscode.window.showErrorMessage('R was not found. Run AURA: Check my setup to see why.');
+      return undefined;
+    }
+    output.appendLine(`${why}: no R terminal was open, so the R (AURA) terminal was opened first.`);
+    terminal = await terminalAdapter.ready();
+  }
+  await activeTerminalIs(terminal, 2000);
+  return terminal;
+}
+
+/** Resolves once the window reports `t` as the active terminal, or after `ms`. */
+function activeTerminalIs(t: vscode.Terminal, ms: number): Promise<void> {
+  if (vscode.window.activeTerminal === t) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => { sub.dispose(); clearTimeout(timer); resolve(); };
+    const sub = vscode.window.onDidChangeActiveTerminal((x) => { if (x === t) done(); });
+    const timer = setTimeout(done, ms);
+  });
 }
 
 /** A live terminal vscode-R made ("R Interactive") or one its commands send to ("R"). */

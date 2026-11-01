@@ -24,3 +24,66 @@ test('one product name on the Activity Bar icon and the panel (q-20261031-0019)'
   assert.equal(container.title, 'AURA Lab R Companion');
   assert.equal(view.name, 'AURA Lab R Companion');
 });
+
+// Ctrl+Enter must land in R on every path (Iolaus 2026-10-31, after #mc427rightsize read vscode-R
+// 3.2.2): with r.alwaysUseActiveTerminal on, vscode-R sends to the active terminal of ANY kind (a
+// PowerShell one included), and with no terminal it says "There are no open terminals." and runs
+// nothing. So the Companion owns vscode-R's run keys in R files: it makes an R terminal active
+// (opening R (AURA) if none) and then runs vscode-R's own command.
+const VSCODE_R_RUN_KEYS: Array<[string, string, string]> = [
+  ['ctrl+enter', 'r.runSelection', "editorTextFocus && editorLangId == 'r'"],
+  ['ctrl+enter', 'r.runSelection', "editorTextFocus && editorLangId == 'rmd'"],
+  ['alt+enter', 'r.runSelectionRetainCursor', "editorTextFocus && editorLangId == 'r'"],
+  ['ctrl+shift+enter', 'r.runCurrentChunk', "editorTextFocus && editorLangId == 'rmd'"],
+  ['ctrl+alt+p', 'r.runAboveChunks', "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"],
+  ['shift+ctrl+s', 'r.runSource', "editorTextFocus && editorLangId == 'r'"],
+  ['shift+ctrl+enter', 'r.runSourcewithEcho', "editorTextFocus && editorLangId == 'r'"],
+  ['ctrl+alt+b', 'r.runFromBeginningToLine', "editorTextFocus && editorLangId == 'r'"],
+  ['ctrl+alt+e', 'r.runFromLineToEnd', "editorTextFocus && editorLangId == 'r'"],
+];
+
+test("every vscode-R run key in an R file goes through the Companion's R-terminal step", () => {
+  const kb: Array<{ key: string; command: string; args?: string; when?: string }> = manifest.contributes.keybindings ?? [];
+  for (const [key, cmd, when] of VSCODE_R_RUN_KEYS) {
+    const hit = kb.find((k) => k.key.toLowerCase() === key && k.command === 'auraR.runInR' && k.args === cmd && k.when === when);
+    assert.ok(hit, `${key} ${cmd} [${when}]`);
+  }
+});
+
+test('auraR.runInR is declared and kept out of the Command Palette', () => {
+  assert.ok(manifest.contributes.commands.some((c: { command: string }) => c.command === 'auraR.runInR'));
+  assert.ok(manifest.contributes.menus.commandPalette.some((m: { command: string; when: string }) => m.command === 'auraR.runInR' && m.when === 'false'));
+});
+
+test("the Run button above an R script goes through the Companion's R-terminal step", () => {
+  // vscode-R's own button (r.runSource) sent source(...) into a PowerShell terminal on testbench
+  // (2026-10-31, toggle run s9b), so the Companion adds its own, sorted first.
+  const run = manifest.contributes.menus['editor/title/run'] ?? [];
+  const item = run.find((m: { command: string }) => m.command === 'auraR.runFileInR');
+  assert.ok(item, 'editor/title/run has auraR.runFileInR');
+  assert.equal(item.when, 'editorLangId == r');
+  assert.equal(item.group, 'navigation@0');
+  const cmd = manifest.contributes.commands.find((c: { command: string }) => c.command === 'auraR.runFileInR');
+  assert.equal(cmd?.title, 'Run this script in R');
+  assert.ok(cmd?.icon, 'has an icon for the title bar');
+});
+
+test("vscode-R's own run keys are removed in R files, so the Companion's win", () => {
+  // rc2 on testbench (2026-10-31, s11b): with both bindings on Ctrl+Enter, vscode-R's ran and sent
+  // the line into PowerShell. A "-command" rule removes a keybinding that matches its key and when.
+  const VSCODE_R: Array<[string, string, string]> = [
+    ['ctrl+enter', 'r.runSelection', "editorTextFocus && editorLangId == 'r'"],
+    ['ctrl+enter', 'r.runSelection', "editorTextFocus && editorLangId == 'rmd'"],
+    ['alt+enter', 'r.runSelectionRetainCursor', "editorTextFocus && editorLangId == 'r'"],
+    ['ctrl+shift+enter', 'r.runCurrentChunk', "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"],
+    ['ctrl+alt+p', 'r.runAboveChunks', "editorTextFocus && (editorLangId == 'rmd' || editorLangId == 'r')"],
+    ['shift+ctrl+s', 'r.runSource', "editorTextFocus && editorLangId == 'r'"],
+    ['shift+ctrl+enter', 'r.runSourcewithEcho', "editorTextFocus && editorLangId == 'r'"],
+    ['ctrl+alt+b', 'r.runFromBeginningToLine', "editorTextFocus && editorLangId == 'r'"],
+    ['ctrl+alt+e', 'r.runFromLineToEnd', "editorTextFocus && editorLangId == 'r'"],
+  ];
+  const kb: Array<{ key: string; command: string; when?: string }> = manifest.contributes.keybindings ?? [];
+  for (const [key, cmd, when] of VSCODE_R) {
+    assert.ok(kb.some((k) => k.key.toLowerCase() === key && k.command === `-${cmd}` && k.when === when), `remove ${key} ${cmd} [${when}]`);
+  }
+});

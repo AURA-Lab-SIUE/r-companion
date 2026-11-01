@@ -96,7 +96,8 @@ export class TerminalAdapter implements RunAdapter {
     return this.terminal;
   }
 
-  async runCode(code: string): Promise<void> {
+  /** Opens the terminal if needed and shows it without taking focus; on a fresh start, waits for R. */
+  async ready(): Promise<vscode.Terminal> {
     const fresh = !this.terminal || this.terminal.exitStatus !== undefined;
     const t = this.open();
     t.show(true);
@@ -106,6 +107,11 @@ export class TerminalAdapter implements RunAdapter {
       await t.processId;
       await new Promise((r) => setTimeout(r, 4000));
     }
+    return t;
+  }
+
+  async runCode(code: string): Promise<void> {
+    const t = await this.ready();
     // One line at a time and never wrapped in paste markers
     for (const line of code.split(/\r?\n/)) {
       t.sendText(line, true);
