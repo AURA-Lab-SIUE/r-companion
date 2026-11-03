@@ -133,9 +133,10 @@ test('the line chart is a v2v (MC 451/MC 501) task only, in house style', () => 
     assert.ok(code.includes('alt = "YOUR TURN'), 'the YOUR TURN alt line');
     // one verb per line after each pipe
     for (const line of code.split('\n')) assert.ok((line.match(/%>%/g) || []).length <= 1, line);
-    // U7 = B: time comes from the clean_dates() helper as in decks s23 and w12, never as.POSIXct
-    assert.ok(code.includes('    ts = clean_dates(date),') && code.includes('six_hour = floor_date(ts, "6 hours")'), 'clean_dates ts');
-    assert.ok(!code.includes('as.POSIXct'), 'no hand as.POSIXct conversion');
+    // Novice ceiling (owner 2026-11-03): the six-hour table comes ready-made from v2v 0.3.9, so the
+    // block never builds it with floor_date() and fct_lump_n(), and never converts time by hand.
+    assert.ok(code.includes('viewers_over_time <- twitch_viewers_over_time()'), 'prepared table');
+    assert.ok(!code.includes('floor_date') && !code.includes('fct_lump_n') && !code.includes('as.POSIXct'), 'no hand-built table');
   }
   assert.ok(!hasTask('mc427', 'line'), 'MC 427 does not offer the line chart');
 });

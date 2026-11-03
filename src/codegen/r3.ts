@@ -50,15 +50,22 @@ function chosenCrosstab(data: string, rows: string, cols: string, dropMissing: b
   const bt = (n: string) => (/^[A-Za-z.][A-Za-z0-9._]*$/.test(n) ? n : '`' + n + '`');
   rows = bt(rows);
   cols = bt(cols);
-  const drop = dropMissing ? [`  filter(!is.na(${rows}), !is.na(${cols})) %>%`] : [];
+  if (dropMissing) {
+    return lines(
+      banner(`Crosstab: count every pair of ${rows} and ${cols}`),
+      `# One row per ${rows} value, one column per ${cols} value: first the counts, then the share`,
+      `# of each ${rows} value's rows in each ${cols} value (each row adds up to 1). Rows missing`,
+      '# either column are dropped first. The first time it runs it prints the count() and',
+      '# pivot_wider() lines it stands for.',
+      `crosstab(${data}, ${rows}, ${cols})`,
+    );
+  }
   return lines(
     banner(`Crosstab: count every pair of ${rows} and ${cols}`),
-    ...(dropMissing ? ['# Drop the rows missing either column first.'] : []),
     `# One row per pair of ${rows} and ${cols}, with n, how many rows have that pair, then prop:`,
     `# the share of each ${rows} value's rows in each ${cols} value (prop adds up to 1 within`,
-    `# each ${rows} value).${dropMissing ? '' : ' A blank cell counts as NA.'}`,
+    `# each ${rows} value). A blank cell counts as NA.`,
     `${data} %>%`,
-    ...drop,
     `  count(${rows}, ${cols}) %>%`,
     `  group_by(${rows}) %>%`,
     '  mutate(prop = round(n / sum(n), 3)) %>%',
@@ -66,7 +73,6 @@ function chosenCrosstab(data: string, rows: string, cols: string, dropMissing: b
     '',
     `# The same counts spread into a grid: one row per ${rows} value, one column per ${cols} value.`,
     `${data} %>%`,
-    ...drop,
     `  count(${rows}, ${cols}) %>%`,
     `  pivot_wider(names_from = ${cols}, values_from = n, values_fill = 0)`,
   );
@@ -174,20 +180,11 @@ const v2vCrosstab: Template = (p) => {
   if (p.columns && p.columns.length === 2) return chosenCrosstab(data, p.columns[0], p.columns[1], true);
   return lines(
     banner('Crosstab: count every pair of two columns'),
-    '# Drop the rows missing either column, then one row per pair with its count, then prop:',
-    '# the share of each viewer band\'s messages in each channel type (adds up to 1 per band).',
-    `${data} %>%`,
-    '  filter(!is.na(viewer_band), !is.na(channel_type)) %>%',
-    '  count(viewer_band, channel_type) %>%',
-    '  group_by(viewer_band) %>%',
-    '  mutate(prop = round(n / sum(n), 3)) %>%',
-    '  ungroup()',
-    '',
-    '# The same counts spread into a grid: one row per viewer band, one column per channel type.',
-    `${data} %>%`,
-    '  filter(!is.na(viewer_band), !is.na(channel_type)) %>%',
-    '  count(viewer_band, channel_type) %>%',
-    '  pivot_wider(names_from = channel_type, values_from = n, values_fill = 0)',
+    '# One row per viewer band, one column per channel type: first the counts, then the share of',
+    '# each band\'s messages in each channel type (each row adds up to 1). Rows missing either',
+    '# column are dropped first. The first time it runs it prints the count() and pivot_wider()',
+    '# lines it stands for.',
+    `crosstab(${data}, viewer_band, channel_type)`,
   );
 };
 
@@ -214,13 +211,13 @@ const v2vBar: Template = (p) => {
   if (p.columns) return chosenBar(true, d(p, 'streams'), p.columns[0]);
   return lines(
     banner('Bar chart: one bar per category'),
-    '# Count the stream snapshots in each game, keep the ten largest, then draw one bar per game,',
-    '# longest at the top. Inside ggplot() the pieces join with +, not the pipe. The bars share',
-    '# one color: the axis already names each game, and the course palette stops at 8 colors.',
+    '# Count the stream snapshots in each game, biggest first, keep the top ten, then draw one bar',
+    '# per game, longest at the top. Inside ggplot() the pieces join with +, not the pipe. The bars',
+    '# share one color: the axis already names each game, and the course palette stops at 8 colors.',
     'streams %>%',
     '  filter(!is.na(game)) %>%',
-    '  count(game) %>%',
-    '  slice_max(n, n = 10) %>%',
+    '  count(game, sort = TRUE) %>%',
+    '  head(10) %>%',
     '  ggplot(aes(x = fct_reorder(game, n), y = n)) +',
     '  geom_col() +',
     '  coord_flip() +',
@@ -308,20 +305,10 @@ const v2vLine: Template = (p) => {
   if (p.columns) return chosenLine(true, d(p, 'streams'), p.columns[0], p.unit ?? 'hour', p.groupBy || undefined);
   return lines(
     banner('Line chart: a total over time'),
-    '# Bucket the stream snapshots into six-hour blocks, keep the five biggest game categories and',
-    '# lump the rest into "Other", then add up the viewers in each block. clean_dates() makes the',
-    '# ts time column from the millisecond date, as in the wrangling step (without v2v:',
-    '# as_datetime(date / 1000)), floor_date rounds it down to its six-hour block, and fct_lump_n',
-    '# keeps the top five games. This line prints nothing.',
-    'viewers_over_time <- streams %>%',
-    '  filter(!is.na(game)) %>%',
-    '  mutate(',
-    '    ts = clean_dates(date),',
-    '    six_hour = floor_date(ts, "6 hours"),',
-    '    category = fct_lump_n(game, n = 5)',
-    '  ) %>%',
-    '  group_by(six_hour, category) %>%',
-    '  summarize(total_viewers = sum(viewers), .groups = "drop")',
+    '# The course package ships the stream snapshots already bucketed into six-hour blocks, with',
+    '# the five biggest game categories kept and the rest lumped into "Other", and the viewers',
+    '# in each block added up. Run ?twitch_viewers_over_time to read how it was built. Prints nothing.',
+    'viewers_over_time <- twitch_viewers_over_time()',
     '',
     '# One line per game category: time on the x axis, summed viewers on the y, color by category.',
     '# A line implies order, so it is right for time and wrong for unordered groups. Inside ggplot()',

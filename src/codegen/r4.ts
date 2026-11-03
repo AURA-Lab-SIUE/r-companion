@@ -198,211 +198,64 @@ const v2vSettingsBlock: Template = (p) => {
   );
 };
 
-// ---------------- MC 451 (v2v wrappers, rubric form) ----------------
+// ---------------- MC 451 and MC 501 (v2v one-liners) ----------------
 
-// Owner q-20261018-0044 = A: MC 451 and MC 501 write the plain calls, with the v2v wrapper last as
-// a check that prints the same numbers. The wrapper-only forms and their setting were removed in
-// 0.5.3 (owner q-20261022-0006 = A).
-const plainTTestBody = (): string[] => [
-  '# The Welch t-test as a one-row table: estimate1 and estimate2 are the group means,',
-  '# statistic is t, parameter is the df, and p.value is p.',
-  't.test(outcome ~ group2, data = analysis) %>%',
-  '  broom::tidy()',
-  '',
-  "# Cohen's d with its 95% interval.",
-  'effectsize::cohens_d(outcome ~ group2, data = analysis)',
-  '',
-  "# Check: the v2v wrapper prints the same t, df, p, and Cohen's d.",
-  'run_t_test(analysis, value = outcome, group = group2)',
-];
-
-const plainChiSquareTail = (withInterval: boolean): string[] => [
-  '# The test as a one-row table: statistic is chi-square, parameter is the df, p.value is p.',
-  'counts %>%',
-  '  chisq.test() %>%',
-  '  broom::tidy()',
-  '',
-  withInterval
-    ? "# Cramer's V with its 95% interval. adjust = FALSE gives the V that run_chi_square() prints."
-    : "# Cramer's V. adjust = FALSE gives the V that run_chi_square() prints.",
-  'effectsize::cramers_v(counts, adjust = FALSE)',
-  '',
-  '# The N: the rows the table counts.',
-  'counts %>%',
-  '  sum()',
-];
-
-const plainChiSquareCheck = (): string[] => [
-  '',
-  "# Check: the v2v wrapper prints the same N, chi-square, df, p, and Cramer's V.",
-  'run_chi_square(analysis, x = cat_a, y = cat_b)',
-];
-
-const plainChiSquareHead = (): string[] => [
-  banner('Chi-square test of independence: cat_a by cat_b'),
-  '# The counts in the form the test reads. Name it counts, so the lines below reuse it.',
-  'counts <- xtabs(~ cat_a + cat_b, data = analysis)',
-  '',
-  '# The counts the test expected if the two were unrelated. Check that none is below 5.',
-  'counts %>%',
-  '  chisq.test() %>%',
-  '  pluck("expected") %>%',
-  '  round(2)',
-  '',
-];
-
-const plainTTest: Template = () =>
+// Owner q-20261103-0005 = A (novice code ceiling): each test is one v2v call that prints every
+// number the APA sentence needs and ends with the plain-R lines it stands for. This supersedes
+// q-20261018-0044 = A (plain calls first, wrapper last as a check) and q-20261022-0006 = A.
+const v2vTTest: Template = () =>
   lines(
     banner('Welch t-test: outcome by group2'),
-    '# The size, mean, and standard deviation of each group. The APA report needs the n,',
-    '# and the test does not print it.',
-    'analysis %>%',
-    '  filter(!is.na(outcome), !is.na(group2)) %>%',
-    '  group_by(group2) %>%',
-    '  summarize(',
-    '    n = n(),',
-    '    mean = mean(outcome),',
-    '    sd = sd(outcome)',
-    '  )',
-    '',
-    ...plainTTestBody(),
+    '# Both groups with their n, mean, and SD, then the gap, t, df, p, and Cohen\'s d. The block ends',
+    '# with the t.test() and effectsize::cohens_d() lines it stands for.',
+    'run_t_test(analysis, value = outcome, group = group2)',
   );
 
-const mc451ChiSquare: Template = () => lines(...plainChiSquareHead(), ...plainChiSquareTail(false), ...plainChiSquareCheck());
+const v2vChiSquare: Template = () =>
+  lines(
+    banner('Chi-square test of independence: cat_a by cat_b'),
+    '# N, chi-square, df, p, and Cramer\'s V, then the expected counts (each should be at least 5)',
+    '# and the standardized residuals (beyond 2 or -2 drives the result). The block ends with the',
+    '# chisq.test() and effectsize::cramers_v() lines it stands for.',
+    'run_chi_square(analysis, x = cat_a, y = cat_b)',
+  );
 
-
-const mc451TTest: Template = () => plainTTest({});
-
-
-const mc451Anova: Template = () =>
+const v2vAnova: Template = () =>
   lines(
     banner('One-way ANOVA: outcome by group3'),
-    '# The size, mean, and standard deviation of each group.',
-    'analysis %>%',
-    '  filter(!is.na(outcome), !is.na(group3)) %>%',
-    '  group_by(group3) %>%',
-    '  summarize(',
-    '    n = n(),',
-    '    mean = mean(outcome),',
-    '    sd = sd(outcome)',
-    '  )',
-    '',
-    '# Fit the model and name it fit, so the lines below reuse it. Prints nothing.',
-    'fit <- aov(outcome ~ group3, data = analysis)',
-    '',
-    '# The ANOVA table: F value, its two df (group3 and Residuals), and Pr(>F), the p-value.',
-    'summary(fit)',
-    '',
-    "# Eta squared from the sums of squares: the group3 row's sumsq divided by the total.",
-    'fit %>%',
-    '  broom::tidy() %>%',
-    '  mutate(eta_sq = sumsq / sum(sumsq))',
-    '',
-    '# The n: the rows the model used.',
-    'fit %>%',
-    '  broom::glance() %>%',
-    '  select(nobs)',
+    '# Each group with its n, mean, and SD, then F, both df, p, eta squared, omega squared, Welch\'s',
+    '# ANOVA (which does not assume equal spread), and Tukey\'s follow-up for every pair of groups.',
+    '# The block ends with the aov(), effectsize::eta_squared(), and TukeyHSD() lines it stands for.',
+    'run_anova(analysis, value = outcome, group = group3)',
   );
 
-const mc451Regression: Template = () =>
+const v2vRegression: Template = () =>
   lines(
     banner('Linear regression: outcome predicted by predictor'),
-    '# Fit the line and name it fit, so the lines below reuse it. Prints nothing.',
-    'fit <- lm(outcome ~ predictor, data = analysis)',
-    '',
-    '# The coefficients (the predictor row\'s Estimate is the slope, in outcome units per unit of',
-    '# predictor), R-squared, and the F-statistic with its two df and p-value.',
-    'summary(fit)',
-    '',
-    '# The n: the rows the model used.',
-    'fit %>%',
-    '  broom::glance() %>%',
-    '  select(r.squared, nobs)',
+    '# n, the slope (outcome units per unit of predictor), the intercept, the standardized slope,',
+    '# R-squared, and the F-test with its df and p. The block ends with the lm() and',
+    '# lm.beta::lm.beta() lines it stands for.',
+    'run_regression(analysis, outcome = outcome, predictor = predictor)',
   );
 
 const correlationPredictorOutcome: Template = () =>
   lines(
     banner('Correlation: predictor and outcome'),
-    "# Pearson's r as a one-row table: estimate is r, statistic is t, parameter is the df,",
-    '# and conf.low and conf.high are its 95% interval.',
-    'cor.test(~ predictor + outcome, data = analysis) %>%',
-    '  broom::tidy()',
+    "# Pearson's r (cor at the bottom), with t, the df, p, and the 95 percent confidence interval.",
+    'cor.test(~ predictor + outcome, data = analysis)',
   );
 
-// ---------------- MC 501 (adds intervals, Welch ANOVA, Tukey, lm.beta) ----------------
+const mc451ChiSquare: Template = () => v2vChiSquare({});
+const mc451TTest: Template = () => v2vTTest({});
+const mc451Anova: Template = () => v2vAnova({});
+const mc451Regression: Template = () => v2vRegression({});
 
-const mc501ChiSquare: Template = () =>
-  lines(
-    ...plainChiSquareHead(),
-    ...plainChiSquareTail(true),
-    '',
-    '# Standardized residuals: cells beyond 2 or -2 are the ones driving the result.',
-    'counts %>%',
-    '  chisq.test() %>%',
-    '  pluck("stdres") %>%',
-    '  round(2)',
-    ...plainChiSquareCheck(),
-  );
+// ---------------- MC 501 (the same one-liners; the helpers print the intervals and follow-ups) ----------------
 
-
-const mc501TTest: Template = () => plainTTest({});
-
-
-const mc501Anova: Template = () =>
-  lines(
-    banner('One-way ANOVA: outcome by group3'),
-    '# The size, mean, and standard deviation of each group.',
-    'analysis %>%',
-    '  filter(!is.na(outcome), !is.na(group3)) %>%',
-    '  group_by(group3) %>%',
-    '  summarize(',
-    '    n = n(),',
-    '    mean = mean(outcome),',
-    '    sd = sd(outcome)',
-    '  )',
-    '',
-    '# Fit the model and name it fit, so the lines below reuse it. Prints nothing.',
-    'fit <- aov(outcome ~ group3, data = analysis)',
-    '',
-    '# The ANOVA table: F value, its two df (group3 and Residuals), and Pr(>F), the p-value.',
-    'summary(fit)',
-    '',
-    "# Welch's ANOVA, which does not assume the groups spread out equally.",
-    'oneway.test(outcome ~ group3, data = analysis)',
-    '',
-    '# Eta squared and omega squared, each with its 95% interval.',
-    'effectsize::eta_squared(fit)',
-    'effectsize::omega_squared(fit)',
-    '',
-    '# The n: the rows the model used.',
-    'fit %>%',
-    '  broom::glance() %>%',
-    '  select(nobs)',
-    '',
-    "# Which pairs of groups differ: Tukey's follow-up test, one row per pair.",
-    'TukeyHSD(fit) %>%',
-    '  broom::tidy()',
-  );
-
-const mc501Regression: Template = () =>
-  lines(
-    banner('Linear regression: outcome predicted by predictor'),
-    '# Fit the line and name it fit, so the lines below reuse it. Prints nothing.',
-    'fit <- lm(outcome ~ predictor, data = analysis)',
-    '',
-    '# The coefficients (the predictor row\'s Estimate is the slope, in outcome units per unit of',
-    '# predictor), R-squared, and the F-statistic with its two df and p-value.',
-    'summary(fit)',
-    '',
-    '# The standardized slope: the change in outcome, in standard deviations, per standard',
-    '# deviation of predictor.',
-    'lm.beta::lm.beta(fit)',
-    '',
-    '# The n: the rows the model used.',
-    'fit %>%',
-    '  broom::glance() %>%',
-    '  select(r.squared, nobs)',
-  );
+const mc501ChiSquare: Template = () => v2vChiSquare({});
+const mc501TTest: Template = () => v2vTTest({});
+const mc501Anova: Template = () => v2vAnova({});
+const mc501Regression: Template = () => v2vRegression({});
 
 // Power analysis (MC 501 only): the sample size the design needs, from w05 and the rubric's
 // "power statistics behind the design" row. A plain pwr.t.test() call, one comment per argument.
