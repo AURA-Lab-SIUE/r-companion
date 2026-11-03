@@ -43,9 +43,70 @@ export const R_RUN_COMMANDS = [
   'r.runFromLineToEnd',
 ];
 
+// ---- Quarto documents (0.6.1, owner decision q-20261103-0003) ----
+//
+// Quarto's run commands send R code to vscode-R's r.runSelection with the code as its argument
+// (quarto apps/vscode/src/host/executors.ts), which, with r.alwaysUseActiveTerminal on, goes to the
+// active terminal, and asked where to run when none was open (testbench probe, 2026-11-03). The
+// Companion takes the same R-terminal step before Quarto's commands that it takes before vscode-R's.
+
+/** The custom editor id of Quarto's visual editor, as its keybindings' `activeCustomEditorId` names it. */
+export const QUARTO_VISUAL_EDITOR = 'quarto.visualEditor';
+
+/** Quarto 1.139.0's commands that run code and have a key in the source and visual editors. */
+export const QUARTO_RUN_COMMANDS = [
+  'quarto.runSelection',
+  'quarto.runCurrent',
+  'quarto.runCurrentAdvance',
+  'quarto.runCurrentCell',
+  'quarto.runPreviousCell',
+  'quarto.runNextCell',
+  'quarto.runCellsBelow',
+  'quarto.runCellsAbove',
+  'quarto.runAllCells',
+];
+
+/** The run command a key binding asked for, or undefined when it is neither vscode-R's nor Quarto's. */
+export function runCommandOf(arg: unknown): string | undefined {
+  if (typeof arg !== 'string') return undefined;
+  return R_RUN_COMMANDS.includes(arg) || QUARTO_RUN_COMMANDS.includes(arg) ? arg : undefined;
+}
+
+/** True for a path or URI whose file is a Quarto document. */
+export function isQuartoPath(p: string): boolean {
+  return /\.qmd$/i.test(p);
+}
+
+export interface QuartoStartState {
+  /** auraR.startRForQuarto */
+  enabled: boolean;
+  /** Inside Positron, Quarto runs code in Positron's own console. */
+  positron: boolean;
+  /** Starting R runs the folder's .Rprofile, so never in Restricted Mode, and never by asking on open. */
+  trusted: boolean;
+  /** A live terminal R (AURA), R, or R Interactive is open. */
+  rOpen: boolean;
+  /** R was found on this machine. */
+  rFound: boolean;
+}
+
+/**
+ * Whether opening a Quarto document should start R (AURA). The cell's Run button calls Quarto's
+ * command directly, so no key binding can put the R-terminal step in front of it: R has to be
+ * running and active already.
+ */
+export function shouldStartRForQuarto(s: QuartoStartState): boolean {
+  return s.enabled && !s.positron && s.trusted && !s.rOpen && s.rFound;
+}
+
 // ---- Activating R before a run (Copilot review of #5) ----
 
-/** The editor a run key acted on: its document, the document's version, and each selection as [anchor line, anchor character, active line, active character]. */
+/**
+ * The editor a run key acted on: its document, the document's version, and each selection as
+ * [anchor line, anchor character, active line, active character]. In Quarto's visual editor, a
+ * webview with no text editor, the selections are empty: an edit still stops the run, but the cursor
+ * cannot be read there.
+ */
 export type EditorSnapshot = { uri: string; version: number; selections: number[][] };
 
 /** True when `b` is the same document, at the same version, with the same selections, as `a`. */

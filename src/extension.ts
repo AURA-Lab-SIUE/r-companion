@@ -20,7 +20,7 @@ import { ActionItem, CheckResult, initSetup, installMissingCommand, installExten
 import { VSCODE_R_ID, VSCODE_R_MIN, versionBelow } from './checklist';
 import { explain, explainPrefill, Explanation, explanationMarkdown, FixIt, FIX_IT_LABEL } from './errors';
 import { pickAdapter, TerminalAdapter } from './adapters';
-import { activateR, EditorSnapshot, R_RUN_COMMANDS, RNotActiveError, RNotFoundError, runKey } from './rTarget';
+import { activateR, EditorSnapshot, isQuartoPath, isRTerminalName, QUARTO_RUN_COMMANDS, QUARTO_VISUAL_EDITOR, RNotActiveError, RNotFoundError, runCommandOf, runKey, shouldStartRForQuarto } from './rTarget';
 import { mergeRecommendations } from './courseFiles';
 import { TrustGate } from './trustGate';
 import { registerMenus, menuItems, stepsScript, appendToSteps } from './menus';
@@ -91,7 +91,14 @@ export function activate(context: vscode.ExtensionContext) {
     now: () => Date.now(),
   });
   context.subscriptions.push(
-    vscode.workspace.onDidGrantWorkspaceTrust(() => void trustGate.granted()),
+    vscode.workspace.onDidGrantWorkspaceTrust(() => {
+      void trustGate.granted();
+      startRForQuarto();
+    }),
+    // A Quarto document opening starts R (AURA), so the cell's Run button finds R (0.6.1)
+    vscode.window.tabGroups.onDidChangeTabs((e) => {
+      if (e.opened.some((t) => isQuartoPath(tabPath(t)))) startRForQuarto();
+    }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('auraR.course') && currentCourse()) markDone(DONE.course);
     }),
@@ -100,6 +107,9 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.workspace.registerTextDocumentContentProvider(EXPLAIN_SCHEME, explainPages),
   );
+
+  // A Quarto document restored with the window counts as opened
+  startRForQuarto();
 
   initSetup({
     output,
@@ -737,7 +747,12 @@ async function runInSession(code: string): Promise<void> {
  * editor is read at the key press and nothing runs if it changed while R was starting.
  */
 async function runInR(command: unknown): Promise<void> {
-  const cmd = typeof command === 'string' && R_RUN_COMMANDS.includes(command) ? command : 'r.runSelection';
+  const cmd = runCommandOf(command) ?? 'r.runSelection';
+  // In Positron, Quarto runs code in Positron's own console: no R terminal step
+  if (QUARTO_RUN_COMMANDS.includes(cmd) && pickAdapter(setting('runWith', 'auto'), terminalAdapter).id === 'positron') {
+    await vscode.commands.executeCommand(cmd);
+    return;
+  }
   // runKey asks for Workspace Trust before starting R (R in an untrusted folder would run its
   // .Rprofile), keeps the key-press reading of the editor through the trust wait, and runs nothing
   // if the editor changed or R is not the live, active terminal once it is ready
@@ -750,15 +765,55 @@ async function runInR(command: unknown): Promise<void> {
   });
 }
 
-/** The active editor's document, version, and selections, or undefined when no editor is active. */
+/**
+ * The active editor's document, version, and selections, or undefined when no editor is active.
+ * Quarto's visual editor is a webview, so activeTextEditor is empty there: its document and version
+ * come from the active tab, with no selections.
+ */
 function snapshotEditor(): EditorSnapshot | undefined {
   const e = vscode.window.activeTextEditor;
-  if (!e) return undefined;
-  return {
-    uri: e.document.uri.toString(),
-    version: e.document.version,
-    selections: e.selections.map((s) => [s.anchor.line, s.anchor.character, s.active.line, s.active.character]),
-  };
+  if (e) {
+    return {
+      uri: e.document.uri.toString(),
+      version: e.document.version,
+      selections: e.selections.map((s) => [s.anchor.line, s.anchor.character, s.active.line, s.active.character]),
+    };
+  }
+  const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+  if (input instanceof vscode.TabInputCustom && input.viewType === QUARTO_VISUAL_EDITOR) {
+    const uri = input.uri.toString();
+    const doc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri);
+    return { uri, version: doc?.version ?? -1, selections: [] };
+  }
+  return undefined;
+}
+
+/** The file path behind an editor tab (text, or a custom editor such as Quarto's visual one), or ''. */
+function tabPath(tab: vscode.Tab): string {
+  const input = tab.input;
+  if (input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom) return input.uri.path;
+  return '';
+}
+
+/**
+ * Starts R (AURA) when a Quarto document is open and no R terminal is. The ▷ Run Cell button in
+ * Quarto's visual editor calls quarto.runCurrentCell itself, past every key binding, and vscode-R then
+ * sends to the active terminal or, with none open, asks where to run (testbench probe, 2026-11-03).
+ * Never asks for trust and never shows an error: a document opening is not a request to run R.
+ */
+function startRForQuarto(): void {
+  const open = vscode.window.tabGroups.all.some((g) => g.tabs.some((t) => isQuartoPath(tabPath(t))));
+  if (!open) return;
+  const go = shouldStartRForQuarto({
+    enabled: setting<boolean>('startRForQuarto', true),
+    positron: pickAdapter(setting('runWith', 'auto'), terminalAdapter).id === 'positron',
+    trusted: vscode.workspace.isTrusted,
+    rOpen: vscode.window.terminals.some((t) => t.exitStatus === undefined && isRTerminalName(t.name)),
+    rFound: findR()[0]?.rterm !== undefined,
+  });
+  if (!go) return;
+  output.appendLine('A Quarto document is open, so the R (AURA) terminal was started for its Run Cell buttons and run keys.');
+  terminalAdapter.ready().catch((e) => output.appendLine(`R (AURA) did not start: ${e?.message ?? e}`));
 }
 
 /**
