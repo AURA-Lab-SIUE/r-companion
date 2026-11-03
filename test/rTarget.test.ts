@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
-import { activateR, ActivateDeps, alreadyShown, EditorSnapshot, InFlight, pickRTarget, RClosedError, RNotActiveError, RNotFoundError, runKey, RunKeyDeps, sameEditor, waitForR } from '../src/rTarget';
+import { activateR, ActivateDeps, alreadyShown, EditorSnapshot, InFlight, isQuartoPath, pickRTarget, QUARTO_RUN_COMMANDS, RClosedError, RNotActiveError, RNotFoundError, runCommandOf, runKey, RunKeyDeps, sameEditor, shouldStartRForQuarto, waitForR } from '../src/rTarget';
 
 test('no terminal at all: open R (AURA)', () => {
   assert.deepEqual(pickRTarget([], -1), { kind: 'open' });
@@ -302,4 +302,63 @@ test('alreadyShown: the errors the Companion has already explained in its own me
   assert.equal(alreadyShown(new RNotFoundError()), true);
   assert.equal(alreadyShown(new Error('something else')), false);
   assert.equal(alreadyShown('a string'), false);
+});
+
+// ---- 0.6.1: Quarto documents (q-20261103-0003) ----
+
+test("runCommandOf: vscode-R's and Quarto's run commands pass; anything else is refused", () => {
+  assert.equal(runCommandOf('r.runSelection'), 'r.runSelection');
+  assert.equal(runCommandOf('quarto.runCurrentCell'), 'quarto.runCurrentCell');
+  assert.equal(runCommandOf('quarto.runAllCells'), 'quarto.runAllCells');
+  assert.equal(runCommandOf('workbench.action.terminal.sendSequence'), undefined);
+  assert.equal(runCommandOf('quarto.preview'), undefined);
+  assert.equal(runCommandOf(undefined), undefined);
+  assert.equal(runCommandOf({ command: 'quarto.runCurrent' }), undefined);
+  assert.equal(QUARTO_RUN_COMMANDS.length, 9);
+});
+
+test('isQuartoPath: .qmd only, any case', () => {
+  assert.ok(isQuartoPath('/c:/Users/me/MC451/03_Project/report.qmd'));
+  assert.ok(isQuartoPath('report.QMD'));
+  assert.ok(!isQuartoPath('starter.R'));
+  assert.ok(!isQuartoPath('notes.Rmd'));
+  assert.ok(!isQuartoPath('report.qmd.bak'));
+});
+
+const startState = { enabled: true, positron: false, trusted: true, rOpen: false, rFound: true };
+
+test('shouldStartRForQuarto: a trusted folder with R found and no R open: start R (AURA)', () => {
+  assert.equal(shouldStartRForQuarto(startState), true);
+});
+
+test('shouldStartRForQuarto: never with the setting off, in Positron, in Restricted Mode, with R already open, or with no R', () => {
+  assert.equal(shouldStartRForQuarto({ ...startState, enabled: false }), false);
+  assert.equal(shouldStartRForQuarto({ ...startState, positron: true }), false);
+  assert.equal(shouldStartRForQuarto({ ...startState, trusted: false }), false);
+  assert.equal(shouldStartRForQuarto({ ...startState, rOpen: true }), false);
+  assert.equal(shouldStartRForQuarto({ ...startState, rFound: false }), false);
+});
+
+test("runKey in Quarto's visual editor (no selections): an edit while R starts stops the run", async () => {
+  const at = { uri: 'file:///w/report.qmd', version: 4, selections: [] };
+  let now: EditorSnapshot = at;
+  const ran: string[] = [];
+  const warned: string[] = [];
+  const deps: RunKeyDeps = {
+    snapshot: () => now,
+    requireTrust: async () => true,
+    activate: async () => {
+      now = { ...at, version: 5 };
+      return 'R (AURA)';
+    },
+    execute: async () => void ran.push('quarto.runCurrentCell'),
+    warn: (m) => void warned.push(m),
+  };
+  assert.equal(await runKey(deps), 'changed');
+  assert.deepEqual(ran, []);
+  assert.equal(warned.length, 1);
+  now = at;
+  deps.activate = async () => 'R (AURA)';
+  assert.equal(await runKey(deps), 'ran');
+  assert.deepEqual(ran, ['quarto.runCurrentCell']);
 });

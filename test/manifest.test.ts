@@ -108,8 +108,46 @@ test("macOS: the run keys use vscode-R 3.2.2's mac keys, removed and replaced (C
     assert.ok(kb.some((k) => k.command === `-${cmd}` && k.when === when && macKey(k) === mac), `mac removal ${mac} ${cmd} [${when}]`);
     assert.ok(kb.some((k) => k.command === 'auraR.runInR' && k.args === cmd && macKey(k) === mac), `mac replacement ${mac} -> ${cmd}`);
   }
-  for (const k of kb.filter((x) => x.command === 'auraR.runInR' || x.command.startsWith('-r.'))) {
+  for (const k of kb.filter((x) => (x.command === 'auraR.runInR' && String(x.args).startsWith('r.')) || x.command.startsWith('-r.'))) {
     const cmd = k.command === 'auraR.runInR' ? k.args : k.command.slice(1);
     assert.ok(UPSTREAM.some(([c, mac]) => c === cmd && mac === macKey(k)), `${k.command} ${String(k.args ?? '')}: mac key ${macKey(k)} is not vscode-R's`);
   }
+});
+
+// 0.6.1, the run-key front door for Quarto documents (owner decision q-20261103-0003). Quarto 1.139.0
+// binds these keys in the source editor and in its visual editor; in both the first run asked where
+// to run, and its highlighted choice needed a console program students do not have (testbench probe,
+// 2026-11-03). The Companion removes each binding and puts its R-terminal step in front of the same
+// Quarto command. Keys, mac keys, and when clauses copied from Quarto 1.139.0's package.json.
+const QUARTO_SOURCE = 'editorTextFocus && editorLangId == quarto && !findInputFocussed && !replaceInputFocussed';
+const QUARTO_VISUAL = "activeCustomEditorId == 'quarto.visualEditor'";
+const QUARTO_RUN_KEYS: Array<[string, string | undefined, string]> = [
+  ['alt+enter', undefined, 'quarto.runSelection'],
+  ['ctrl+enter', 'cmd+enter', 'quarto.runCurrent'],
+  ['shift+enter', undefined, 'quarto.runCurrentAdvance'],
+  ['ctrl+shift+enter', 'cmd+shift+enter', 'quarto.runCurrentCell'],
+  ['ctrl+alt+p', 'cmd+alt+p', 'quarto.runPreviousCell'],
+  ['ctrl+alt+n', 'cmd+alt+n', 'quarto.runNextCell'],
+  ['ctrl+shift+alt+n', 'cmd+shift+alt+n', 'quarto.runCellsBelow'],
+  ['ctrl+shift+alt+p', 'cmd+shift+alt+p', 'quarto.runCellsAbove'],
+  ['ctrl+alt+r', 'cmd+alt+r', 'quarto.runAllCells'],
+];
+
+test("every Quarto run key, in the source and the visual editor, goes through the Companion's R-terminal step", () => {
+  const kb: Array<{ key: string; mac?: string; command: string; args?: string; when?: string }> = manifest.contributes.keybindings ?? [];
+  for (const [key, mac, cmd] of QUARTO_RUN_KEYS) {
+    for (const when of [QUARTO_SOURCE, QUARTO_VISUAL]) {
+      const same = (k: { key: string; mac?: string; when?: string }) => k.key === key && k.mac === mac && k.when === when;
+      assert.ok(kb.some((k) => same(k) && k.command === `-${cmd}`), `remove ${key} ${cmd} [${when}]`);
+      assert.ok(kb.some((k) => same(k) && k.command === 'auraR.runInR' && k.args === cmd), `replace ${key} -> ${cmd} [${when}]`);
+    }
+  }
+  const ours = kb.filter((k) => k.command === 'auraR.runInR' && String(k.args).startsWith('quarto.'));
+  assert.equal(ours.length, QUARTO_RUN_KEYS.length * 2, 'no Quarto key beyond these');
+});
+
+test('R (AURA) starts when a Quarto document opens, and the setting can turn it off', () => {
+  const props = manifest.contributes.configuration.properties;
+  assert.equal(props['auraR.startRForQuarto']?.type, 'boolean');
+  assert.equal(props['auraR.startRForQuarto']?.default, true);
 });

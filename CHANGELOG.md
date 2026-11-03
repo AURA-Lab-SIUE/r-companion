@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2 (run keys in Quarto documents)
+
+- **Run keys in a Quarto document always reach R.** In a `.qmd` file, in the source editor and in Quarto's visual editor, Ctrl+Enter (run the line), Ctrl+Shift+Enter (run the cell), Shift+Enter (run the cell and move on), Ctrl+Alt+R (run all cells), Alt+Enter, and Quarto's other run keys now go through the same step as in an R script: an R terminal becomes the active one (R (AURA) when none is open) before Quarto runs the code. On a Mac the same holds for the Cmd keys. Before, the first run asked "Choose where to run", and its highlighted choice, New R Interactive window, needed a separate console program students do not have; with a shell terminal active, the code could go into the shell.
+- **R starts when a Quarto document opens.** The ▷ Run Cell button on a code cell calls Quarto directly, so no key can step in front of it. The Companion now starts the R (AURA) terminal when a `.qmd` file opens and no R terminal is open, so the button finds R. It does this only in a trusted folder, never in Positron (which uses its own console), and never asks or shows an error on open. The new setting `auraR.startRForQuarto` turns it off. One case is not covered: if you have selected a PowerShell (or other shell) terminal in the Terminal panel yourself, the Run Cell button still sends the cell there, as before. The run keys switch to R first, so press Ctrl+Shift+Enter instead, or select R (AURA) in the terminal list.
+- **No output under the cell.** Results still print in the Terminal and plots still open in an R Plot tab, as before; Quarto's visual editor has no way for another extension to draw output inside it.
+
 ## 0.6.1 (novice code ceiling: the channel labels come from the package)
 
 - **Label each channel by its top category** writes `channels <- twitch_channels()` and a count of the channels (43 gaming, 5 non-gaming, 2 with no category). It used to write a six-verb `slice_max()` pipeline, a fourteen-name category list, and a `%in%` test, none of which a novice is expected to read. The judgment calls (the non-gaming list and the audience cutoffs) are documented in `?twitch_channels`, and the pipeline that built the table lives in the package source.
