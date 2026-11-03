@@ -348,40 +348,23 @@ const v2vJoinChatStreams: Template = () =>
 const v2vChannelLookup: Template = () =>
   lines(
     banner('Label each channel by the category it streams most'),
-    "# Count each channel's snapshots in each category, then keep its most frequent category.",
-    '# Snapshots with no category are dropped first. Prints nothing.',
-    'channel_type <- streams %>%',
-    '  filter(!is.na(game)) %>%',
-    '  count(channel, game) %>%',
-    '  group_by(channel) %>%',
-    '  slice_max(n, n = 1, with_ties = FALSE) %>%',
-    '  ungroup()',
+    '# The course package ships a lookup table: one row per channel, with main_game (the category',
+    '# it streamed most often), is_gaming, channel_type, median_viewers, and viewer_band.',
+    '# Run ?twitch_channels to read the non-gaming list and the audience cutoffs. Prints nothing.',
+    'channels <- twitch_channels()',
     '',
-    '# The categories that are not games.',
-    'nongaming_categories <- c(',
-    '  "Art", "ASMR", "Beauty & Body Art", "Creative", "Food & Drink",',
-    '  "IRL", "Just Chatting", "Makers & Crafting", "Music",',
-    '  "Music & Performing Arts", "Science & Technology",',
-    '  "Sports & Fitness", "Talk Shows & Podcasts", "Travel & Outdoors"',
-    ')',
-    '',
-    "# is_gaming is TRUE when a channel's main category is not on that list. main_game keeps the",
-    "# category itself, under a name that does not clash with the snapshot's game. Prints nothing.",
-    'channel_type <- channel_type %>%',
-    '  mutate(is_gaming = !(game %in% nongaming_categories)) %>%',
-    '  select(channel, main_game = game, is_gaming)',
-    '',
-    '# One row per channel that has a category.',
-    'nrow(channel_type)',
+    '# Count the channels: gaming (TRUE), non-gaming (FALSE), and no category recorded (NA).',
+    'channels %>%',
+    '  count(is_gaming)',
   );
 
 const v2vJoinLookup: Template = () =>
   lines(
     banner('Join the channel labels onto every message: left_join()'),
-    '# Keeps every message and adds main_game and is_gaming from the row with the same channel,',
+    '# Keeps every message and adds the five label columns from the row with the same channel,',
     '# the join key. A message whose channel has no label gets NA. Changes chat_streams; prints nothing.',
     'chat_streams <- chat_streams %>%',
-    '  left_join(channel_type, by = "channel")',
+    '  left_join(channels, by = "channel")',
     '',
     '# Check the join: messages from gaming channels (TRUE), the others (FALSE), and unlabeled (NA).',
     'chat_streams %>%',
@@ -599,7 +582,7 @@ function joinTables(p: GenParams, left: string, right: string, key: string): str
 }
 
 const mc427JoinTables: Template = (p) => joinTables(p, d(p, 'df'), p.right ?? 'apps', p.column ?? 'posted_from');
-const v2vJoinTables: Template = (p) => joinTables(p, d(p, 'chat'), p.right ?? 'channel_type', p.column ?? 'channel');
+const v2vJoinTables: Template = (p) => joinTables(p, d(p, 'chat'), p.right ?? 'channels', p.column ?? 'channel');
 
 export const MC427_R2: Record<string, Template> = {
   sample: mc427Sample,

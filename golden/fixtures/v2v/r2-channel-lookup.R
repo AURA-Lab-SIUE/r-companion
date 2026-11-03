@@ -1,26 +1,9 @@
 # ---- Label each channel by the category it streams most ----
-# Count each channel's snapshots in each category, then keep its most frequent category.
-# Snapshots with no category are dropped first. Prints nothing.
-channel_type <- streams %>%
-  filter(!is.na(game)) %>%
-  count(channel, game) %>%
-  group_by(channel) %>%
-  slice_max(n, n = 1, with_ties = FALSE) %>%
-  ungroup()
+# The course package ships a lookup table: one row per channel, with main_game (the category
+# it streamed most often), is_gaming, channel_type, median_viewers, and viewer_band.
+# Run ?twitch_channels to read the non-gaming list and the audience cutoffs. Prints nothing.
+channels <- twitch_channels()
 
-# The categories that are not games.
-nongaming_categories <- c(
-  "Art", "ASMR", "Beauty & Body Art", "Creative", "Food & Drink",
-  "IRL", "Just Chatting", "Makers & Crafting", "Music",
-  "Music & Performing Arts", "Science & Technology",
-  "Sports & Fitness", "Talk Shows & Podcasts", "Travel & Outdoors"
-)
-
-# is_gaming is TRUE when a channel's main category is not on that list. main_game keeps the
-# category itself, under a name that does not clash with the snapshot's game. Prints nothing.
-channel_type <- channel_type %>%
-  mutate(is_gaming = !(game %in% nongaming_categories)) %>%
-  select(channel, main_game = game, is_gaming)
-
-# One row per channel that has a category.
-nrow(channel_type)
+# Count the channels: gaming (TRUE), non-gaming (FALSE), and no category recorded (NA).
+channels %>%
+  count(is_gaming)

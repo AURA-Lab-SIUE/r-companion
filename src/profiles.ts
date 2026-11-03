@@ -67,7 +67,9 @@ const V2V_PACKAGES: PackageSpec[] = [
     // snapshot_ts, which the generated wrangling code reads. 0.3.6 since the portfolio unit:
     // before it, v2v::deploy_portfolio() published to Posit Connect and every deploy ended in
     // "Publish failed:", while Check my setup still said OK.
-    minVersion: '0.3.6',
+    // 0.3.8 since the code-ceiling pass (owner 2026-11-03): the channel-lookup block reads
+    // twitch_channels(), the lookup table that replaced the slice_max pipeline.
+    minVersion: '0.3.8',
   },
   { name: 'quarto', why: 'the R side of Quarto, used to publish your portfolio', level: 'recommended', source: 'cran' },
 ];
