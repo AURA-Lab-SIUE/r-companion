@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1 (novice code ceiling: the channel labels come from the package)
+
+- **Label each channel by its top category** writes `channels <- twitch_channels()` and a count of the channels (43 gaming, 5 non-gaming, 2 with no category). It used to write a six-verb `slice_max()` pipeline, a fourteen-name category list, and a `%in%` test, none of which a novice is expected to read. The judgment calls (the non-gaming list and the audience cutoffs) are documented in `?twitch_channels`, and the pipeline that built the table lives in the package source.
+- **Join the channel labels onto the messages** joins `channels`, which also brings `channel_type`, `median_viewers`, and `viewer_band` onto every message, so no later block cuts the bands or builds the factor by hand.
+- **Join two tables by a shared column** defaults its right table to `channels`.
+- **Check my setup** asks for v2v 0.3.8 or newer in MC 451 and MC 501 (earlier versions have no `twitch_channels()`); **Install what is missing** installs it.
+
 ## 0.6.0 (code parity: everything you do in the Companion leaves R that redoes it)
 
 - **Histogram comparing two groups** draws each bar as the share of its group's messages, as its

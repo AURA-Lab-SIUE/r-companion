@@ -616,7 +616,9 @@
       ],
       "data": [],
       "must_print": [
-        "\\[1\\] 48"
+        "FALSE\\s+5",
+        "TRUE\\s+43",
+        "NA\\s+2"
       ],
       "sentence_template": null
     },
@@ -634,7 +636,9 @@
       ],
       "data": [],
       "must_print": [
-        "\\[1\\] 48"
+        "FALSE\\s+5",
+        "TRUE\\s+43",
+        "NA\\s+2"
       ],
       "sentence_template": null
     },
