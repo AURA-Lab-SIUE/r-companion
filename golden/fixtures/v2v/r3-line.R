@@ -1,18 +1,8 @@
 # ---- Line chart: a total over time ----
-# Bucket the stream snapshots into six-hour blocks, keep the five biggest game categories and
-# lump the rest into "Other", then add up the viewers in each block. clean_dates() makes the
-# ts time column from the millisecond date, as in the wrangling step (without v2v:
-# as_datetime(date / 1000)), floor_date rounds it down to its six-hour block, and fct_lump_n
-# keeps the top five games. This line prints nothing.
-viewers_over_time <- streams %>%
-  filter(!is.na(game)) %>%
-  mutate(
-    ts = clean_dates(date),
-    six_hour = floor_date(ts, "6 hours"),
-    category = fct_lump_n(game, n = 5)
-  ) %>%
-  group_by(six_hour, category) %>%
-  summarize(total_viewers = sum(viewers), .groups = "drop")
+# The course package ships the stream snapshots already bucketed into six-hour blocks, with
+# the five biggest game categories kept and the rest lumped into "Other", and the viewers
+# in each block added up. Run ?twitch_viewers_over_time to read how it was built. Prints nothing.
+viewers_over_time <- twitch_viewers_over_time()
 
 # One line per game category: time on the x axis, summed viewers on the y, color by category.
 # A line implies order, so it is right for time and wrong for unordered groups. Inside ggplot()

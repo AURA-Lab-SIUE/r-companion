@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 (novice code ceiling: one line per test)
+
+- **Every R4 test is one line** (owner q-20261103-0005 = A). Welch t-test, Chi-square, One-way ANOVA, and Linear regression write `run_t_test()`, `run_chi_square()`, `run_anova()`, and `run_regression()` from v2v 0.3.9; each prints every number the APA sentence needs, the MC 501 extras (intervals, expected counts, standardized residuals, omega squared, Welch's ANOVA, Tukey's pairs, the standardized slope), and the plain-R lines it stands for. Correlation is a plain `cor.test()`. This supersedes 0.5.3's "plain calls first, wrapper last" form (q-20261018-0044, q-20261022-0006).
+- **Crosstab with proportions** writes `crosstab()`, which prints the counts grid and the row-share grid; **Line chart over time** reads `twitch_viewers_over_time()` instead of building the six-hour table; **Bar chart** keeps the top ten with `count(sort = TRUE)` and `head()`.
+- **Check my setup** asks for v2v 0.3.9.
+
 ## 0.6.2 (run keys in Quarto documents)
 
 - **Run keys in a Quarto document always reach R.** In a `.qmd` file, in the source editor and in Quarto's visual editor, Ctrl+Enter (run the line), Ctrl+Shift+Enter (run the cell), Shift+Enter (run the cell and move on), Ctrl+Alt+R (run all cells), Alt+Enter, and Quarto's other run keys now go through the same step as in an R script: an R terminal becomes the active one (R (AURA) when none is open) before Quarto runs the code. On a Mac the same holds for the Cmd keys. Before, the first run asked "Choose where to run", and its highlighted choice, New R Interactive window, needed a separate console program students do not have; with a shell terminal active, the code could go into the shell.
