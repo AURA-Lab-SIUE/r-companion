@@ -1,12 +1,13 @@
-# ---- Turn the date column into a readable time: clean_dates() ----
-# date counts milliseconds since midnight, January 1, 1970 (UTC). clean_dates() divides by
-# 1,000 and turns the result into a date and time. The same step without v2v:
-# mutate(ts = as_datetime(date / 1000)), with as_datetime() from lubridate (in the tidyverse).
-# These lines change chat and streams and print nothing.
+# ---- Turn the date column into a readable time: as_datetime() ----
+# date counts milliseconds since midnight, January 1, 1970 (UTC). as_datetime(), from
+# lubridate (loaded with the tidyverse), expects seconds, so divide by 1,000 first. It
+# stores the result as a date and time in a new column, ts. On your own data, a date
+# written as text uses the reader that matches it: ymd_hms() for 2024-03-01 14:22:05,
+# mdy() for 3/1/2024. These lines change chat and streams and print nothing.
 chat <- chat %>%
-  mutate(ts = clean_dates(date))
+  mutate(ts = as_datetime(date / 1000))
 streams <- streams %>%
-  mutate(ts = clean_dates(date))
+  mutate(ts = as_datetime(date / 1000))
 
 # Check the new column beside the one it came from, in the first three rows.
 chat %>%

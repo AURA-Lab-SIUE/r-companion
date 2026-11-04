@@ -13,13 +13,17 @@ nongaming_categories <- c(
 
 chat <- twitch_chat() %>%
   mutate(
-    ts = clean_dates(date),
+    ts = as_datetime(date / 1000),
     message_length = str_length(message)
   )
 streams <- twitch_streams() %>%
-  mutate(ts = clean_dates(date))
+  mutate(ts = as_datetime(date / 1000))
 
-analysis <- join_chat_streams(chat, streams) %>%
+snapshots <- streams %>%
+  select(channel, snapshot_ts = ts, game, viewers)
+
+analysis <- chat %>%
+  left_join(snapshots, by = join_by(channel, closest(ts >= snapshot_ts))) %>%
   mutate(
     is_gaming = if_else(is.na(game), NA, !(game %in% nongaming_categories)),
     channel_type = factor(if_else(is_gaming, "gaming", "non-gaming")),

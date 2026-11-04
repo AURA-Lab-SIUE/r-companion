@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 (real functions only: no v2v helper reaches a student)
+
+- **Every MC 451 and MC 501 block is plain tidyverse, base R, and effectsize** (owner, 2026-11-04: students must see the functions they will use after the course, typed the way they would type them on their own data). The course package now supplies only its data loaders (`twitch_chat()`, `twitch_streams()`, `twitch_channels()`, `twitch_viewers_over_time()`), `reliability()`, and the chart theme to generated code.
+- **Turn the date column into a time (as_datetime)** writes `mutate(ts = as_datetime(date / 1000))` for both tables, with a comment on the readers a student's own text dates need (`ymd_hms()`, `mdy()`). It wrote `clean_dates()`.
+- **Join two tables by a key and nearest earlier time (left_join)** writes two stacked blocks: `select(channel, snapshot_ts = ts, game, viewers)` on the stream table, then `left_join()` with `join_by(channel, closest(ts >= snapshot_ts))`, and the same no-snapshot count as before (35,256 matched, 11 not). It wrote `join_chat_streams()`. The menu item was called Match each message to its stream.
+- **Draw a coding sample with a seed (slice_sample)** writes `set.seed()`, then `group_by(channel)`, `slice_sample()`, and `ungroup()` for the course corpus, the same dplyr draw it already wrote for any other table. It wrote `sample_messages()`. Same seed, same rows.
+- **Crosstab with proportions** writes the counts grid with `count()` and `pivot_wider()`, then the row shares with `group_by()` and `mutate(share = ...)`, matching the Describing worksheets. It wrote `crosstab()`.
+- **Welch t-test, Chi-square, One-way ANOVA, and Linear regression** write the group summary, then `t.test()` and `cohens_d()`; `xtabs()`, `chisq.test()`, and `cramers_v()`; `aov()`, `summary()`, and `eta_squared()`; `lm()` and `summary()`. The settings block loads effectsize. The MC 501 blocks add the expected counts and standardized residuals, Welch's ANOVA, omega squared, Tukey's pairs, the standardized slope, and the two residual plots. The group summaries drop rows missing the outcome or the group first, so n matches the rows the test used. These blocks match the Inferencing worksheets line for line. They wrote `run_t_test()`, `run_chi_square()`, `run_anova()`, and `run_regression()`.
+- **Explain an R error** recommends the plain lubridate and dplyr lines, and describes the v2v helpers as older shortcuts when one of their own errors comes up.
+- The golden fixtures, the runner preambles, and the Copilot instructions file follow. Check my setup already requires effectsize in MC 451 and MC 501.
+
 ## 0.6.3 (novice code ceiling: one line per test)
 
 - **Every R4 test is one line** (owner q-20261103-0005 = A). Welch t-test, Chi-square, One-way ANOVA, and Linear regression write `run_t_test()`, `run_chi_square()`, `run_anova()`, and `run_regression()` from v2v 0.3.9; each prints every number the APA sentence needs, the MC 501 extras (intervals, expected counts, standardized residuals, omega squared, Welch's ANOVA, Tukey's pairs, the standardized slope), and the plain-R lines it stands for. Correlation is a plain `cor.test()`. This supersedes 0.5.3's "plain calls first, wrapper last" form (q-20261018-0044, q-20261022-0006).

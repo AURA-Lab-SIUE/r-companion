@@ -53,11 +53,20 @@ function chosenCrosstab(data: string, rows: string, cols: string, dropMissing: b
   if (dropMissing) {
     return lines(
       banner(`Crosstab: count every pair of ${rows} and ${cols}`),
-      `# One row per ${rows} value, one column per ${cols} value: first the counts, then the share`,
-      `# of each ${rows} value's rows in each ${cols} value (each row adds up to 1). Rows missing`,
-      '# either column are dropped first. The first time it runs it prints the count() and',
-      '# pivot_wider() lines it stands for.',
-      `crosstab(${data}, ${rows}, ${cols})`,
+      `# The counts as a grid: one row per ${rows} value, one column per ${cols} value. Rows`,
+      '# missing either column are dropped first, and a pair that never occurs shows 0.',
+      `${data} %>%`,
+      `  filter(!is.na(${rows}), !is.na(${cols})) %>%`,
+      `  count(${rows}, ${cols}) %>%`,
+      `  pivot_wider(names_from = ${cols}, values_from = n, values_fill = 0)`,
+      '',
+      `# The same counts as shares: within each ${rows} value, the share of its rows in each`,
+      `# ${cols} value (the shares for one ${rows} value add up to 1).`,
+      `${data} %>%`,
+      `  filter(!is.na(${rows}), !is.na(${cols})) %>%`,
+      `  count(${rows}, ${cols}) %>%`,
+      `  group_by(${rows}) %>%`,
+      '  mutate(share = round(n / sum(n), 3))',
     );
   }
   return lines(
@@ -180,11 +189,20 @@ const v2vCrosstab: Template = (p) => {
   if (p.columns && p.columns.length === 2) return chosenCrosstab(data, p.columns[0], p.columns[1], true);
   return lines(
     banner('Crosstab: count every pair of two columns'),
-    '# One row per viewer band, one column per channel type: first the counts, then the share of',
-    '# each band\'s messages in each channel type (each row adds up to 1). Rows missing either',
-    '# column are dropped first. The first time it runs it prints the count() and pivot_wider()',
-    '# lines it stands for.',
-    `crosstab(${data}, viewer_band, channel_type)`,
+    '# The counts as a grid: one row per viewer band, one column per channel type. Messages',
+    '# with no channel type (the two channels with no category) are dropped first.',
+    `${data} %>%`,
+    '  filter(!is.na(channel_type)) %>%',
+    '  count(viewer_band, channel_type) %>%',
+    '  pivot_wider(names_from = channel_type, values_from = n, values_fill = 0)',
+    '',
+    "# The same counts as shares: within each band, the share of its messages in each channel",
+    '# type (the two shares for one band add up to 1).',
+    `${data} %>%`,
+    '  filter(!is.na(channel_type)) %>%',
+    '  count(viewer_band, channel_type) %>%',
+    '  group_by(viewer_band) %>%',
+    '  mutate(share = round(n / sum(n), 3))',
   );
 };
 
@@ -297,10 +315,10 @@ const v2vBoxplot: Template = (p) => {
   );
 };
 
-// The time column comes from clean_dates(), the R2 helper (owner U7 = B), exactly as the live decks
-// s23 and w12 shape this chart. ts is rebuilt from date here rather than assumed: in a describing
-// session streams comes fresh from twitch_streams() with no ts column, and a bare ts would then
-// find stats::ts() instead of a column. On a streams that already has ts the values are the same.
+// The time column is as_datetime(date / 1000), the R2 step, exactly as the live decks s23 and w12
+// shape this chart. ts is rebuilt from date here rather than assumed: in a describing session
+// streams comes fresh from twitch_streams() with no ts column, and a bare ts would then find
+// stats::ts() instead of a column. On a streams that already has ts the values are the same.
 const v2vLine: Template = (p) => {
   if (p.columns) return chosenLine(true, d(p, 'streams'), p.columns[0], p.unit ?? 'hour', p.groupBy || undefined);
   return lines(

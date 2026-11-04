@@ -1217,7 +1217,7 @@
       ],
       "data": [],
       "must_print": [
-        "Shares",
+        "share",
         "non-gaming"
       ],
       "sentence_template": null
@@ -1237,7 +1237,7 @@
       ],
       "data": [],
       "must_print": [
-        "Shares",
+        "share",
         "non-gaming"
       ],
       "sentence_template": null,
@@ -1264,7 +1264,7 @@
       ],
       "data": [],
       "must_print": [
-        "Shares",
+        "share",
         "non-gaming"
       ],
       "sentence_template": null
@@ -1751,9 +1751,9 @@
       ],
       "data": [],
       "must_print": [
-        "Chi-square test of independence",
+        "Pearson's Chi-squared test",
         "Cramer's V",
-        "Expected counts"
+        "X-squared"
       ],
       "sentence_template": "chi-square"
     },
@@ -1772,9 +1772,9 @@
       ],
       "data": [],
       "must_print": [
-        "Welch two-sample t-test",
+        "Welch Two Sample t-test",
         "Cohen's d",
-        "mean ="
+        "mean in group"
       ],
       "sentence_template": "t-test"
     },
@@ -1793,9 +1793,9 @@
       ],
       "data": [],
       "must_print": [
-        "Welch two-sample t-test",
+        "Welch Two Sample t-test",
         "Cohen's d",
-        "mean ="
+        "mean in group"
       ],
       "sentence_template": "t-test"
     },
@@ -1814,9 +1814,8 @@
       ],
       "data": [],
       "must_print": [
-        "One-way ANOVA",
-        "Eta squared",
-        "Tukey"
+        "Residuals",
+        "Eta2"
       ],
       "sentence_template": "anova"
     },
@@ -1835,9 +1834,8 @@
       ],
       "data": [],
       "must_print": [
-        "Linear regression",
-        "R-squared",
-        "Beta"
+        "Coefficients",
+        "Multiple R-squared"
       ],
       "sentence_template": "regression"
     },
@@ -1877,10 +1875,10 @@
       ],
       "data": [],
       "must_print": [
-        "Chi-square test of independence",
+        "Pearson's Chi-squared test",
         "Cramer's V",
-        "Expected counts",
-        "Standardized residuals"
+        "X-squared",
+        "non-gaming"
       ],
       "sentence_template": "chi-square"
     },
@@ -1899,9 +1897,9 @@
       ],
       "data": [],
       "must_print": [
-        "Welch two-sample t-test",
+        "Welch Two Sample t-test",
         "Cohen's d",
-        "mean ="
+        "mean in group"
       ],
       "sentence_template": "t-test"
     },
@@ -1920,11 +1918,11 @@
       ],
       "data": [],
       "must_print": [
-        "One-way ANOVA",
-        "Eta squared",
+        "Residuals",
+        "Eta2",
+        "Omega2",
         "Tukey",
-        "Omega squared",
-        "Welch's ANOVA"
+        "not assuming equal variances"
       ],
       "sentence_template": "anova"
     },
@@ -1943,9 +1941,9 @@
       ],
       "data": [],
       "must_print": [
-        "Linear regression",
-        "R-squared",
-        "Beta"
+        "Coefficients",
+        "Multiple R-squared",
+        "Std. Coef."
       ],
       "sentence_template": "regression"
     },
@@ -2604,7 +2602,7 @@
       ],
       "data": [],
       "must_print": [
-        "Shares"
+        "share"
       ],
       "sentence_template": null,
       "params": {
@@ -2859,7 +2857,7 @@
       ],
       "data": [],
       "must_print": [
-        "Welch two-sample t-test",
+        "Welch Two Sample t-test",
         "Cohen's d"
       ],
       "sentence_template": null,
@@ -2882,7 +2880,7 @@
       ],
       "data": [],
       "must_print": [
-        "Chi-square test of independence",
+        "Pearson's Chi-squared test",
         "Cramer's V"
       ],
       "sentence_template": null,
@@ -2905,8 +2903,8 @@
       ],
       "data": [],
       "must_print": [
-        "One-way ANOVA",
-        "Eta squared"
+        "Residuals",
+        "Eta2"
       ],
       "sentence_template": null,
       "params": {}
@@ -2928,8 +2926,8 @@
       ],
       "data": [],
       "must_print": [
-        "Linear regression",
-        "R-squared"
+        "Coefficients",
+        "Multiple R-squared"
       ],
       "sentence_template": null,
       "params": {}

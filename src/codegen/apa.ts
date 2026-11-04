@@ -9,7 +9,7 @@
 // (O:\20-research\aura-lab\r-companion-golden\sentences\): two decimals, three for p and for eta
 // squared, no leading zero for a value that cannot pass 1, df without a thousands comma (APA 7
 // section 6.38), and N with one. MC 427 rounds the Welch df to a whole number, as its A02 format
-// example does; MC 451 and MC 501 keep one decimal, as run_t_test() prints it.
+// example does; MC 451 and MC 501 keep one decimal, as t.test() prints it.
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';

@@ -1,7 +1,8 @@
 # ---- Settings block: load the data and name the variables the tests use ----
-# To run this script on other data, change only this block.
+# To run this script on other data, change only this block. effectsize adds the effect
+# sizes (Cohen's d, Cramer's V, eta squared) the tests below report.
 library(tidyverse)
-library(v2v)
+library(effectsize)
 
 # Load the analysis file, then keep the columns the tests use under the names they use.
 # outcome is a number; group2 has two groups; group3 has three or more; predictor is a

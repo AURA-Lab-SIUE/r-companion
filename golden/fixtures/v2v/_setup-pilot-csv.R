@@ -6,9 +6,12 @@ dir.create("data", showWarnings = FALSE)
 library(tidyverse)
 library(v2v)
 
+set.seed(409)
 pilot_grid <- twitch_chat() %>%
   filter(!is.na(message)) %>%
-  sample_messages(n_per_channel = 1, seed = 409) %>%
+  group_by(channel) %>%
+  slice_sample(n = 1) %>%
+  ungroup() %>%
   slice_head(n = 20) %>%
   transmute(
     item_id = row_number(),
