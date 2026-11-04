@@ -309,17 +309,20 @@ const v2vCount: Template = (p) => {
   );
 };
 
+// Real lubridate, never a v2v helper (owner 2026-11-04: students must see the functions they
+// will use after the course, typed the way they would type them on their own data).
 const v2vCleanDates: Template = () =>
   lines(
-    banner('Turn the date column into a readable time: clean_dates()'),
-    '# date counts milliseconds since midnight, January 1, 1970 (UTC). clean_dates() divides by',
-    '# 1,000 and turns the result into a date and time. The same step without v2v:',
-    '# mutate(ts = as_datetime(date / 1000)), with as_datetime() from lubridate (in the tidyverse).',
-    '# These lines change chat and streams and print nothing.',
+    banner('Turn the date column into a readable time: as_datetime()'),
+    '# date counts milliseconds since midnight, January 1, 1970 (UTC). as_datetime(), from',
+    '# lubridate (loaded with the tidyverse), expects seconds, so divide by 1,000 first. It',
+    '# stores the result as a date and time in a new column, ts. On your own data, a date',
+    '# written as text uses the reader that matches it: ymd_hms() for 2024-03-01 14:22:05,',
+    '# mdy() for 3/1/2024. These lines change chat and streams and print nothing.',
     'chat <- chat %>%',
-    '  mutate(ts = clean_dates(date))',
+    '  mutate(ts = as_datetime(date / 1000))',
     'streams <- streams %>%',
-    '  mutate(ts = clean_dates(date))',
+    '  mutate(ts = as_datetime(date / 1000))',
     '',
     '# Check the new column beside the one it came from, in the first three rows.',
     'chat %>%',
@@ -327,18 +330,25 @@ const v2vCleanDates: Template = () =>
     '  slice_head(n = 3)',
   );
 
-// join_chat_streams(): v2v 0.3.3, which the courses require from R2 on, returns the two times as
-// ts and snapshot_ts itself, so the rename() line 0.3.2 needed is gone (on 0.3.3 that line errors:
-// column ts.x does not exist).
+// The rolling join in plain dplyr (owner 2026-11-04). The snapshot time is renamed BEFORE the
+// join: joining ts to ts made dplyr suffix both, and the chat's own ts came back as ts.x.
 const v2vJoinChatStreams: Template = () =>
   lines(
-    banner('Match each message to its stream: join_chat_streams()'),
-    '# Attaches the game and viewer count of the latest stream snapshot taken at or before each',
-    '# message, on the same channel. Both tables need the ts column from clean_dates(). The same',
-    '# join without v2v: left_join(chat, streams, by = join_by(channel, closest(ts >= ts))).',
-    '# The message keeps its time as ts, and the snapshot time comes back as snapshot_ts.',
-    '# Prints nothing.',
-    'chat_streams <- join_chat_streams(chat, streams)',
+    banner('Join two tables by a key and nearest earlier time: left_join()'),
+    '# Keep the four stream columns the question needs, and rename the snapshot time to',
+    '# snapshot_ts so it cannot be confused with the message time. Prints nothing.',
+    'snapshots <- streams %>%',
+    '  select(channel, snapshot_ts = ts, game, viewers)',
+    '',
+    '# Attach to each message the game and viewer count of the latest snapshot taken at or',
+    '# before it, on the same channel. join_by() names the key: the same channel, and the',
+    '# snapshot time closest to the message time without passing it (a rolling join).',
+    '# left_join() keeps every message; one with no earlier snapshot gets NA. Prints nothing.',
+    'chat_streams <- chat %>%',
+    '  left_join(',
+    '    snapshots,',
+    '    by = join_by(channel, closest(ts >= snapshot_ts))',
+    '  )',
     '',
     '# Count the messages that found a snapshot (FALSE) and those that did not (TRUE).',
     'chat_streams %>%',
@@ -483,12 +493,12 @@ const v2vReliability: Template = (p) => {
 // ---------------- Draw a coding sample (code parity, 2026-10-28) ----------------
 
 /**
- * A random sample with a seed, saved as a CSV the student codes in the data viewer. The course
- * corpus by channel goes through v2v::sample_messages(), as guide 06 and the decks show; any other
- * table, or another grouping, is the same draw written in dplyr (set.seed, then slice_sample).
+ * A random sample with a seed, saved as a CSV the student codes in the data viewer. Every draw is
+ * plain dplyr (set.seed, then slice_sample, grouped when a stratum is named); since 0.7.0 the
+ * course corpus by channel is no exception (owner 2026-11-04: no v2v helper reaches a student).
  * The seed is what makes it reproducible: rerun the block and the same rows come back.
  */
-function sampleBlock(p: GenParams, defaults: { data: string; n: number; seed: number; groupBy: string; file: string; v2v: boolean }): string {
+function sampleBlock(p: GenParams, defaults: { data: string; n: number; seed: number; groupBy: string; file: string }): string {
   const data = d(p, defaults.data);
   const n = p.n ?? defaults.n;
   const seed = p.seed ?? defaults.seed;
@@ -505,21 +515,15 @@ function sampleBlock(p: GenParams, defaults: { data: string; n: number; seed: nu
         'Prints nothing.',
     ),
   ];
-  const draw =
-    defaults.v2v && data === 'chat' && by === 'channel'
-      ? [
-          '# sample_messages() sets the seed, then groups by channel and draws with slice_sample().',
-          `${result} <- sample_messages(${data}, n_per_channel = ${n}, seed = ${seed})`,
-        ]
-      : by
-        ? [
-            `set.seed(${seed})`,
-            `${result} <- ${data} %>%`,
-            `  group_by(${byR}) %>%`,
-            `  slice_sample(n = ${n}) %>%`,
-            '  ungroup()',
-          ]
-        : [`set.seed(${seed})`, `${result} <- ${data} %>%`, `  slice_sample(n = ${n})`];
+  const draw = by
+    ? [
+        `set.seed(${seed})`,
+        `${result} <- ${data} %>%`,
+        `  group_by(${byR}) %>%`,
+        `  slice_sample(n = ${n}) %>%`,
+        '  ungroup()',
+      ]
+    : [`set.seed(${seed})`, `${result} <- ${data} %>%`, `  slice_sample(n = ${n})`];
   const check = by
     ? ['', `# How many rows came from each ${by}.`, `${result} %>%`, `  count(${byR})`]
     : ['', '# How many rows the sample has.', `nrow(${result})`];
@@ -538,9 +542,9 @@ function sampleBlock(p: GenParams, defaults: { data: string; n: number; seed: nu
 }
 
 const v2vSample: Template = (p) =>
-  sampleBlock(p, { data: 'chat', n: 30, seed: 409, groupBy: 'channel', file: 'data/coding-sample.csv', v2v: true });
+  sampleBlock(p, { data: 'chat', n: 30, seed: 409, groupBy: 'channel', file: 'data/coding-sample.csv' });
 const mc427Sample: Template = (p) =>
-  sampleBlock(p, { data: 'df', n: 50, seed: 427, groupBy: '', file: 'coding-sample.csv', v2v: false });
+  sampleBlock(p, { data: 'df', n: 50, seed: 427, groupBy: '', file: 'coding-sample.csv' });
 
 // ---------------- Join two tables by a shared column (0.5.3, both dialects) ----------------
 

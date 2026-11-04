@@ -1,7 +1,7 @@
 // R4 Test: code templates (workstream E, #rgui).
-// MC 427 uses plain tidyverse + broom + effectsize; MC 451/MC 501 write the plain calls the v2v
-// wrappers stand for, each in its own rubric's form, with the wrapper last as a check
-// (q-20261018-0044). Reproduces the golden fixtures byte for byte.
+// MC 427 uses plain tidyverse + broom + effectsize; MC 451/MC 501 write plain base R and
+// effectsize in the form their Inferencing worksheets use (owner 2026-11-04: never a v2v
+// wrapper). Reproduces the golden fixtures byte for byte.
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';
@@ -181,9 +181,10 @@ const v2vSettingsBlock: Template = (p) => {
     : COURSE_SETTINGS;
   return lines(
     banner('Settings block: load the data and name the variables the tests use'),
-    '# To run this script on other data, change only this block.',
+    '# To run this script on other data, change only this block. effectsize adds the effect',
+    "# sizes (Cohen's d, Cramer's V, eta squared) the tests below report.",
     'library(tidyverse)',
-    'library(v2v)',
+    'library(effectsize)',
     '',
     '# Load the analysis file, then keep the columns the tests use under the names they use.',
     '# outcome is a number; group2 has two groups; group3 has three or more; predictor is a',
@@ -198,44 +199,132 @@ const v2vSettingsBlock: Template = (p) => {
   );
 };
 
-// ---------------- MC 451 and MC 501 (v2v one-liners) ----------------
+// ---------------- MC 451 and MC 501 (real base R and effectsize, 0.7.0) ----------------
 
-// Owner q-20261103-0005 = A (novice code ceiling): each test is one v2v call that prints every
-// number the APA sentence needs and ends with the plain-R lines it stands for. This supersedes
-// q-20261018-0044 = A (plain calls first, wrapper last as a check) and q-20261022-0006 = A.
-const v2vTTest: Template = () =>
+// Owner 2026-11-04: students see the real functions they will use after the course (t.test,
+// chisq.test, aov, lm, and effectsize), never a v2v wrapper. The Companion writes the whole
+// block, commented, and the student runs it and reads the output, which keeps the task inside
+// the novice ceiling (q-20261103-0005). MC 501 adds the diagnostics its rubric asks for. The
+// blocks match the Inferencing worksheets (starters 13) line for line. This supersedes 0.6.3's
+// one-line run_*() calls, q-20261018-0044, and q-20261022-0006.
+const v2vTTest = (grad: boolean): string =>
   lines(
     banner('Welch t-test: outcome by group2'),
-    '# Both groups with their n, mean, and SD, then the gap, t, df, p, and Cohen\'s d. The block ends',
-    '# with the t.test() and effectsize::cohens_d() lines it stands for.',
-    'run_t_test(analysis, value = outcome, group = group2)',
+    '# The size, mean, and standard deviation of each group. The write-up needs all three, and',
+    '# the test below does not print the group sizes. Rows missing either column are dropped',
+    '# first, so n matches the rows the test uses.',
+    'analysis %>%',
+    '  filter(!is.na(outcome), !is.na(group2)) %>%',
+    '  group_by(group2) %>%',
+    '  summarize(n = n(), mean = mean(outcome), sd = sd(outcome))',
+    '',
+    "# The test. t is the test statistic, df is Welch's degrees of freedom (it can have decimals),",
+    '# and p-value is p. The two means print at the bottom, in the order the table above lists',
+    '# the groups.',
+    't.test(outcome ~ group2, data = analysis)',
+    '',
+    "# The effect size: Cohen's d with its 95% confidence interval. Below 0.2 is negligible, 0.2",
+    '# small, 0.5 medium, and 0.8 or more large.',
+    'cohens_d(outcome ~ group2, data = analysis)',
+    ...(grad
+      ? [
+          '',
+          "# The 95% confidence interval for the gap between the two means is the line that starts",
+          '# with 95 percent confidence interval in the t.test() output above.',
+        ]
+      : []),
   );
 
-const v2vChiSquare: Template = () =>
+const v2vChiSquare = (grad: boolean): string =>
   lines(
     banner('Chi-square test of independence: cat_a by cat_b'),
-    '# N, chi-square, df, p, and Cramer\'s V, then the expected counts (each should be at least 5)',
-    '# and the standardized residuals (beyond 2 or -2 drives the result). The block ends with the',
-    '# chisq.test() and effectsize::cramers_v() lines it stands for.',
-    'run_chi_square(analysis, x = cat_a, y = cat_b)',
+    '# The observed counts in the form the test reads: one row per value of cat_a, one column',
+    '# per value of cat_b. Name it counts, so the lines below reuse it.',
+    'counts <- xtabs(~ cat_a + cat_b, data = analysis)',
+    '',
+    '# N, the number of messages the test used.',
+    'sum(counts)',
+    '',
+    '# The test, named chi so the lines below reuse it. X-squared is chi-square, df is its degrees',
+    '# of freedom, and p-value is p.',
+    'chi <- chisq.test(counts)',
+    'chi',
+    '',
+    "# The effect size: Cramer's V with its 95% confidence interval. Below 0.1 is negligible, 0.1",
+    '# small, 0.3 medium, and 0.5 or more large.',
+    'cramers_v(counts, adjust = FALSE)',
+    ...(grad
+      ? [
+          '',
+          '# The counts the test expected if the two were unrelated. Each should be at least 5;',
+          '# a smaller one makes the test unreliable.',
+          'round(chi$expected, 1)',
+          '',
+          '# The standardized residuals: a cell beyond 2 or -2 is what drives the result.',
+          'round(chi$stdres, 2)',
+        ]
+      : []),
   );
 
-const v2vAnova: Template = () =>
+const v2vAnova = (grad: boolean): string =>
   lines(
     banner('One-way ANOVA: outcome by group3'),
-    '# Each group with its n, mean, and SD, then F, both df, p, eta squared, omega squared, Welch\'s',
-    '# ANOVA (which does not assume equal spread), and Tukey\'s follow-up for every pair of groups.',
-    '# The block ends with the aov(), effectsize::eta_squared(), and TukeyHSD() lines it stands for.',
-    'run_anova(analysis, value = outcome, group = group3)',
+    '# The size, mean, and standard deviation of each group. Rows missing either column are',
+    '# dropped first, so n matches the rows the test uses.',
+    'analysis %>%',
+    '  filter(!is.na(outcome), !is.na(group3)) %>%',
+    '  group_by(group3) %>%',
+    '  summarize(n = n(), mean = mean(outcome), sd = sd(outcome))',
+    '',
+    '# Fit the model and name it fit_anova, so the lines below reuse it. Prints nothing.',
+    'fit_anova <- aov(outcome ~ group3, data = analysis)',
+    '',
+    '# The test as a table: the group3 row holds F (F value), its df, and p (Pr(>F)); the',
+    '# Residuals row holds the second df.',
+    'summary(fit_anova)',
+    '',
+    '# The effect size: eta squared, the share of the variation the groups explain. Below 0.01',
+    '# is negligible, 0.01 small, 0.06 medium, and 0.14 or more large.',
+    'eta_squared(fit_anova)',
+    ...(grad
+      ? [
+          '',
+          "# Welch's ANOVA, which does not assume the groups have the same spread.",
+          'oneway.test(outcome ~ group3, data = analysis)',
+          '',
+          '# Omega squared, a less biased estimate of the same share.',
+          'omega_squared(fit_anova)',
+          '',
+          "# Which pairs of groups differ: Tukey's follow-up test, one row per pair, with an",
+          '# adjusted p (p adj) for each.',
+          'TukeyHSD(fit_anova)',
+        ]
+      : []),
   );
 
-const v2vRegression: Template = () =>
+const v2vRegression = (grad: boolean): string =>
   lines(
     banner('Linear regression: outcome predicted by predictor'),
-    '# n, the slope (outcome units per unit of predictor), the intercept, the standardized slope,',
-    '# R-squared, and the F-test with its df and p. The block ends with the lm() and',
-    '# lm.beta::lm.beta() lines it stands for.',
-    'run_regression(analysis, outcome = outcome, predictor = predictor)',
+    '# Fit the line and name it fit_lm, so the lines below reuse it. lm() leaves out a row',
+    '# missing either column by itself. Prints nothing.',
+    'fit_lm <- lm(outcome ~ predictor, data = analysis)',
+    '',
+    '# Everything the write-up needs: in the Coefficients table, the predictor row holds the',
+    '# slope (Estimate) and its p (Pr(>|t|)); below it, Multiple R-squared is the share of the',
+    '# variation explained, and the last line holds F, its two df, and p.',
+    'summary(fit_lm)',
+    ...(grad
+      ? [
+          '',
+          '# The standardized slope (beta), so slopes measured in different units compare.',
+          'standardize_parameters(fit_lm)',
+          '',
+          '# Two checks on the fit. The first plot should show no pattern (the residuals spread',
+          '# evenly around zero); the second should run close to its line (normal residuals).',
+          'plot(fit_lm, which = 1)',
+          'plot(fit_lm, which = 2)',
+        ]
+      : []),
   );
 
 const correlationPredictorOutcome: Template = () =>
@@ -245,17 +334,17 @@ const correlationPredictorOutcome: Template = () =>
     'cor.test(~ predictor + outcome, data = analysis)',
   );
 
-const mc451ChiSquare: Template = () => v2vChiSquare({});
-const mc451TTest: Template = () => v2vTTest({});
-const mc451Anova: Template = () => v2vAnova({});
-const mc451Regression: Template = () => v2vRegression({});
+const mc451ChiSquare: Template = () => v2vChiSquare(false);
+const mc451TTest: Template = () => v2vTTest(false);
+const mc451Anova: Template = () => v2vAnova(false);
+const mc451Regression: Template = () => v2vRegression(false);
 
-// ---------------- MC 501 (the same one-liners; the helpers print the intervals and follow-ups) ----------------
+// ---------------- MC 501 (the same tests, plus the diagnostics its rubric asks for) ----------------
 
-const mc501ChiSquare: Template = () => v2vChiSquare({});
-const mc501TTest: Template = () => v2vTTest({});
-const mc501Anova: Template = () => v2vAnova({});
-const mc501Regression: Template = () => v2vRegression({});
+const mc501ChiSquare: Template = () => v2vChiSquare(true);
+const mc501TTest: Template = () => v2vTTest(true);
+const mc501Anova: Template = () => v2vAnova(true);
+const mc501Regression: Template = () => v2vRegression(true);
 
 // Power analysis (MC 501 only): the sample size the design needs, from w05 and the rubric's
 // "power statistics behind the design" row. A plain pwr.t.test() call, one comment per argument.

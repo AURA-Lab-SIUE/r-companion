@@ -68,8 +68,10 @@ const V2V_PACKAGES: PackageSpec[] = [
     // before it, v2v::deploy_portfolio() published to Posit Connect and every deploy ended in
     // "Publish failed:", while Check my setup still said OK.
     // 0.3.9 since the code-ceiling pass (owner 2026-11-03): the channel-lookup block reads
-    // twitch_channels(), the crosstab and line blocks read crosstab() and
-    // twitch_viewers_over_time(), and every R4 test is one run_*() call.
+    // twitch_channels() and the line block reads twitch_viewers_over_time(). Since 0.7.0 the
+    // package supplies only data loaders and the chart theme to generated code (owner
+    // 2026-11-04): every wrangling, crosstab, and test block is plain tidyverse, base R, and
+    // effectsize.
     minVersion: '0.3.9',
   },
   { name: 'quarto', why: 'the R side of Quarto, used to publish your portfolio', level: 'recommended', source: 'cran' },

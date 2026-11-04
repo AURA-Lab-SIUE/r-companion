@@ -1,5 +1,5 @@
 # Runner check, not generated: the numbers the decks and workbook print, computed on the
-# analysis file this run built (the helper route by default, chapter 4's route on request).
+# analysis file this run built (the plain dplyr route by default, chapter 4's route on request).
 analysis %>%
   count(is_gaming)
 analysis %>%
@@ -18,8 +18,11 @@ analysis %>%
     sd = sd(message_length, na.rm = TRUE)
   ) %>%
   mutate(across(c(mean, median, sd), ~ round(.x, 2)))
-run_chi_square(analysis, x = viewer_band, y = channel_type)
-run_t_test(analysis, value = message_length, group = is_gaming)
+counts <- xtabs(~ viewer_band + channel_type, data = analysis)
+chisq.test(counts)
+effectsize::cramers_v(counts, adjust = FALSE)
+t.test(message_length ~ is_gaming, data = analysis)
+effectsize::cohens_d(message_length ~ is_gaming, data = analysis)
 # The ANOVA groups by the channel's main category: main_game on the default route (where game
 # is the snapshot's category), game on chapter 4's route.
 if ("main_game" %in% names(analysis)) analysis <- analysis %>% mutate(game = main_game)

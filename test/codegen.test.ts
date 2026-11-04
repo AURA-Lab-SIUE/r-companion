@@ -113,12 +113,41 @@ test('reliability writes the irr calls, with the wrapper as a check, codes numbe
   }
 });
 
-test('the MC 451 and MC 501 tests write t.test() and chisq.test(), the wrapper last', () => {
+// Owner 2026-11-04: no v2v helper reaches a student. Every MC 451 and MC 501 block is plain
+// tidyverse, base R, and effectsize; the package supplies only data loaders and the theme.
+const V2V_HELPERS = /\b(clean_dates|join_chat_streams|sample_messages|write_coding_form|crosstab|flag_outliers|run_t_test|run_chi_square|run_anova|run_regression)\(/;
+test('no MC 451 or MC 501 block writes a v2v helper', () => {
+  for (const e of generated) {
+    if (e.profile === 'mc427') continue;
+    const got = generate(e.profile as GenProfile, e.task, e.params ?? {});
+    assert.ok(!V2V_HELPERS.test(got), `${e.id} writes a v2v helper`);
+  }
+});
+
+test('the MC 451 and MC 501 tests write t.test(), chisq.test(), aov(), and lm() with effectsize', () => {
   for (const course of ['mc451', 'mc501'] as const) {
-    const t = generate(course, 't-test');
-    assert.ok(t.indexOf('t.test(outcome ~ group2') < t.indexOf('run_t_test('));
-    const c = generate(course, 'chi-square');
-    assert.ok(c.indexOf('  broom::tidy()') < c.indexOf('run_chi_square('));
+    assert.ok(generate(course, 't-test').includes('t.test(outcome ~ group2, data = analysis)'));
+    assert.ok(generate(course, 't-test').includes('cohens_d(outcome ~ group2, data = analysis)'));
+    assert.ok(generate(course, 'chi-square').includes('chi <- chisq.test(counts)'));
+    assert.ok(generate(course, 'anova').includes('fit_anova <- aov(outcome ~ group3, data = analysis)'));
+    assert.ok(generate(course, 'regression').includes('fit_lm <- lm(outcome ~ predictor, data = analysis)'));
+    assert.ok(generate(course, 'settings-block').includes('library(effectsize)'));
+  }
+  const grad = generate('mc501', 'chi-square');
+  assert.ok(grad.includes('round(chi$expected, 1)') && grad.includes('round(chi$stdres, 2)'));
+  assert.ok(!generate('mc451', 'chi-square').includes('chi$stdres'));
+  assert.ok(generate('mc501', 'anova').includes('TukeyHSD(fit_anova)'));
+  assert.ok(generate('mc501', 'regression').includes('standardize_parameters(fit_lm)'));
+});
+
+test('the wrangling steps are plain lubridate and dplyr', () => {
+  for (const course of ['mc451', 'mc501'] as const) {
+    assert.ok(generate(course, 'clean-dates').includes('  mutate(ts = as_datetime(date / 1000))'));
+    const j = generate(course, 'join-chat-streams');
+    assert.ok(j.includes('  select(channel, snapshot_ts = ts, game, viewers)'));
+    assert.ok(j.includes('    by = join_by(channel, closest(ts >= snapshot_ts))'));
+    const s = generate(course, 'sample');
+    assert.ok(s.includes('set.seed(409)') && s.includes('  group_by(channel) %>%') && s.includes('  slice_sample(n = 30) %>%'));
   }
 });
 

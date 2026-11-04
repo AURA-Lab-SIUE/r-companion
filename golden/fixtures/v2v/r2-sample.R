@@ -2,8 +2,11 @@
 # A random sample from chat: 30 rows from each channel, named coding_sample. The seed (409)
 # makes the draw repeatable: run these lines again and you get the same rows. Write the seed in
 # your sampling plan. Prints nothing.
-# sample_messages() sets the seed, then groups by channel and draws with slice_sample().
-coding_sample <- sample_messages(chat, n_per_channel = 30, seed = 409)
+set.seed(409)
+coding_sample <- chat %>%
+  group_by(channel) %>%
+  slice_sample(n = 30) %>%
+  ungroup()
 
 # How many rows came from each channel.
 coding_sample %>%

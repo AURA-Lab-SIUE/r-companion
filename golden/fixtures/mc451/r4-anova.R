@@ -1,5 +1,18 @@
 # ---- One-way ANOVA: outcome by group3 ----
-# Each group with its n, mean, and SD, then F, both df, p, eta squared, omega squared, Welch's
-# ANOVA (which does not assume equal spread), and Tukey's follow-up for every pair of groups.
-# The block ends with the aov(), effectsize::eta_squared(), and TukeyHSD() lines it stands for.
-run_anova(analysis, value = outcome, group = group3)
+# The size, mean, and standard deviation of each group. Rows missing either column are
+# dropped first, so n matches the rows the test uses.
+analysis %>%
+  filter(!is.na(outcome), !is.na(group3)) %>%
+  group_by(group3) %>%
+  summarize(n = n(), mean = mean(outcome), sd = sd(outcome))
+
+# Fit the model and name it fit_anova, so the lines below reuse it. Prints nothing.
+fit_anova <- aov(outcome ~ group3, data = analysis)
+
+# The test as a table: the group3 row holds F (F value), its df, and p (Pr(>F)); the
+# Residuals row holds the second df.
+summary(fit_anova)
+
+# The effect size: eta squared, the share of the variation the groups explain. Below 0.01
+# is negligible, 0.01 small, 0.06 medium, and 0.14 or more large.
+eta_squared(fit_anova)

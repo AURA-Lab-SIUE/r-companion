@@ -1,5 +1,16 @@
 # ---- Chi-square test of independence: cat_a by cat_b ----
-# N, chi-square, df, p, and Cramer's V, then the expected counts (each should be at least 5)
-# and the standardized residuals (beyond 2 or -2 drives the result). The block ends with the
-# chisq.test() and effectsize::cramers_v() lines it stands for.
-run_chi_square(analysis, x = cat_a, y = cat_b)
+# The observed counts in the form the test reads: one row per value of cat_a, one column
+# per value of cat_b. Name it counts, so the lines below reuse it.
+counts <- xtabs(~ cat_a + cat_b, data = analysis)
+
+# N, the number of messages the test used.
+sum(counts)
+
+# The test, named chi so the lines below reuse it. X-squared is chi-square, df is its degrees
+# of freedom, and p-value is p.
+chi <- chisq.test(counts)
+chi
+
+# The effect size: Cramer's V with its 95% confidence interval. Below 0.1 is negligible, 0.1
+# small, 0.3 medium, and 0.5 or more large.
+cramers_v(counts, adjust = FALSE)
