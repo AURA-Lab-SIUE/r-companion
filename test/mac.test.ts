@@ -191,3 +191,15 @@ test('bracketed paste left on shows as a broken VS Code row with the Workspace-t
   assert.match(row!.detail, /Workspace tab/);
   assert.ok(!buildChecklist(PROFILES.mc451, probe({ mac: null }), extra).some((i) => i.name === 'R: Bracketed Paste'));
 });
+
+// ---- a menu path for running lines (owner standard 2026-11-06: never rely on a shortcut) ----
+import * as fsMenu from 'fs';
+import * as pathMenu from 'path';
+test('an R script right-click menu runs the selected lines through auraR.runInR', () => {
+  const manifest = JSON.parse(fsMenu.readFileSync(pathMenu.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+  const item = manifest.contributes.menus['editor/context'].find((m: { command: string }) => m.command === 'auraR.runInR');
+  assert.ok(item, 'editor/context entry');
+  assert.equal(item.when, 'editorLangId == r');
+  const cmd = manifest.contributes.commands.find((c: { command: string }) => c.command === 'auraR.runInR');
+  assert.equal(cmd.title, 'Run the selected lines in R');
+});
