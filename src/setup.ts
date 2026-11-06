@@ -24,6 +24,7 @@ import {
 import { explain, Explanation } from './errors';
 import { inPositron } from './adapters';
 import { installScript } from './installScript';
+import { pasteScopesToClear } from './pasteGuard';
 import { bundledSessPath, managedReady, parseRevision, SESS_IMPORTS, sessItems } from './sess';
 
 export interface CheckResult {
@@ -129,10 +130,19 @@ export async function runCheck(course: CourseId, progress?: vscode.Progress<{ me
     inPositron: inPositron(),
     setupScriptInWorkspace: profile.setupScript ? host.workspaceHas(profile.setupScript) : undefined,
     quartoExtension: vscode.extensions.getExtension(QUARTO_EXT_ID) !== undefined,
+    bracketedPasteOn: bracketedPasteScopes(),
   });
   if (wantsSess && vscodeR) items.push(...sessItems(sessFacts(vscodeR.extensionPath, vscodeRVersion as string, probe, packageNames(profile))));
   const text = renderText(profile, probe, items, new Date());
   return { course, r, probe, items, text, failing: items.filter(isFailing).map((i) => i.name) };
+}
+
+/** Where r.bracketedPaste is still on (the guard turns it off on activation; this reports a leftover). */
+function bracketedPasteScopes(): string[] {
+  const osKey = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux';
+  const conf = vscode.workspace.getConfiguration('r');
+  const scopes = pasteScopesToClear(conf.inspect<boolean>('bracketedPaste'), conf.get<string>(`rterm.${osKey}`));
+  return scopes.map((sc) => (sc === 'user' ? 'User' : sc === 'workspace' ? 'Workspace' : 'Folder'));
 }
 
 /** What the sess check needs, read from disk: the bundled copy, vscode-R's managed library, settings. */

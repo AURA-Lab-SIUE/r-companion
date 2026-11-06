@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code, then writes commented tidyverse code from menus: data and wrangling, a data viewer and coding sheet, reliability, descriptive statistics and charts, and the course's statistical tests.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
@@ -160,7 +160,7 @@
       },
       {
         "command": "auraR.runInR",
-        "title": "Run in R (the R Companion's step before vscode-R's run commands)",
+        "title": "Run the selected lines in R",
         "category": "AURA"
       },
       {
@@ -436,6 +436,13 @@
       "editor/title/run": [
         {
           "command": "auraR.runFileInR",
+          "when": "editorLangId == r",
+          "group": "navigation@0"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "auraR.runInR",
           "when": "editorLangId == r",
           "group": "navigation@0"
         }

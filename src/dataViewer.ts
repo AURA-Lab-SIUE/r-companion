@@ -18,7 +18,7 @@ import { CodeStore } from './codesStore';
 import { rebuildChunk, codingSheetPath, idsAreShortNumbers } from './rebuild';
 import { webviewHtml } from './gridHtml';
 import { viewToR, viewIsSet, viewObjectName, FilterModel, SortItem } from './viewCode';
-import { prepareInsert, isQuartoFile, isInsideRChunk } from './insert';
+import { prepareInsert, isQuartoFile, isInsideRChunk, skipLoadedLibraries } from './insert';
 import { dataFileKind, probeExpr, sheetListExpr, tableNameFromFile } from './importFile';
 
 export interface ViewerDeps {
@@ -547,7 +547,8 @@ class DataViewerPanel {
       const doc = editor.document;
       const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
       const above = doc.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)).split(/\r?\n/);
-      const plan = prepareInsert(chunk, quarto, quarto ? isInsideRChunk(above) : true);
+      // A library() line the script already loads above the cursor is left out (0.7.1)
+      const plan = prepareInsert(skipLoadedLibraries(chunk, above.join('\n')).code, quarto, quarto ? isInsideRChunk(above) : true);
       await editor.edit((b) => b.insert(editor.selection.active, plan.text));
       await vscode.window.showTextDocument(editor.document, editor.viewColumn);
       vscode.window.showInformationMessage('Inserted the code that rebuilds your coded data.');

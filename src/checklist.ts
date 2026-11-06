@@ -22,7 +22,20 @@ export interface ProbeResult {
   v2vSetup: { lines: string[] | null; error: string | null };
   /** sess copies in .libPaths() with their vscode-R source revision (probe.R since 0.5.4). */
   sess?: { lib: string; revision: string | null }[];
+  /** macOS only (probe.R since 0.7.1): XQuartz, Apple's Command Line Tools, Apple silicon. null elsewhere. */
+  mac?: MacFacts | null;
 }
+
+export interface MacFacts {
+  xquartz: boolean;
+  clt: boolean;
+  appleSilicon: boolean;
+}
+
+/** XQuartz's own download page (CRAN's R for macOS page links it for X11 and tcltk). */
+export const XQUARTZ_URL = 'https://www.xquartz.org';
+/** CRAN's R for macOS page: the Apple silicon (arm64) and Intel (x86_64) installers. */
+export const CRAN_MAC_URL = 'https://cloud.r-project.org/bin/macosx/';
 
 export type Status = 'ok' | 'missing' | 'outdated' | 'broken' | 'warn' | 'info';
 
@@ -68,6 +81,8 @@ export interface ExtraFacts {
   vscodeRVersion?: string;
   inPositron: boolean;
   setupScriptInWorkspace?: boolean;
+  /** Scopes where vscode-R's r.bracketedPaste is on (pasteGuard.ts); empty or absent when it is off. */
+  bracketedPasteOn?: string[];
   /** The Quarto extension is installed and enabled (VS Code reports a disabled one as absent). */
   quartoExtension?: boolean;
 }
@@ -164,16 +179,23 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
       showExtension: extra.quartoExtension ? undefined : QUARTO_EXT_ID,
     });
   }
+  // On a Mac /usr/bin/git is always there, but without Apple's Command Line Tools it only opens an
+  // install prompt, so "found" alone is not "works" (0.7.1)
+  const mac = probe.mac ?? undefined;
+  const gitStub = !!mac && !mac.clt && probe.git === '/usr/bin/git';
   if (profile.needsGit) {
     items.push({
       name: 'Git',
       group: 'Programs',
-      status: probe.git ? 'ok' : 'missing',
-      detail: probe.git
-        ? `found at ${probe.git}`
-        : 'not found. Install Git from git-scm.com (on Windows choose the middle PATH option), then quit VS Code completely and open it again.',
+      status: probe.git && !gitStub ? 'ok' : 'missing',
+      detail: gitStub
+        ? `${CLT_FIX} Git on a Mac comes with them.`
+        : probe.git
+          ? `found at ${probe.git}`
+          : 'not found. Install Git from git-scm.com (on Windows choose the middle PATH option), then quit VS Code completely and open it again.',
     });
   }
+  if (mac) items.push(...macItems(mac, probe.r.platform, profile.needsGit));
 
   // Required in VS Code for every course; Positron replaces it with its own R support
   // Before 3.0.0 it never attaches to R 4.6 or newer, so the Workspace panel stays empty and the
@@ -190,6 +212,15 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
           ? `version ${extra.vscodeRVersion} is installed, and versions before ${VSCODE_R_MIN} cannot connect to R 4.6. Install what is missing updates it.`
           : `REditorSupport R extension${extra.vscodeRVersion ? ` ${extra.vscodeRVersion}` : ''} is installed (Ctrl+Enter runs a line)`,
       installableExtension: extra.vscodeRInstalled && !tooOld ? undefined : VSCODE_R_ID,
+    });
+  }
+
+  if (!extra.inPositron && extra.bracketedPasteOn && extra.bracketedPasteOn.length) {
+    items.push({
+      name: 'R: Bracketed Paste',
+      group: 'VS Code',
+      status: 'broken',
+      detail: `is on (${extra.bracketedPasteOn.join(', ')} settings), so plain R prints 00~ and 01~ (Mac) or [200~ and [201~ (Windows) around each line you run. Open Settings (Cmd+, on a Mac, Ctrl+, on Windows), click the Workspace tab, search for bracketed, and untick R: Bracketed Paste.`,
     });
   }
 
@@ -214,6 +245,35 @@ export function buildChecklist(profile: CourseProfile, probe: ProbeResult, extra
     .map((it, i) => ({ it, i }))
     .sort((a, b) => GROUP_ORDER.indexOf(a.it.group) - GROUP_ORDER.indexOf(b.it.group) || a.i - b.i)
     .map((x) => x.it);
+}
+
+const CLT_FIX =
+  "Apple's Command Line Tools are not installed. Open Terminal, run xcode-select --install, click Install, wait for it to finish, then quit VS Code completely and open it again.";
+
+/** The Mac-only rows: Command Line Tools, XQuartz, and an Intel R on an Apple silicon Mac (0.7.1). */
+export function macItems(mac: MacFacts, rPlatform: string, needsGit: boolean): CheckItem[] {
+  const out: CheckItem[] = [];
+  if (!mac.clt && !needsGit) {
+    // With Git in the course, the Git row already says this
+    out.push({ name: 'Command Line Tools', group: 'Programs', status: 'warn', detail: `${CLT_FIX} R needs them only to build a package from source.` });
+  }
+  out.push({
+    name: 'XQuartz',
+    group: 'Programs',
+    status: mac.xquartz ? 'ok' : 'warn',
+    detail: mac.xquartz
+      ? 'is installed (View() can open a table window)'
+      : `is not installed. Only View() needs it: without it, View(data) stops with "X11 library is missing". Install it from ${XQUARTZ_URL}, log out of your Mac and back in, then open VS Code again. Until then, glimpse(data) shows every column.`,
+  });
+  if (mac.appleSilicon && /^x86_64/.test(rPlatform)) {
+    out.push({
+      name: 'R for Apple silicon',
+      group: 'R',
+      status: 'warn',
+      detail: `This R is the Intel build, running on your Apple silicon Mac through Rosetta, so it is slow. From ${CRAN_MAC_URL} install the arm64 build (macOS 14 or newer: the R-...-arm64.pkg at the top; macOS 11 to 13: the big-sur-arm64 folder), then run Install what is missing, because packages install again for the new R.`,
+    });
+  }
+  return out;
 }
 
 const GROUP_ORDER: CheckItem['group'][] = ['R', 'Required R packages', 'Recommended R packages', 'Programs', 'VS Code', 'v2v::setup()'];

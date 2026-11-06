@@ -12,7 +12,7 @@ import { CourseId } from './profiles';
 import { generate, hasTask, GenProfile, GenParams, APA_TESTS, ApaTest, apaTask } from './codegen';
 import { TEST_LABEL } from './testChoice';
 import { parseColumnProbe, ColumnProbe, ProbeColumn, categoryColumns, pickerHint, fillProbe } from './columnProbe';
-import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION, wrapChunk } from './insert';
+import { prepareInsert, isQuartoFile, isInsideRChunk, FIG_ALT_OPTION, wrapChunk, skipLoadedLibraries, onlyComments } from './insert';
 import { CHART_TASKS, watchSavedChart } from './chartWatch';
 import { alreadyShown } from './rTarget';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
@@ -146,7 +146,7 @@ export async function appendToSteps(code: string, marker: string): Promise<{ fil
     // An open copy of the file is edited through VS Code, so an unsaved change there is kept
     const open = vscode.workspace.textDocuments.find((d) => d.uri.scheme === 'file' && path.resolve(d.fileName) === path.resolve(file));
     if (!open) {
-      fs.writeFileSync(file, appendBlock(before, code));
+      fs.writeFileSync(file, appendBlock(before, skipLoadedLibraries(code, before).code));
       return { file, already: false };
     }
     return appendToDoc(open, code, marker);
@@ -159,7 +159,8 @@ async function appendToDoc(doc: vscode.TextDocument, code: string, marker: strin
   if (text.includes(marker)) return { file: doc.fileName, already: true };
   const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
   const gap = text === '' ? '' : text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
-  const insert = gap + (quarto ? wrapChunk(code) : code.replace(/\n*$/, '\n'));
+  const block = skipLoadedLibraries(code, text).code;
+  const insert = gap + (quarto ? wrapChunk(block) : block.replace(/\n*$/, '\n'));
   const edit = new vscode.WorkspaceEdit();
   edit.insert(doc.uri, doc.positionAt(text.length), insert);
   await vscode.workspace.applyEdit(edit);
@@ -1004,6 +1005,11 @@ async function runColumnProbe(deps: MenuDeps, dataExpr: string): Promise<ColumnP
   return probe;
 }
 
+/** Says in the output which library() lines a block left out because the script already has them. */
+function logSkipped(deps: MenuDeps, skipped: string[]): void {
+  if (skipped.length) deps.output.appendLine(`Left out ${skipped.map((p) => `library(${p})`).join(', ')}: the script already loads it above.`);
+}
+
 // Insert the generated code at the cursor, then offer to run it.
 async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string, makes: string[] = []): Promise<void> {
   const editor = await scriptEditor();
@@ -1013,7 +1019,9 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
     // steps.R in the course folder, so every block lives in exactly one script. The file is made
     // only now, by the first block written, never on activation.
     const before = fs.existsSync(steps) ? fs.readFileSync(steps, 'utf8') : '';
-    fs.writeFileSync(steps, appendBlock(before, code));
+    const block = skipLoadedLibraries(code, before);
+    logSkipped(deps, block.skipped);
+    fs.writeFileSync(steps, appendBlock(before, block.code));
     const doc = await vscode.workspace.openTextDocument(steps);
     const shown = await vscode.window.showTextDocument(doc, { preview: false });
     const end = new vscode.Position(doc.lineCount - 1, 0);
@@ -1029,8 +1037,11 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
     const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
     const linesAbove = doc.getText(new vscode.Range(0, 0, editor.selection.active.line, editor.selection.active.character)).split(/\r?\n/);
     const chart = CHART_TASKS.has(task ?? '');
-    const plan = prepareInsert(code, quarto, quarto ? isInsideRChunk(linesAbove) : true, chart ? [FIG_ALT_OPTION] : []);
-    await editor.edit((b) => b.insert(editor.selection.active, plan.text));
+    // Only the script above the cursor counts: a library() line below it would load too late
+    const block = skipLoadedLibraries(code, linesAbove.join('\n'));
+    logSkipped(deps, block.skipped);
+    const plan = prepareInsert(block.code, quarto, quarto ? isInsideRChunk(linesAbove) : true, chart ? [FIG_ALT_OPTION] : []);
+    if (!onlyComments(block.code)) await editor.edit((b) => b.insert(editor.selection.active, plan.text));
     if (plan.wrappedInChunk) deps.output.appendLine('Wrapped the code in a new ```{r} chunk.');
     // Inside a chunk the student already has, the option cannot go in for them: options sit at its top
     if (chart && quarto && !plan.wrappedInChunk) {

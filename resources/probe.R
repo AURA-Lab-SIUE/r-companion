@@ -41,6 +41,23 @@ pkg_items <- vapply(pkgs, function(p) {
 quarto_path <- unname(Sys.which("quarto"))
 git_path <- unname(Sys.which("git"))
 
+# macOS only (0.7.1, Mac readiness audit 2026-11-06): XQuartz, which View() needs in a plain R
+# terminal ("X11 library is missing: install XQuartz", m4, R 4.6.2); Apple's Command Line Tools,
+# without which /usr/bin/git only opens an install prompt; and whether the Mac is Apple silicon,
+# where an Intel R runs through Rosetta.
+mac <- "null"
+if (identical(unname(Sys.info()[["sysname"]]), "Darwin")) {
+  xquartz <- file.exists("/opt/X11/lib/libX11.6.dylib") || dir.exists("/Applications/Utilities/XQuartz.app")
+  # xcode-select -p prints the developer folder (exit 0 even for a folder that is gone), so the
+  # folder must exist and hold git. Never runs /usr/bin/git: without the tools that opens a dialog.
+  dev <- tryCatch(system2("xcode-select", "-p", stdout = TRUE, stderr = FALSE),
+                  error = function(e) character(), warning = function(w) character())
+  clt <- length(dev) == 1 && dir.exists(dev) && file.exists(file.path(dev, "usr", "bin", "git"))
+  arm <- tryCatch(identical(trimws(system2("sysctl", c("-n", "hw.optional.arm64"), stdout = TRUE, stderr = FALSE)), "1"),
+                  error = function(e) FALSE, warning = function(w) FALSE)
+  mac <- paste0("{\"xquartz\":", json_bool(xquartz), ",\"clt\":", json_bool(clt), ",\"appleSilicon\":", json_bool(arm), "}")
+}
+
 # Which library would install.packages() write to?
 libs <- .libPaths()
 writable <- vapply(libs, function(l) file.access(l, 2) == 0, logical(1))
@@ -87,7 +104,8 @@ json <- paste0(
   "\"quarto\":", json_str(if (nzchar(quarto_path)) quarto_path else NA), ",",
   "\"git\":", json_str(if (nzchar(git_path)) git_path else NA), ",",
   "\"v2vSetup\":{\"lines\":", v2v_lines, ",\"error\":", v2v_error, "},",
-  "\"sess\":", json_arr(sess_items),
+  "\"sess\":", json_arr(sess_items), ",",
+  "\"mac\":", mac,
   "}"
 )
 
