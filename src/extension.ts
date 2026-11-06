@@ -9,6 +9,7 @@
 // check for .vsix installs. No telemetry.
 
 import * as vscode from 'vscode';
+import { pasteGuardMessage, pasteScopesToClear, PasteScope } from './pasteGuard';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -101,6 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('auraR.course') && currentCourse()) markDone(DONE.course);
+      if (e.affectsConfiguration('r.bracketedPaste') || e.affectsConfiguration('r.rterm')) void guardBracketedPaste();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
@@ -110,6 +112,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   // A Quarto document restored with the window counts as opened
   startRForQuarto();
+  // r.bracketedPaste on makes plain R print 00~ and 01~ (Mac) or [200~ and [201~ (0.7.1)
+  void guardBracketedPaste();
 
   initSetup({
     output,
@@ -857,6 +861,38 @@ function activeTerminalIs(t: vscode.Terminal, ms: number): Promise<boolean> {
     });
     const timer = setTimeout(() => done(false), ms);
   });
+}
+
+/**
+ * Turns vscode-R's r.bracketedPaste off at every scope that sets it true, unless the console is
+ * radian (pasteGuard.ts has the toggle). Writing false is safe in an untrusted folder, so no trust
+ * prompt. Says what it did once, in a message and the output.
+ */
+async function guardBracketedPaste(): Promise<void> {
+  const osKey = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux';
+  const conf = vscode.workspace.getConfiguration('r');
+  const rterm = conf.get<string>(`rterm.${osKey}`);
+  const cleared: PasteScope[] = [];
+  try {
+    for (const scope of pasteScopesToClear(conf.inspect<boolean>('bracketedPaste'), rterm)) {
+      if (scope === 'folder') continue;
+      await conf.update('bracketedPaste', false, scope === 'user' ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace);
+      cleared.push(scope);
+    }
+    for (const f of vscode.workspace.workspaceFolders ?? []) {
+      const fconf = vscode.workspace.getConfiguration('r', f.uri);
+      if (pasteScopesToClear(fconf.inspect<boolean>('bracketedPaste'), rterm).includes('folder')) {
+        await fconf.update('bracketedPaste', false, vscode.ConfigurationTarget.WorkspaceFolder);
+        if (!cleared.includes('folder')) cleared.push('folder');
+      }
+    }
+  } catch (e: any) {
+    output.appendLine(`Could not turn off r.bracketedPaste: ${e?.message ?? e}`);
+  }
+  if (cleared.length === 0) return;
+  const msg = pasteGuardMessage(cleared);
+  output.appendLine(msg);
+  void vscode.window.showInformationMessage(msg);
 }
 
 /** A live terminal vscode-R made ("R Interactive") or one its commands send to ("R"). */

@@ -51,8 +51,10 @@ const V2V: CourseId[] = ['mc451', 'mc501'];
 export const ERROR_TABLE: ErrorEntry[] = [
   {
     id: 'bracketed-paste',
-    pattern: /\[20[01]~|\x1b\[20[01]~/,
-    title: 'Stray characters around your code ([200~ and [201~)',
+    // Windows R prints the markers as [200~ and [201~; a Mac's CRAN R (readline 5.2) eats ESC[2 and
+    // prints 00~ and 01~ (m4, R 4.6.2 arm64, 2026-11-06). Not after a digit, so 200~ alone is not it.
+    pattern: /\[20[01]~|\x1b\[20[01]~|(?<![0-9])0[01]~/,
+    title: 'Stray characters around your code ([200~ and [201~, or 00~ and 01~ on a Mac)',
     why: 'A setting sends your code in a format meant for a different R console. Plain R prints the markers as text and then waits for a command that never finishes, so the next chunk joins onto this one.',
     fix: [
       'Open Settings (Ctrl+, on Windows, Cmd+, on a Mac) and click the Workspace tab.',

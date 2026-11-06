@@ -26,7 +26,7 @@ Open the Command Palette (View, then Command Palette, or Ctrl+Shift+P) and type 
 | Command | What it does |
 |---|---|
 | Pick my course | Tells the extension which course's packages and code to use. |
-| Check my setup | Reports R, each course package, the R extension for VS Code, and sess (the helper that connects R to VS Code), line by line. |
+| Check my setup | Reports R, each course package, the R extension for VS Code, and sess (the helper that connects R to VS Code), line by line. On a Mac it also checks XQuartz, Apple's Command Line Tools, and whether R is the Apple silicon build. |
 | Install what is missing | Installs the missing packages, then checks again. |
 | Open my course workspace | Opens or clones your course folder. |
 | Write R code | The menus: data, describe, and test. |
