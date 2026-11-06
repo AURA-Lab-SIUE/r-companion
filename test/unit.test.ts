@@ -16,7 +16,7 @@ import { chooseRowId, ROW_ID, ROW_NUMBER } from '../src/dataTypes';
 import { buildLoaded, stringifyCell, rekey, idStampOf, blankColumns, LEGACY } from '../src/dataSource';
 import { serializeCodes, parseCodes, parseIdColumn, CodeStore, CODES_HEADER } from '../src/codesStore';
 import { rebuildChunk, idsAreShortNumbers, codingSheetPath } from '../src/rebuild';
-import { passPairs, reliabilityForPair, gridFileName } from '../src/reliabilityCode';
+import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns } from '../src/reliabilityCode';
 import { webviewHtml } from '../src/gridHtml';
 import { viewToR, viewIsSet, viewObjectName } from '../src/viewCode';
 
@@ -543,6 +543,30 @@ test('reliability from the coding sheet: pass pairs, and only items coded in bot
   assert.ok(code.includes('filter(!is.na(tone_p1), !is.na(tone_p2))'));
   assert.ok(code.includes('select(tone_p1, tone_p2) %>%'));
   assert.equal(gridFileName('tone'), 'reliability-tone.csv');
+});
+
+test('reliability on your own data (0.7.2): any table, any two columns, ids read as text', () => {
+  // A table the student made, not the data viewer's coded_data
+  const own = reliabilityForPair('mc501', { variable: 'threat', first: 'threat_p1', second: 'threat_p2' }, 'both_passes');
+  assert.ok(own.includes('threat_passes <- both_passes %>%'));
+  assert.ok(own.includes('# both_passes holds both passes.'));
+  assert.ok(!own.includes('coded_data'));
+  assert.ok(own.includes('select(threat_p1, threat_p2) %>%'));
+  // The default keeps the data viewer route unchanged
+  assert.ok(reliabilityForPair('mc451', { variable: 'tone', first: 'tone_p1', second: 'tone_p2' }).includes('tone_passes <- coded_data %>%'));
+  // Two columns picked by hand: the variable comes from their shared stem, or "codes"
+  assert.deepEqual(pairFromColumns('threat_p1', 'threat_p2'), { variable: 'threat', first: 'threat_p1', second: 'threat_p2' });
+  assert.deepEqual(pairFromColumns('Tone_P1', 'tone_p2'), { variable: 'Tone', first: 'Tone_P1', second: 'tone_p2' });
+  assert.equal(pairFromColumns('pass_1', 'pass_2').variable, 'codes');
+  assert.equal(pairFromColumns('first_code', 'recode').variable, 'codes');
+  assert.equal(pairFromColumns('2024_p1', '2024_p2').variable, 'codes');
+  // The file read keeps every column as text and shows the columns
+  const read = readPassesFile('both_passes', 'data/pilot-both-passes.csv');
+  assert.ok(read.includes('both_passes <- read_csv('));
+  assert.ok(read.includes('"data/pilot-both-passes.csv",'));
+  assert.ok(read.includes('col_types = cols(.default = col_character())'));
+  assert.ok(read.includes('glimpse(both_passes)'));
+  assert.ok(read.includes('library(tidyverse)'));
 });
 
 // ---------- coding sheet keys (0.4.1) ----------
