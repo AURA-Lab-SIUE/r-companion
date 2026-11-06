@@ -38,10 +38,10 @@ test('the MC 427 gates follow the menus: no reliability grid, and the Test node 
   assert.equal(tree('mc451').find((r) => r.id === 'test')!.label, 'Test');
 });
 
-test('a task node runs Write R code straight into that task; the grid and the test check open their own command', () => {
+test('a task node runs Write R code straight into that task; reliability too (own data first), the test check opens its own command', () => {
   const nodes = flat(tree('mc451'));
   assert.deepEqual(nodes.find((n) => n.id === 'data/count')!.command, { command: 'auraR.writeCode', args: ['count'] });
-  assert.deepEqual(nodes.find((n) => n.id === 'data/reliability')!.command, { command: 'auraR.openReliabilityGrid' });
+  assert.deepEqual(nodes.find((n) => n.id === 'data/reliability')!.command, { command: 'auraR.writeCode', args: ['reliability'] });
   assert.deepEqual(nodes.find((n) => n.id === 'test/check-test-choice')!.command, { command: 'auraR.checkTestChoice' });
 });
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.2 (reliability on your own data)
+
+- **Reliability: compare two coding passes works on your own data** (owner, 2026-11-06). Its first question is now where your two passes are: **A CSV file with both passes**, **A table in my script**, a data viewer coding sheet, or **The reliability grid** for typing codes by hand. A CSV file is read with every column as text, so a 19-digit post id keeps every digit and the two passes still line up. The columns come next: every `_p1` and `_p2` pair in the table, ticked, plus **Choose the two columns myself** for any two columns with other names. Each variable gets the same block as before: keep the items coded in both passes, percent agreement, every pair of codes, Cohen's kappa, Krippendorff's alpha, and `reliability()` as a check. Before, the menu offered only a data viewer coding sheet or the grid, so a sheet coded in Excel or Google Sheets could not be checked.
+- **The side panel's Data > Reliability: compare two coding passes** now opens that same first question. It opened the reliability grid directly.
+
 ## 0.7.1 (Mac readiness)
 
 - **R: Bracketed Paste is turned off wherever it is on.** With it on, the R extension wraps every line Cmd+Enter (Ctrl+Enter) sends in paste markers that only the radian console reads. Plain R prints them: on Windows as `[200~` and `[201~`, and on a Mac, whose R reads keys with readline 5.2, as `00~` and `01~`, with an error for the line. The course workspace template set it on from 2026-07-31 to 2026-09-08, so a course folder copied in that window still has it on its Workspace tab, while Settings opens on the User tab, where it looks unticked. The Companion now turns it off in the folder's settings (and in User settings if it is on there), says so once, and leaves it alone when the R console is radian. Reproduced and toggled on a Mac (VS Code 1.126.0, R extension 3.2.2, R 4.6.2 arm64): on, R printed `00~x <- 1 + 1; print(x)01~`; off, it printed `[1] 2`.

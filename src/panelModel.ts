@@ -83,13 +83,9 @@ export const GUIDES: Partial<Record<CourseId, { label: string; url: string }>> =
 const write = (task: string): PanelCommand => ({ command: 'auraR.writeCode', args: [task] });
 
 function taskNode(prefix: string, it: MenuItem): PanelNode {
-  // These three open their own command or webview, as they do from the menu
-  const command =
-    it.task === 'reliability'
-      ? { command: 'auraR.openReliabilityGrid' }
-      : it.task === 'check-test-choice'
-        ? { command: 'auraR.checkTestChoice' }
-        : write(it.task);
+  // Check my test choice opens its own command, as it does from the menu. Reliability goes through
+  // Write R code, whose first pick is the student's own file or table (0.7.2; it opened the grid).
+  const command = it.task === 'check-test-choice' ? { command: 'auraR.checkTestChoice' } : write(it.task);
   return { id: `${prefix}/${it.task}`, label: it.label, description: it.alternative ? 'alternative' : undefined, icon: 'code', command };
 }
 

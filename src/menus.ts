@@ -19,7 +19,7 @@ import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './
 import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
-import { passPairs, reliabilityForPair, gridFileName } from './reliabilityCode';
+import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
 export { menuTasks, menuItems } from './catalog';
@@ -493,52 +493,129 @@ async function joinTablesFlow(deps: MenuDeps, profile: GenProfile, label: string
   await insertAndMaybeRun(deps, generate(profile, 'join-tables', params), label, 'join-tables', undefined, [`${left.name}_${right.name}`]);
 }
 
-// ---------------- Reliability from the coding sheet (code parity, 2026-10-28) ----------------
+// ---------------- Reliability on the student's own two passes (0.7.2) ----------------
 
-// The coding sheet's pass 1 and pass 2 columns (tone_p1 and tone_p2) are what the pilot checks.
-// The pairs come from the coding sheet file the rebuild block saved; with none yet, the student
-// can still use the reliability grid.
+// Owner 2026-11-06: the check must run on the student's OWN data. The first pick is where the two
+// passes are: a CSV file of theirs (read as text, so long ids keep their digits), a table their
+// script already made, a data viewer coding sheet, or the grid for typing codes by hand. The
+// columns come next: every tone_p1 / tone_p2 pair the table has, or any two columns picked in turn.
+const OWN_FILE = 'file';
+const OWN_TABLE = 'table';
+const GRID_ROUTE = 'grid';
+const PICK_TWO = '$(list-selection) Choose the two columns myself';
+
 async function reliabilityFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const derived = folder ? path.join(folder, 'data', 'derived') : undefined;
   const sheets = derived && fs.existsSync(derived) ? fs.readdirSync(derived).filter((f) => /coding-sheet\.csv$/i.test(f)).sort() : [];
-  const GRID = 'grid';
   const route = await vscode.window.showQuickPick(
     [
+      { label: '$(file) A CSV file with both passes', detail: 'Your own sheet: an id column, then one column for pass 1 and one for pass 2', value: OWN_FILE },
+      { label: '$(table) A table in my script', detail: 'A table your script already made, such as both_passes', value: OWN_TABLE },
       ...sheets.map((f) => ({ label: `$(table) From my coding sheet: ${f}`, detail: 'Compare the _p1 and _p2 columns you coded in the data viewer', value: f })),
-      { label: '$(checklist) The reliability grid', detail: 'Type pass 1 and pass 2 codes for a short list of items', value: GRID },
+      { label: '$(checklist) The reliability grid', detail: 'Type pass 1 and pass 2 codes by hand for a short list of items', value: GRID_ROUTE },
     ],
-    { title: label, placeHolder: sheets.length ? 'Which codes do you check?' : 'No coding sheet yet: code with Code it twice in the data viewer, or use the grid' },
+    { title: label, placeHolder: 'Where are your two coding passes?' },
   );
   if (!route) return;
-  if (route.value === GRID) {
+  if (route.value === GRID_ROUTE) {
     await vscode.commands.executeCommand('auraR.openReliabilityGrid');
     return;
   }
-  const sheetFile = path.join(derived!, route.value);
-  let probe: ColumnProbe;
+
+  let from: string;
+  let lead = '';
+  let probe: ColumnProbe | undefined;
+  if (route.value === OWN_FILE) {
+    const picked = await vscode.window.showOpenDialog({
+      title: 'Pick the CSV file that holds both coding passes',
+      canSelectMany: false,
+      openLabel: 'Use this file',
+      filters: { 'CSV files': ['csv'], 'All files': ['*'] },
+    });
+    const file = picked?.[0]?.fsPath;
+    if (!file) return;
+    if (dataFileKind(file) !== 'csv') {
+      vscode.window.showWarningMessage('Pick a .csv file. From Excel or Google Sheets, save or download the sheet as CSV first.');
+      return;
+    }
+    const name = await vscode.window.showInputBox({
+      title: label,
+      prompt: 'What do you want to call this table in R?',
+      value: tableNameFromFile(file),
+      validateInput: (v) => tableNameProblem(v.trim()),
+      ignoreFocusOut: true,
+    });
+    if (!name) return;
+    from = name.trim();
+    const where = scriptPath(file, folder);
+    if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE);
+    lead = readPassesFile(from, where.path);
+    probe = await probeQuietly(deps, `readr::read_csv(${JSON.stringify(file.replace(/\\/g, '/'))}, col_types = readr::cols(.default = readr::col_character()))`);
+  } else if (route.value === OWN_TABLE) {
+    const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
+    const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
+    const sources = tableSources(above, folder);
+    const names = [...new Set([...assignedNames(above), ...ranTables])];
+    if (names.length === 0) {
+      vscode.window.showWarningMessage('Your script makes no table above the cursor yet. Pick A CSV file with both passes instead, or put the cursor below the line that makes your table.');
+      return;
+    }
+    const t = await vscode.window.showQuickPick(names.map((n) => ({ label: n, value: n })), { title: label, placeHolder: 'Which table holds both passes?' });
+    if (!t) return;
+    from = t.value;
+    const expr = sources.get(from);
+    if (expr) probe = await probeQuietly(deps, expr);
+  } else {
+    from = 'coded_data';
+    const sheetFile = path.join(derived!, route.value);
+    probe = await probeQuietly(deps, `readr::read_csv(${JSON.stringify(sheetFile.replace(/\\/g, '/'))}, show_col_types = FALSE)`);
+    if (!probe) {
+      vscode.window.showErrorMessage('R could not read your coding sheet. Run AURA: Check my setup, then try again.');
+      return;
+    }
+  }
+
+  const pairs = await choosePairs(label, probe);
+  if (!pairs || pairs.length === 0) return;
+  const blocks = pairs.map((p) => reliabilityForPair(profile, p, from));
+  await insertAndMaybeRun(deps, lead + blocks.join('\n'), label, 'reliability', undefined, [...(lead ? [from] : []), ...pairs.map((p) => `${p.variable}_passes`)]);
+}
+
+/** Read a table's columns for the pickers; with no R yet, the pickers ask for typed names. */
+async function probeQuietly(deps: MenuDeps, expr: string): Promise<ColumnProbe | undefined> {
   try {
-    probe = await runColumnProbe(deps, `readr::read_csv(${JSON.stringify(sheetFile.replace(/\\/g, '/'))}, show_col_types = FALSE)`);
+    return await runColumnProbe(deps, expr);
   } catch (e: any) {
-    deps.output.appendLine(`Could not read ${sheetFile}: ${e?.message ?? e}`);
-    vscode.window.showErrorMessage('R could not read your coding sheet. Run AURA: Check my setup, then try again.');
-    return;
+    deps.output.appendLine(`Could not read the columns: ${e?.message ?? e}`);
+    return undefined;
   }
-  const names = probe.columns.map((c) => c.name);
-  const pairs = passPairs(names);
-  if (pairs.length === 0) {
-    vscode.window.showWarningMessage(
-      `${route.value} has no pass 1 and pass 2 columns. In the data viewer, add a coding column and choose Code it twice; that makes tone_p1 and tone_p2.`,
+}
+
+/** Every _p1 / _p2 pair, ticked, plus a way to name any two columns; with no pairs, the two picks. */
+async function choosePairs(label: string, probe: ColumnProbe | undefined): Promise<PassPair[] | undefined> {
+  const found = probe ? passPairs(probe.columns.map((c) => c.name)) : [];
+  if (found.length > 0) {
+    const chosen = await vscode.window.showQuickPick(
+      [
+        ...found.map((p) => ({ label: p.variable, description: `${p.first} and ${p.second}`, picked: true, p })),
+        { label: PICK_TWO, description: 'for columns not named _p1 and _p2', picked: false, p: undefined },
+      ],
+      { title: label, canPickMany: true, placeHolder: 'Which variables do you check? Each one gets its own check.' },
     );
-    return;
+    if (!chosen || chosen.length === 0) return undefined;
+    const ticked = chosen.filter((c) => c.p).map((c) => c.p!) as PassPair[];
+    if (!chosen.some((c) => !c.p)) return ticked;
+    const two = await pickTwo(label, probe);
+    return two ? [...ticked, two] : undefined;
   }
-  const chosen = await vscode.window.showQuickPick(
-    pairs.map((p) => ({ label: p.variable, description: `${p.first} and ${p.second}`, picked: true, p })),
-    { title: label, canPickMany: true, placeHolder: 'Which variables do you check?' },
-  );
-  if (!chosen || chosen.length === 0) return;
-  const blocks = chosen.map(({ p }) => reliabilityForPair(profile, p));
-  await insertAndMaybeRun(deps, blocks.join('\n'), label, 'reliability', undefined, chosen.map(({ p }) => `${p.variable}_passes`));
+  const two = await pickTwo(label, probe);
+  return two ? [two] : undefined;
+}
+
+async function pickTwo(label: string, probe: ColumnProbe | undefined): Promise<PassPair | undefined> {
+  const cols = await pickColumnsInTurn(label, probe, ['The column with your pass 1 codes', 'The column with your pass 2 codes, for the same variable']);
+  return cols ? pairFromColumns(cols[0], cols[1]) : undefined;
 }
 
 // ---------------- Draw a coding sample (code parity, 2026-10-28) ----------------

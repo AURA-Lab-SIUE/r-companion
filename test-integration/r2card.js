@@ -202,13 +202,14 @@ async function run() {
     log('7 R: errors', r7.split('\n').filter((l) => /^Error/.test(l)));
 
     // 8. The reliability grid (seventeenth R2 item since the coding sample joined the menu). The
-    // Reliability item first asks where the codes are (the grid is the only route with no coding
-    // sheet yet), then the variable, its codebook values, and the number of items: the defaults.
+    // Reliability item first asks where the codes are (since 0.7.2: a CSV file, a table in the
+    // script, any coding sheets, then the grid, third with no coding sheet yet), then the variable,
+    // its codebook values, and the number of items: the defaults.
     await editor.edit((b) => b.insert(new vscode.Position(editor.document.lineCount, 0), '\n'));
     end();
     const w8 = vscode.commands.executeCommand('auraR.writeCode');
     await choose(16);
-    await choose(0); // The reliability grid
+    await choose(2); // The reliability grid (after A CSV file and A table in my script)
     await choose(0); // variable: tone
     await choose(0); // values: calm, high-energy
     await choose(0); // items: 20
