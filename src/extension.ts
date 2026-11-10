@@ -10,6 +10,7 @@
 
 import * as vscode from 'vscode';
 import { pasteGuardMessage, pasteScopesToClear, PasteScope } from './pasteGuard';
+import { dataFolderMessage, ensureDataFolder } from './dataFolder';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -106,6 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       if (vscode.workspace.workspaceFolders?.length) markDone(DONE.workspace);
+      ensureCourseDataFolders();
     }),
     vscode.workspace.registerTextDocumentContentProvider(EXPLAIN_SCHEME, explainPages),
   );
@@ -114,6 +116,8 @@ export function activate(context: vscode.ExtensionContext) {
   startRForQuarto();
   // r.bracketedPaste on makes plain R print 00~ and 01~ (Mac) or [200~ and [201~ (0.7.1)
   void guardBracketedPaste();
+  // The guides read and save files in data/, which older copies of the workspace lack (0.7.3)
+  ensureCourseDataFolders();
 
   initSetup({
     output,
@@ -893,6 +897,28 @@ async function guardBracketedPaste(): Promise<void> {
   const msg = pasteGuardMessage(cleared);
   output.appendLine(msg);
   void vscode.window.showInformationMessage(msg);
+}
+
+/**
+ * Makes the data folder in each open v2v-workspace course folder that lacks one (dataFolder.ts has
+ * the rules: one empty folder, never a file touched). Says what it did once, in a message and the
+ * output.
+ */
+function ensureCourseDataFolders(): void {
+  for (const f of vscode.workspace.workspaceFolders ?? []) {
+    if (f.uri.scheme !== 'file') continue;
+    try {
+      const r = ensureDataFolder(f.uri.fsPath);
+      if (r === 'created') {
+        output.appendLine(`Made ${path.join(f.uri.fsPath, 'data')}`);
+        void vscode.window.showInformationMessage(dataFolderMessage());
+      } else if (r === 'blocked') {
+        output.appendLine(`A file named data sits at the top of ${f.uri.fsPath}, so no data folder was made.`);
+      }
+    } catch (e: any) {
+      output.appendLine(`Could not make the data folder in ${f.uri.fsPath}: ${e?.message ?? e}`);
+    }
+  }
 }
 
 /** A live terminal vscode-R made ("R Interactive") or one its commands send to ("R"). */
