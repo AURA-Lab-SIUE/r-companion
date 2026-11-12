@@ -78,6 +78,8 @@ export function scriptBanners(text: string): Banner[] {
 export const GUIDES: Partial<Record<CourseId, { label: string; url: string }>> = {
   mc451: { label: 'Step-by-step guides and videos', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc451/' },
   mc501: { label: 'Step-by-step guides and videos', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc501/' },
+  // Audit F9 (owner q-20261112-0024 = c): the hub's copies of the R Field Guide and R Quick Reference.
+  mc427: { label: 'R Field Guide and Quick Reference', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc427/' },
 };
 
 const write = (task: string): PanelCommand => ({ command: 'auraR.writeCode', args: [task] });
