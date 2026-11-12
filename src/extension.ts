@@ -32,6 +32,7 @@ import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
 import { attachLines, checkRExtensionAtStartup, showRExtension, watchAttach } from './rExtension';
 import { RecentLines } from './helpReport';
 import { makeHelpReport } from './helpReportCommand';
+import { bringFileIn, makeSubmissionZip, renderOrPreview } from './handInCommands';
 import { SESS_IMPORTS } from './sess';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
@@ -197,6 +198,11 @@ export function activate(context: vscode.ExtensionContext) {
   reg('auraR.openWorkspaceView', () => openWorkspaceView());
   reg('auraR.fixNotAttached', () => fixNotAttached());
   reg('auraR.makeHelpReport', () => makeHelpReportCommand());
+  // Hand-in steps (audit 2026-11-12, F1 to F3)
+  reg('auraR.makeSubmissionZip', () => makeSubmissionZip());
+  reg('auraR.renderDocument', () => renderOrPreview('render'));
+  reg('auraR.previewDocument', () => renderOrPreview('preview'));
+  reg('auraR.bringFileIn', () => bringFileIn(currentCourse()));
   // R4 Copilot tools: read-only, on for MC 451 and MC 501, off for MC 427 by default (U3)
   registerCopilotTools(context, {
     setting: () => setting<CopilotToolsSetting>('copilotTools', 'auto'),

@@ -384,7 +384,7 @@ async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string
 
   const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const where = scriptPath(file, folder);
-  if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE);
+  if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE, 'Bring a file into my course folder').then((b) => b && vscode.commands.executeCommand('auraR.bringFileIn'));
   const params: GenParams = { data: name.trim(), file: where.path, sheet };
   // janitor is required in MC 451 and MC 501 only
   if (profile !== 'mc427' && probe && namesNeedCleaning(probe).length > 0) params.cleanNames = true;
@@ -549,7 +549,7 @@ async function reliabilityFlow(deps: MenuDeps, profile: GenProfile, label: strin
     if (!name) return;
     from = name.trim();
     const where = scriptPath(file, folder);
-    if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE);
+    if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE, 'Bring a file into my course folder').then((b) => b && vscode.commands.executeCommand('auraR.bringFileIn'));
     lead = readPassesFile(from, where.path);
     probe = await probeQuietly(deps, `readr::read_csv(${JSON.stringify(file.replace(/\\/g, '/'))}, col_types = readr::cols(.default = readr::col_character()))`);
   } else if (route.value === OWN_TABLE) {

@@ -24,7 +24,7 @@ test('each course: the six sections in order, with the menu items in menu order 
     const items = menuItemsPure(c);
     for (const [id, cat] of [['data', 'R2 Data'], ['describe', 'R3 Describe'], ['test', 'R4 Test']] as const) {
       const node = roots.find((r) => r.id === id)!;
-      const tasks = node.children!.filter((n) => n.id.startsWith(`${id}/`) && !['data/viewer', 'data/objects', 'data/not-attached'].includes(n.id));
+      const tasks = node.children!.filter((n) => n.id.startsWith(`${id}/`) && !['data/bring', 'data/viewer', 'data/objects', 'data/not-attached'].includes(n.id));
       assert.deepEqual(tasks.map((n) => n.label), items.filter((i) => i.category === cat).map((i) => i.label), `${c} ${id}`);
     }
   }
@@ -64,7 +64,7 @@ test('Your steps lists the banners of the open script, each a jump to its line',
   ]);
   const steps = tree('mc451', { banners, stepsScript: 'analysis.R' }).find((r) => r.id === 'steps')!;
   assert.equal(steps.children![0].description, 'analysis.R');
-  assert.deepEqual(steps.children!.slice(2).map((n) => [n.label, n.command]), [
+  assert.deepEqual(steps.children!.filter((n) => n.id.startsWith('steps/banner/')).map((n) => [n.label, n.command]), [
     ['Load the course data', { command: 'auraR.goToLine', args: [2] }],
     ['Count rows per group: count()', { command: 'auraR.goToLine', args: [5] }],
   ]);
