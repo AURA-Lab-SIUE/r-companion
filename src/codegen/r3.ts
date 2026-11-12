@@ -3,7 +3,7 @@
 
 import { lines, banner } from './house';
 import { GenParams, Template } from './types';
-import { chosenBar, chosenBoxplot, chosenGroupedSummary, chosenHistogram, chosenLine, rName } from './chosen';
+import { chosenBar, chosenBarHeights, chosenBoxplot, chosenGroupedSummary, chosenHistogram, chosenLine, rName } from './chosen';
 
 const d = (p: GenParams, def: string) => p.data ?? def;
 
@@ -107,6 +107,7 @@ const mc427GroupedSummary: Template = (p) => {
 
 const mc427Bar: Template = (p) => {
   const data = d(p, 'df');
+  if (p.columns && p.heights) return chosenBarHeights(false, data, p.columns[0], p.heights);
   if (p.columns) return chosenBar(false, data, p.columns[0]);
   return lines(
     banner('Bar chart: one bar per category'),
@@ -226,6 +227,7 @@ const v2vGroupedSummary: Template = (p) => {
 };
 
 const v2vBar: Template = (p) => {
+  if (p.columns && p.heights) return chosenBarHeights(true, d(p, 'analysis'), p.columns[0], p.heights);
   if (p.columns) return chosenBar(true, d(p, 'streams'), p.columns[0]);
   return lines(
     banner('Bar chart: one bar per category'),

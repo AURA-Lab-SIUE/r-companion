@@ -630,6 +630,7 @@ async function pickTable(
   label: string,
   placeHolder: string,
   course: string,
+  courseHint?: string,
 ): Promise<{ table: ImportedTable; probe?: ColumnProbe } | undefined> {
   const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
   const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
@@ -640,7 +641,7 @@ async function pickTable(
   if (!names.includes(course)) {
     items.unshift({
       label: course,
-      description: profile === 'mc427' ? 'load your data file above this first' : 'Load the course Twitch corpus above this first',
+      description: courseHint ?? (profile === 'mc427' ? 'load your data file above this first' : 'Load the course Twitch corpus above this first'),
       value: course,
     });
   }
@@ -757,11 +758,25 @@ async function describeFlow(deps: MenuDeps, profile: GenProfile, task: string, l
     [
       { label: 'Choose the table and the columns', description: 'your own data or the course data', value: 'choose' },
       { label: 'Use the course example', description: spec.example, value: 'default' },
+      // F6 (audit 2026-11-12): a table that already holds the numbers, such as chat_by_hour or funnel
+      ...(task === 'bar'
+        ? [{ label: 'The table already has the numbers', description: 'one bar per row, such as hours and their message counts', value: 'heights' }]
+        : []),
     ],
     { title: label, placeHolder: 'Which columns does this use?' },
   );
   if (!how) return;
   if (how.value === 'default') return insertAndMaybeRun(deps, generate(profile, task, {}), label, task, note);
+  if (how.value === 'heights') {
+    const t = await pickTable(deps, profile, label, 'Which table holds the numbers?', profile === 'mc427' ? 'funnel' : 'chat_by_hour', 'make this table above, then pick it');
+    if (!t) return;
+    const cols = await pickColumnsInTurn(label, t.probe, [
+      { prompt: 'The column that names each bar (such as hour or month)' },
+      { prompt: 'The number column: the height of each bar (such as messages or players)', fits: isNumber },
+    ]);
+    if (!cols) return;
+    return insertAndMaybeRun(deps, generate(profile, 'bar', { data: t.table.name, columns: [cols[0]], heights: cols[1] }), label, task, note);
+  }
   const picked = await pickTable(deps, profile, label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
   if (!picked) return;
   const columns = await pickColumnsInTurn(label, picked.probe, spec.asks);
