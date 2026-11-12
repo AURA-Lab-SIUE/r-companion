@@ -20,6 +20,7 @@ import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
+import { scriptNameProblem, scriptFileName, newScriptText, listStarters } from './scripts';
 import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from './paper';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
@@ -110,6 +111,47 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   reg('auraR.pointAtProject', () => projectBlockCommand(deps, 'Point R at my White Paper project', pointAtProjectBlock));
   reg('auraR.deployPortfolio', () => projectBlockCommand(deps, 'Publish my White Paper site', deployBlock));
   reg('auraR.insertInlineR', () => insertInlineR());
+  // F8 (audit 2026-11-12)
+  reg('auraR.newScript', () => newScriptCommand(deps));
+  reg('auraR.openStarter', () => openStarterCommand());
+}
+
+// ---------------- New R script and Open a starter (audit 2026-11-12, F8) ----------------
+
+async function newScriptCommand(deps: MenuDeps): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) {
+    void vscode.window.showWarningMessage('Open your course folder first: File, then Open Folder. Then choose this again.');
+    return;
+  }
+  const typed = await vscode.window.showInputBox({
+    title: 'New R script in my course folder',
+    prompt: 'A name for the script. It is saved in the top of your course folder.',
+    placeHolder: 'such as choose-test',
+    validateInput: (v) => (v.trim() ? scriptNameProblem(v) : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!typed || !typed.trim()) return;
+  const file = path.join(root, scriptFileName(typed));
+  if (fs.existsSync(file)) {
+    void vscode.window.showInformationMessage(`${path.basename(file)} is already in your course folder, so it is open now.`);
+  } else {
+    fs.writeFileSync(file, newScriptText());
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
+  await vscode.commands.executeCommand('auraR.openRTerminal');
+}
+
+async function openStarterCommand(): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const starters = listStarters(root);
+  if (!root || !starters.length) {
+    void vscode.window.showWarningMessage('There is no starters folder in the folder you opened. Open your MC427 folder (File, then Open Folder), then choose this again.');
+    return;
+  }
+  const pick = await vscode.window.showQuickPick(starters, { title: 'Open a starter', placeHolder: 'Which starter file?' });
+  if (!pick) return;
+  await vscode.window.showTextDocument(vscode.Uri.file(path.join(root, 'starters', pick)), { preview: false });
 }
 
 // ---------------- White Paper (audit 2026-11-12, F5) ----------------
@@ -316,6 +358,12 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
   if (def.task === 'sample') return sampleFlow(deps, profile, def.label);
   if (def.task === 'crosstab') return crosstabFlow(deps, profile, def.label);
   if (def.task === 'agreement') return agreementFlow(deps, profile, def.label);
+  if (def.task === 'count-missing' || def.task === 'count-distinct') {
+    // F10 (audit 2026-11-12): any table the script has, or a data file
+    const t = await pickTable(deps, profile, def.label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
+    if (!t) return;
+    return insertAndMaybeRun(deps, generate(profile, def.task, { data: t.table.name }), def.label, def.task);
+  }
   if (def.task === 'settings-block') return settingsFlow(deps, profile, def.label);
   if (def.task in DESCRIBE_ASKS) return describeFlow(deps, profile, def.task, def.label);
   if (profile === 'mc427' && def.task in MC427_TEST_ASKS) return describeFlow(deps, profile, def.task, def.label, MC427_TEST_ASKS);

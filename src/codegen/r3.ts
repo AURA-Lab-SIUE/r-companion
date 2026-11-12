@@ -414,7 +414,27 @@ const mc427Agreement: Template = (p) => {
   );
 };
 
+// Count missing and distinct values in every column (audit 2026-11-12, F10).
+const countMissing = (data: string): string =>
+  lines(
+    banner('Count missing values in each column'),
+    '# One row back: for each column, how many rows have no value (NA). is.na() is TRUE for a',
+    '# missing value and sum() counts the TRUEs. across(everything(), ...) does it for every column.',
+    `${data} %>%`,
+    '  summarize(across(everything(), ~ sum(is.na(.x))))',
+  );
+const countDistinct = (data: string): string =>
+  lines(
+    banner('Count distinct values in each column'),
+    '# One row back: for each column, how many different values it holds. n_distinct() counts them;',
+    '# across(everything(), ...) does it for every column. An id column should equal the row count.',
+    `${data} %>%`,
+    '  summarize(across(everything(), n_distinct))',
+  );
+
 export const MC427_R3: Record<string, Template> = {
+  'count-missing': (p) => countMissing(d(p, 'df')),
+  'count-distinct': (p) => countDistinct(d(p, 'df')),
   agreement: mc427Agreement,
   frequency: mc427Frequency,
   crosstab: mc427Crosstab,
@@ -425,6 +445,8 @@ export const MC427_R3: Record<string, Template> = {
 };
 
 export const V2V_R3: Record<string, Template> = {
+  'count-missing': (p) => countMissing(d(p, 'analysis')),
+  'count-distinct': (p) => countDistinct(d(p, 'analysis')),
   frequency: v2vFrequency,
   crosstab: v2vCrosstab,
   'grouped-summary': v2vGroupedSummary,

@@ -22,7 +22,7 @@ export const TASK_RELEASE: Record<string, Release> = {
   'label-from-snapshot': 'R2', sample: 'R2',
   'export-csv': 'R2', 'export-rds': 'R2', reliability: 'R2',
   // R3 Describe and plots
-  frequency: 'R3', crosstab: 'R3', agreement: 'R3', 'grouped-summary': 'R3', bar: 'R3', histogram: 'R3',
+  'count-missing': 'R3', 'count-distinct': 'R3', frequency: 'R3', crosstab: 'R3', agreement: 'R3', 'grouped-summary': 'R3', bar: 'R3', histogram: 'R3',
   'histogram-grouped': 'R3', line: 'R3', boxplot: 'R3',
   // R4 Test
   't-test': 'R4', 't-test-missing': 'R4', 'chi-square': 'R4', anova: 'R4',

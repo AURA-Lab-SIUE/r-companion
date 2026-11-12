@@ -183,6 +183,16 @@
         "category": "AURA"
       },
       {
+        "command": "auraR.newScript",
+        "title": "New R script in my course folder",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openStarter",
+        "title": "Open a starter",
+        "category": "AURA"
+      },
+      {
         "command": "auraR.fixNotAttached",
         "title": "Fix R (not attached)",
         "category": "AURA"

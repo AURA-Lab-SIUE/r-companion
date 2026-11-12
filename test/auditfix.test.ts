@@ -70,3 +70,33 @@ test('F7: List the files R can see, in every course', () => {
   assert.ok(generate('mc451', 'list-files').endsWith('getwd()\nlist.files("data")\n'));
   assert.ok(generate('mc427', 'list-files').endsWith('getwd()\nlist.files()\n'));
 });
+
+import { scriptNameProblem, scriptFileName, newScriptText, listStarters } from '../src/scripts';
+
+test('F8: New R script names and the MC 427 starters list', () => {
+  assert.equal(scriptNameProblem('choose-test'), undefined);
+  assert.equal(scriptNameProblem('pilot_recode.R'), undefined);
+  for (const bad of ['my script', '-x', 'a/b', '.R']) assert.ok(scriptNameProblem(bad), bad);
+  assert.equal(scriptFileName('memo'), 'memo.R');
+  assert.equal(scriptFileName('memo.r'), 'memo.R');
+  assert.ok(newScriptText().includes('library(tidyverse)'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aura-starters-'));
+  fs.mkdirSync(path.join(root, 'starters'));
+  for (const f of ['mod03-DT02-starter.R', 'mod02-week2-starter.R', 'notes.md']) fs.writeFileSync(path.join(root, 'starters', f), '');
+  assert.deepEqual(listStarters(root), ['mod02-week2-starter.R', 'mod03-DT02-starter.R']);
+  assert.deepEqual(listStarters(undefined), []);
+  const ids = (c: 'mc427' | 'mc451') => {
+    const all: string[] = [];
+    const walk = (n: { id: string; children?: any[] }) => { all.push(n.id); n.children?.forEach(walk); };
+    panelTree({ course: c, items: menuItems(c, true), crossCheck: c === 'mc427', banners: [] }).forEach(walk);
+    return all;
+  };
+  assert.ok(ids('mc427').includes('steps/new') && ids('mc427').includes('steps/starter'));
+  assert.ok(ids('mc451').includes('steps/new') && !ids('mc451').includes('steps/starter'));
+});
+
+test('F10: Count missing and distinct values in each column, every course', () => {
+  for (const c of ['mc427', 'mc451', 'mc501'] as const) for (const t of ['count-missing', 'count-distinct']) assert.ok(hasTask(c, t), `${c} ${t}`);
+  assert.ok(generate('mc451', 'count-missing', { data: 'chat' }).endsWith('chat %>%\n  summarize(across(everything(), ~ sum(is.na(.x))))\n'));
+  assert.ok(generate('mc427', 'count-distinct').endsWith('df %>%\n  summarize(across(everything(), n_distinct))\n'));
+});

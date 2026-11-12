@@ -153,6 +153,8 @@ export function panelTree(input: PanelInput): PanelNode[] {
     children: [
       { id: 'steps/open', label: 'Open my steps', description: input.stepsScript, icon: 'go-to-file', command: { command: 'auraR.openSteps' } },
       { id: 'steps/run', label: 'Run my steps from the top', icon: 'run-all', command: { command: 'auraR.runSteps' } },
+      { id: 'steps/new', label: 'New R script in my course folder', icon: 'new-file', command: { command: 'auraR.newScript' } },
+      ...(course === 'mc427' ? [{ id: 'steps/starter', label: 'Open a starter', tooltip: 'A starter file from the starters folder', icon: 'file-code', command: { command: 'auraR.openStarter' } }] : []),
       // MC 451 and MC 501 render .qmd worksheets
       ...(course && course !== 'mc427'
         ? [

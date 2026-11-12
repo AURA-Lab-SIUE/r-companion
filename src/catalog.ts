@@ -36,6 +36,8 @@ export const CATALOG: TaskDef[] = [
   { task: 'export-rds', label: 'Save a table as an RDS file', category: 'R2 Data', outFile: true },
   { task: 'sample', label: 'Draw a coding sample with a seed (slice_sample)', category: 'R2 Data' },
   { task: 'reliability', label: 'Reliability: compare two coding passes', category: 'R2 Data' },
+  { task: 'count-missing', label: 'Count missing values in each column', category: 'R3 Describe' },
+  { task: 'count-distinct', label: 'Count distinct values in each column', category: 'R3 Describe' },
   { task: 'frequency', label: 'Frequency table', category: 'R3 Describe', columns: 'one' },
   { task: 'crosstab', label: 'Crosstab with proportions', category: 'R3 Describe' },
   { task: 'agreement', label: 'Agreement between two code columns', category: 'R3 Describe' },
