@@ -588,7 +588,29 @@ function joinTables(p: GenParams, left: string, right: string, key: string): str
 const mc427JoinTables: Template = (p) => joinTables(p, d(p, 'df'), p.right ?? 'apps', p.column ?? 'posted_from');
 const v2vJoinTables: Template = (p) => joinTables(p, d(p, 'chat'), p.right ?? 'channels', p.column ?? 'channel');
 
+// List the files R can see (audit 2026-11-12, F7): where R is looking, and what it can open there.
+const mc427ListFiles: Template = () =>
+  lines(
+    banner('List the files R can see'),
+    '# R starts in the folder you opened in VS Code (its name is at the top of the Explorer).',
+    '# getwd() prints that folder. list.files() lists the files in it: a file you read by its',
+    '# name alone, such as read_csv("reviews.csv"), has to be on this list.',
+    'getwd()',
+    'list.files()',
+  );
+
+const v2vListFiles: Template = () =>
+  lines(
+    banner('List the files R can see'),
+    '# R starts in the folder you opened in VS Code (its name is at the top of the Explorer).',
+    '# getwd() prints that folder. list.files("data") lists its data folder: a file you read',
+    '# as "data/...", such as read_rds("data/twitch_analysis.RDS"), has to be on this list.',
+    'getwd()',
+    'list.files("data")',
+  );
+
 export const MC427_R2: Record<string, Template> = {
+  'list-files': mc427ListFiles,
   sample: mc427Sample,
   'join-tables': mc427JoinTables,
   'import-xlsx': mc427ImportXlsx,
@@ -602,6 +624,7 @@ export const MC427_R2: Record<string, Template> = {
 };
 
 export const V2V_R2: Record<string, Template> = {
+  'list-files': v2vListFiles,
   sample: v2vSample,
   'join-tables': v2vJoinTables,
   'import-xlsx': v2vImportXlsx,

@@ -21,6 +21,7 @@ export const CATALOG: TaskDef[] = [
   { task: 'import-csv', label: 'Import a data file (CSV or Excel)', category: 'R2 Data' },
   { task: 'import-course-dataset', label: 'Load the course Twitch corpus', category: 'R2 Data' },
   { task: 'import-rds', label: 'Load your saved analysis (RDS)', category: 'R2 Data' },
+  { task: 'list-files', label: 'List the files R can see', category: 'R2 Data' },
   { task: 'filter', label: 'Keep some rows (filter)', category: 'R2 Data', columns: 'one' },
   { task: 'select', label: 'Keep some columns (select)', category: 'R2 Data', columns: 'many' },
   { task: 'mutate', label: 'Add a column (mutate)', category: 'R2 Data' },

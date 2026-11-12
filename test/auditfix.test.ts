@@ -62,3 +62,11 @@ test('F5: the White Paper folder sits in Your steps for MC 451 and MC 501 only, 
   for (const c of ['auraR.newPortfolio', 'auraR.pointAtProject', 'auraR.installPdfTool', 'auraR.insertInlineR', 'auraR.deployPortfolio'])
     assert.ok(pkg.contributes.commands.some((x: any) => x.command === c && x.category === 'AURA'), c);
 });
+
+import { hasTask } from '../src/codegen';
+
+test('F7: List the files R can see, in every course', () => {
+  for (const c of ['mc427', 'mc451', 'mc501'] as const) assert.ok(hasTask(c, 'list-files'), c);
+  assert.ok(generate('mc451', 'list-files').endsWith('getwd()\nlist.files("data")\n'));
+  assert.ok(generate('mc427', 'list-files').endsWith('getwd()\nlist.files()\n'));
+});
