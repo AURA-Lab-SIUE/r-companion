@@ -119,7 +119,6 @@ export function panelTree(input: PanelInput): PanelNode[] {
     icon: 'database',
     children: [
       ...by('R2 Data').map((i) => taskNode('data', i)),
-      { id: 'data/bring', label: 'Bring a file into my course folder', tooltip: 'Copy a file from Downloads (or anywhere) into your course folder, where your code can read it', icon: 'cloud-download', command: { command: 'auraR.bringFileIn' } },
       { id: 'data/viewer', label: 'Open the data viewer', icon: 'table', command: { command: 'auraR.openDataViewer' } },
       // Rank 6, owner q-20261022-0005 = A: vscode-R's Workspace panel is the environment view
       {
@@ -154,12 +153,11 @@ export function panelTree(input: PanelInput): PanelNode[] {
     children: [
       { id: 'steps/open', label: 'Open my steps', description: input.stepsScript, icon: 'go-to-file', command: { command: 'auraR.openSteps' } },
       { id: 'steps/run', label: 'Run my steps from the top', icon: 'run-all', command: { command: 'auraR.runSteps' } },
-      // MC 451 and MC 501 render .qmd worksheets and hand in one ZIP (deck standard rule 1, q-20261111-0019)
+      // MC 451 and MC 501 render .qmd worksheets
       ...(course && course !== 'mc427'
         ? [
             { id: 'steps/preview', label: 'Preview this document', tooltip: 'Quarto Preview of the open .qmd file', icon: 'open-preview', command: { command: 'auraR.previewDocument' } },
             { id: 'steps/render', label: 'Render this document', tooltip: 'Quarto Render of the open .qmd file, so its HTML sits beside it', icon: 'file-code', command: { command: 'auraR.renderDocument' } },
-            { id: 'steps/zip', label: 'Make my submission ZIP', tooltip: 'Pack your whole course folder into one ZIP file to upload', icon: 'file-zip', command: { command: 'auraR.makeSubmissionZip' } },
           ]
         : []),
       ...input.banners.map((b) => ({

@@ -148,11 +148,6 @@
         "category": "AURA"
       },
       {
-        "command": "auraR.makeSubmissionZip",
-        "title": "Make my submission ZIP",
-        "category": "AURA"
-      },
-      {
         "command": "auraR.renderDocument",
         "title": "Render this document",
         "category": "AURA"
@@ -160,11 +155,6 @@
       {
         "command": "auraR.previewDocument",
         "title": "Preview this document",
-        "category": "AURA"
-      },
-      {
-        "command": "auraR.bringFileIn",
-        "title": "Bring a file into my course folder",
         "category": "AURA"
       },
       {
