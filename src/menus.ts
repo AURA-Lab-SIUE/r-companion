@@ -20,6 +20,8 @@ import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
+import { splitValues } from './codegen/extra';
+import { FUNCTION_NAME, helpLine } from './scripts';
 import { scriptNameProblem, scriptFileName, newScriptText, listStarters } from './scripts';
 import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from './paper';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
@@ -114,6 +116,81 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   // F8 (audit 2026-11-12)
   reg('auraR.newScript', () => newScriptCommand(deps));
   reg('auraR.openStarter', () => openStarterCommand());
+  reg('auraR.functionHelp', () => functionHelpCommand(deps));
+}
+
+// ---------------- Store one number, labeled factor, function help (audit 2026-11-12, F10) ----------------
+
+async function pullFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const t = await pickTable(deps, profile, label, 'Which table holds the number?', profile === 'mc427' ? 'df' : 'analysis');
+  if (!t) return;
+  const noFilter = '$(list-flat) No row to pick: take the whole column';
+  let filterCol = '';
+  if (t.probe) {
+    const probe = t.probe;
+    const pick = await vscode.window.showQuickPick(
+      [{ label: noFilter, value: '' }, ...probe.columns.map((c) => ({ label: c.name, description: c.type, detail: pickerHint(c, probe.rows), value: c.name }))],
+      { title: label, placeHolder: 'Which column picks the row, such as month? Or take the whole column.' },
+    );
+    if (!pick) return;
+    filterCol = pick.value;
+  } else {
+    const typed = await vscode.window.showInputBox({
+      title: label,
+      prompt: 'The column that picks the row, such as month. Leave it empty to take the whole column.',
+      validateInput: COLUMN_NAME,
+      ignoreFocusOut: true,
+    });
+    if (typed === undefined) return;
+    filterCol = typed.trim();
+  }
+  let value: string | undefined;
+  let raw = false;
+  if (filterCol) {
+    value = await vscode.window.showInputBox({ title: label, prompt: `Which ${filterCol}? Type the value as it appears in the table, such as 2018-06.`, ignoreFocusOut: true });
+    if (!value || !value.trim()) return;
+    value = value.trim();
+    const col = t.probe?.columns.find((c) => c.name === filterCol);
+    raw = col ? isNumber(col) && NUMBER_TEXT.test(value) : NUMBER_TEXT.test(value) || value === 'TRUE' || value === 'FALSE';
+  }
+  const cols = await pickColumnsInTurn(label, t.probe, [{ prompt: 'The column the number comes from, such as posts', fits: isNumber }]);
+  if (!cols) return;
+  const result = await vscode.window.showInputBox({ title: label, prompt: 'A short name to store it under, such as jun', value: 'value', validateInput: COLUMN_NAME, ignoreFocusOut: true });
+  if (!result || !result.trim()) return;
+  const params: GenParams = { data: t.table.name, column: cols[0], result: result.trim(), value, rawValue: raw };
+  if (filterCol) params.columns = [filterCol];
+  await insertAndMaybeRun(deps, generate(profile, 'pull-value', params), label, 'pull-value');
+}
+
+const NUMBER_TEXT = /^-?\d+(\.\d+)?$/;
+
+async function labelCodesFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const t = await pickTable(deps, profile, label, 'Which table has the code column?', 'codes');
+  if (!t) return;
+  const cols = await pickColumnsInTurn(label, t.probe, ['The code column, such as reaction_only']);
+  if (!cols) return;
+  const levels = await vscode.window.showInputBox({ title: label, prompt: 'The codes, with commas between them, such as 0, 1', ignoreFocusOut: true });
+  if (!levels || !levels.trim()) return;
+  const n = splitValues(levels).values.length;
+  const labels = await vscode.window.showInputBox({
+    title: label,
+    prompt: 'A label for each code, in the same order, with commas between them, such as commentary, reaction',
+    validateInput: (v) => (v.trim() && splitValues(v).values.length !== n ? `Type ${n} labels, one for each code.` : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!labels || !labels.trim()) return;
+  await insertAndMaybeRun(deps, generate(profile, 'label-codes', { data: t.table.name, column: cols[0], value: levels, labels }), label, 'label-codes');
+}
+
+async function functionHelpCommand(deps: MenuDeps): Promise<void> {
+  const name = await vscode.window.showInputBox({
+    title: 'Help for an R function',
+    prompt: 'The function name, such as ymd_hms. Its help page opens.',
+    validateInput: (v) => (v.trim() && !FUNCTION_NAME.test(v.trim()) ? 'Type one function name, such as ymd_hms, with no brackets.' : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!name || !name.trim()) return;
+  await deps.runInSession(helpLine(name));
 }
 
 // ---------------- New R script and Open a starter (audit 2026-11-12, F8) ----------------
@@ -358,6 +435,15 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
   if (def.task === 'sample') return sampleFlow(deps, profile, def.label);
   if (def.task === 'crosstab') return crosstabFlow(deps, profile, def.label);
   if (def.task === 'agreement') return agreementFlow(deps, profile, def.label);
+  if (def.task === 'pull-value') return pullFlow(deps, profile, def.label);
+  if (def.task === 'label-codes') return labelCodesFlow(deps, profile, def.label);
+  if (def.task === 'five-numbers') {
+    const t = await pickTable(deps, profile, def.label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
+    if (!t) return;
+    const cols = await pickColumnsInTurn(def.label, t.probe, [{ prompt: 'The number column', fits: isNumber }]);
+    if (!cols) return;
+    return insertAndMaybeRun(deps, generate(profile, 'five-numbers', { data: t.table.name, column: cols[0] }), def.label, 'five-numbers');
+  }
   if (def.task === 'count-missing' || def.task === 'count-distinct') {
     // F10 (audit 2026-11-12): any table the script has, or a data file
     const t = await pickTable(deps, profile, def.label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');

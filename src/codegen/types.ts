@@ -43,6 +43,8 @@ export interface GenParams {
   groupBy?: string;
   /** Bar chart from a table that already holds the numbers: the number column that gives each bar's height. columns[0] names the bars. */
   heights?: string;
+  /** Labeled factor: the labels, comma-separated, in the order of the levels (value holds the levels). */
+  labels?: string;
 }
 
 /** A template: golden-reproducing when given no overrides. */

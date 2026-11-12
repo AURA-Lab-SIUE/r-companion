@@ -29,3 +29,11 @@ export function listStarters(root: string | undefined): string[] {
     .map((d) => d.name)
     .sort();
 }
+
+/** A function name for Help for an R function: name or package::name, no brackets (audit F10). */
+export const FUNCTION_NAME = /^([A-Za-z][A-Za-z0-9.]*::)?[A-Za-z.][A-Za-z0-9._]*$/;
+
+/** The line that opens the help page: ?name, or ?pkg::name. */
+export function helpLine(name: string): string {
+  return '?' + name.trim();
+}

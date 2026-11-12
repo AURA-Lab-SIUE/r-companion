@@ -9,6 +9,7 @@ import { MC427_R2, V2V_R2 } from './r2';
 import { MC427_R3, V2V_R3 } from './r3';
 import { MC427_R4, V2V_R4, MC451_R4, MC501_R4 } from './r4';
 import { MC427_APA, V2V_APA } from './apa';
+import { MC427_EXTRA, V2V_EXTRA } from './extra';
 
 export { GenParams, GenProfile, Release } from './types';
 export { APA_TESTS, ApaTest, apaTask } from './apa';
@@ -16,7 +17,7 @@ export { APA_TESTS, ApaTest, apaTask } from './apa';
 /** What release a task belongs to, for the quick-pick menus and the "behind a setting" gate. */
 export const TASK_RELEASE: Record<string, Release> = {
   // R2 Data, wrangling, reliability
-  'list-files': 'R2', 'import-csv': 'R2', 'import-xlsx': 'R2', 'import-course-dataset': 'R2', 'import-rds': 'R2',
+  'list-files': 'R2', 'pull-value': 'R2', 'label-codes': 'R2', 'five-numbers': 'R3', 'import-csv': 'R2', 'import-xlsx': 'R2', 'import-course-dataset': 'R2', 'import-rds': 'R2',
   filter: 'R2', select: 'R2', mutate: 'R2', count: 'R2',
   'clean-dates': 'R2', 'join-chat-streams': 'R2', 'channel-lookup': 'R2', 'join-lookup': 'R2', 'join-tables': 'R2',
   'label-from-snapshot': 'R2', sample: 'R2',
@@ -40,13 +41,13 @@ const V2V_R2_R3: Record<string, Template> = { ...V2V_R2, ...V2V_R3 };
 function resolve(profile: GenProfile, task: string): Template | undefined {
   switch (profile) {
     case 'mc427':
-      return MC427_R2[task] ?? MC427_R3[task] ?? MC427_R4[task] ?? MC427_APA[task];
+      return MC427_R2[task] ?? MC427_EXTRA[task] ?? MC427_R3[task] ?? MC427_R4[task] ?? MC427_APA[task];
     case 'mc451':
       if (PER_PROFILE_R4.has(task)) return MC451_R4[task];
-      return V2V_R2_R3[task] ?? V2V_R4[task] ?? V2V_APA[task];
+      return V2V_R2_R3[task] ?? V2V_EXTRA[task] ?? V2V_R4[task] ?? V2V_APA[task];
     case 'mc501':
       if (PER_PROFILE_R4.has(task)) return MC501_R4[task];
-      return V2V_R2_R3[task] ?? V2V_R4[task] ?? V2V_APA[task];
+      return V2V_R2_R3[task] ?? V2V_EXTRA[task] ?? V2V_R4[task] ?? V2V_APA[task];
   }
 }
 

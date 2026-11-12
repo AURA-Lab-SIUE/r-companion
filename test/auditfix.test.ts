@@ -100,3 +100,41 @@ test('F10: Count missing and distinct values in each column, every course', () =
   assert.ok(generate('mc451', 'count-missing', { data: 'chat' }).endsWith('chat %>%\n  summarize(across(everything(), ~ sum(is.na(.x))))\n'));
   assert.ok(generate('mc427', 'count-distinct').endsWith('df %>%\n  summarize(across(everything(), n_distinct))\n'));
 });
+
+import { FUNCTION_NAME, helpLine } from '../src/scripts';
+
+test('F10: Store one number with pull, with and without a row filter', () => {
+  for (const c of ['mc427', 'mc451', 'mc501'] as const) for (const t of ['pull-value', 'five-numbers', 'label-codes']) assert.ok(hasTask(c, t), `${c} ${t}`);
+  const row = generate('mc427', 'pull-value', { data: 'funnel', column: 'players', result: 'jun', columns: ['month'], value: '2018-06' });
+  assert.ok(row.includes('jun <- funnel %>%\n  filter(month == "2018-06") %>%\n  pull(players)\njun\n'), row);
+  const num = generate('mc451', 'pull-value', { data: 'chat_by_hour', column: 'messages', result: 'peak', columns: ['hour'], value: '20', rawValue: true });
+  assert.ok(num.includes('filter(hour == 20)'));
+  const whole = generate('mc501', 'pull-value', { data: 'analysis', column: 'message_length', result: 'lengths' });
+  assert.ok(whole.includes('lengths <- analysis %>%\n  pull(message_length)\nlengths\n') && !whole.includes('filter('));
+});
+
+test('F10: Five numbers is its own item and Summary by group is unchanged', () => {
+  const f = generate('mc451', 'five-numbers', { data: 'analysis', column: 'message_length' });
+  for (const s of ['total = sum(message_length, na.rm = TRUE)', 'smallest = min(message_length, na.rm = TRUE)', 'middle = median(message_length, na.rm = TRUE)', 'average = mean(message_length, na.rm = TRUE)', 'biggest = max(message_length, na.rm = TRUE)']) assert.ok(f.includes(s), s);
+  assert.ok(!generate('mc451', 'grouped-summary').includes('smallest ='), 'summary by group stays as it was');
+});
+
+test('F10: Labeled factor keeps numeric codes bare and quotes word codes', () => {
+  const n = generate('mc451', 'label-codes', { data: 'codes', column: 'reaction_only', value: '0, 1', labels: 'commentary, reaction' });
+  assert.ok(n.includes('mutate(reaction_only = factor(reaction_only, levels = c(0, 1), labels = c("commentary", "reaction")))'), n);
+  assert.ok(n.endsWith('codes %>%\n  count(reaction_only)\n'));
+  const w = generate('mc427', 'label-codes', { data: 'codes', column: 'tone', value: 'pos, neg', labels: 'positive, negative' });
+  assert.ok(w.includes('levels = c("pos", "neg")'));
+});
+
+test('F10: Help for an R function', () => {
+  for (const ok of ['ymd_hms', 'lubridate::ymd_hms', 'read.csv', 'n_distinct']) assert.ok(FUNCTION_NAME.test(ok), ok);
+  for (const bad of ['ymd_hms()', 'a b', '1x', 'rm(list=ls())']) assert.ok(!FUNCTION_NAME.test(bad), bad);
+  assert.equal(helpLine(' ymd_hms '), '?ymd_hms');
+  for (const c of ['mc427', 'mc451', 'mc501'] as const) {
+    const help = panelTree({ course: c, items: menuItems(c, true), crossCheck: c === 'mc427', banners: [] }).find((n) => n.id === 'help');
+    assert.ok(help?.children?.some((n: { id: string }) => n.id === 'help/function'), c);
+  }
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+  assert.ok(pkg.contributes.commands.some((x: { command: string }) => x.command === 'auraR.functionHelp'));
+});

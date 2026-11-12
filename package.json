@@ -193,6 +193,11 @@
         "category": "AURA"
       },
       {
+        "command": "auraR.functionHelp",
+        "title": "Help for an R function",
+        "category": "AURA"
+      },
+      {
         "command": "auraR.fixNotAttached",
         "title": "Fix R (not attached)",
         "category": "AURA"
