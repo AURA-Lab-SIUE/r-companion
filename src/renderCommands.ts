@@ -6,6 +6,16 @@ import { renderFolderProblem } from './render';
 
 const QUARTO_EXT = 'quarto.quarto';
 
+/** Install TinyTeX, the PDF tool the White Paper render needs (worksheet 14, Step 3; audit F5). */
+export function installPdfTool(): void {
+  const term = vscode.window.createTerminal({ name: 'Install the PDF tool' });
+  term.show();
+  term.sendText('quarto install tinytex');
+  void vscode.window.showInformationMessage(
+    'The Terminal is installing the PDF tool. It takes a few minutes. When the Terminal says it is done, quit VS Code completely and open it again.',
+  );
+}
+
 export async function renderOrPreview(kind: 'render' | 'preview'): Promise<void> {
   const ed = vscode.window.activeTextEditor;
   if (!ed || !/\.qmd$/i.test(ed.document.fileName)) {

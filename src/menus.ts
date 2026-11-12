@@ -20,6 +20,7 @@ import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
+import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from './paper';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
 export { menuTasks, menuItems } from './catalog';
@@ -104,6 +105,58 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   reg('auraR.openSteps', () => openSteps());
   reg('auraR.runSteps', () => runSteps(context, deps));
   reg('auraR.goToLine', (line: number) => goToLine(line));
+  // The White Paper R steps (audit 2026-11-12, F5)
+  reg('auraR.newPortfolio', () => newPortfolioCommand(deps));
+  reg('auraR.pointAtProject', () => projectBlockCommand(deps, 'Point R at my White Paper project', pointAtProjectBlock));
+  reg('auraR.deployPortfolio', () => projectBlockCommand(deps, 'Publish my White Paper site', deployBlock));
+  reg('auraR.insertInlineR', () => insertInlineR());
+}
+
+// ---------------- White Paper (audit 2026-11-12, F5) ----------------
+
+async function newPortfolioCommand(deps: MenuDeps): Promise<void> {
+  const label = 'Create my White Paper project';
+  const name = await vscode.window.showInputBox({
+    title: label,
+    prompt: 'A name about your own study: lowercase letters and hyphens, no spaces.',
+    placeHolder: 'such as podcast-ads-portfolio',
+    validateInput: (v) => (v.trim() ? projectNameProblem(v) : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!name || !name.trim()) return;
+  await insertAndMaybeRun(deps, newPortfolioBlock(name), label, 'new-portfolio');
+}
+
+async function projectBlockCommand(deps: MenuDeps, label: string, block: (name: string) => string): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const projects = findProjects(root);
+  if (!projects.length) {
+    void vscode.window.showWarningMessage(
+      'There is no White Paper project in your course folder yet. In the AURA panel, open Your steps, then White Paper, and choose Create my White Paper project first.',
+    );
+    return;
+  }
+  let name = projects[0];
+  if (projects.length > 1) {
+    const pick = await vscode.window.showQuickPick(projects, { title: label, placeHolder: 'Which project folder is your White Paper?' });
+    if (!pick) return;
+    name = pick;
+  }
+  await insertAndMaybeRun(deps, block(name), label, 'paper');
+}
+
+async function insertInlineR(): Promise<void> {
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || !isQuartoFile(ed.document.fileName)) {
+    void vscode.window.showWarningMessage('Click into your .qmd chapter where the number goes, so it is the open file. Then choose this again.');
+    return;
+  }
+  const above = ed.document.getText(new vscode.Range(new vscode.Position(0, 0), ed.selection.active)).split(/\r?\n/);
+  if (isInsideRChunk(above)) {
+    void vscode.window.showWarningMessage('The cursor is inside an R chunk. Click in a sentence, outside the chunk, where the number goes. Then choose this again.');
+    return;
+  }
+  await ed.insertSnippet(new vscode.SnippetString(INLINE_R_SNIPPET));
 }
 
 // ---------------- Your steps (0.5.3) ----------------

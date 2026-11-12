@@ -17,3 +17,48 @@ test('F6: Bar chart from a table that already holds the numbers keeps the row or
   // The counted bar is unchanged
   assert.ok(generate('mc427', 'bar', { data: 'df', columns: ['posted_from'] }).includes('count(posted_from)'));
 });
+
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from '../src/paper';
+import { panelTree } from '../src/panelModel';
+import { menuItems } from '../src/catalog';
+
+test('F5: the White Paper blocks are the worksheet lines', () => {
+  assert.equal(projectNameProblem('podcast-ads-portfolio'), undefined);
+  for (const bad of ['Podcast', 'my portfolio', 'a--b', '-a', 'twitch_portfolio']) assert.ok(projectNameProblem(bad), bad);
+  const np = newPortfolioBlock('podcast-ads-portfolio');
+  assert.ok(np.includes('options(usethis.allow_nested_project = TRUE)\n'));
+  assert.ok(np.includes('project <- "podcast-ads-portfolio"\nif (dir.exists(project)) {\n  message("Already made: using the folder you have.")\n} else {\n  v2v::new_portfolio(project)\n}\n'));
+  assert.ok(pointAtProjectBlock('p').includes('project <- "p"\nfile.exists(file.path(project, "_quarto.yml"))\n'));
+  assert.ok(deployBlock('p').includes('project <- "p"\nv2v::deploy_portfolio(project)\n'));
+  assert.ok(deployBlock('p').includes('[y/N]'));
+  assert.equal(INLINE_R_SNIPPET, '`r format(${1:nrow(analysis)}, big.mark = ",")`');
+  for (const s of [np, pointAtProjectBlock('p'), deployBlock('p')]) assert.ok(!s.includes('\u2014'), 'no em dash');
+});
+
+test('F5: findProjects lists only subfolders holding _quarto.yml', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'aura-paper-'));
+  for (const d of ['b-portfolio', 'a-portfolio', 'data', '.git']) fs.mkdirSync(path.join(root, d));
+  fs.writeFileSync(path.join(root, 'b-portfolio', '_quarto.yml'), 'project:\n');
+  fs.writeFileSync(path.join(root, 'a-portfolio', '_quarto.yml'), 'project:\n');
+  fs.writeFileSync(path.join(root, '.git', '_quarto.yml'), '');
+  assert.deepEqual(findProjects(root), ['a-portfolio', 'b-portfolio']);
+  assert.deepEqual(findProjects(undefined), []);
+});
+
+test('F5: the White Paper folder sits in Your steps for MC 451 and MC 501 only, and its commands are AURA commands', () => {
+  const ids = (c: 'mc427' | 'mc451' | 'mc501') => {
+    const all: string[] = [];
+    const walk = (n: { id: string; children?: any[] }) => { all.push(n.id); n.children?.forEach(walk); };
+    panelTree({ course: c, items: menuItems(c, true), crossCheck: c === 'mc427', banners: [] }).forEach(walk);
+    return all;
+  };
+  const kids = ['steps/paper/new', 'steps/paper/point', 'steps/paper/tinytex', 'steps/paper/inline', 'steps/paper/deploy'];
+  for (const c of ['mc451', 'mc501'] as const) for (const id of kids) assert.ok(ids(c).includes(id), `${c} ${id}`);
+  assert.ok(!ids('mc427').some((i) => i.startsWith('steps/paper')));
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+  for (const c of ['auraR.newPortfolio', 'auraR.pointAtProject', 'auraR.installPdfTool', 'auraR.insertInlineR', 'auraR.deployPortfolio'])
+    assert.ok(pkg.contributes.commands.some((x: any) => x.command === c && x.category === 'AURA'), c);
+});

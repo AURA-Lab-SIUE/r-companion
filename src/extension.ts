@@ -32,7 +32,7 @@ import { registerCopilotTools, CopilotToolsSetting } from './copilotTools';
 import { attachLines, checkRExtensionAtStartup, showRExtension, watchAttach } from './rExtension';
 import { RecentLines } from './helpReport';
 import { makeHelpReport } from './helpReportCommand';
-import { renderOrPreview } from './renderCommands';
+import { renderOrPreview, installPdfTool } from './renderCommands';
 import { SESS_IMPORTS } from './sess';
 import { checkTestChoice, ComparisonKind, OutcomeKind, TestId, TEST_LABEL, OUTCOME_LABEL, COMPARISON_LABEL } from './testChoice';
 
@@ -201,6 +201,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Render and preview the open .qmd (audit 2026-11-12, F2; owner q-20261112-0014: R-related items only)
   reg('auraR.renderDocument', () => renderOrPreview('render'));
   reg('auraR.previewDocument', () => renderOrPreview('preview'));
+  reg('auraR.installPdfTool', () => installPdfTool());
   // R4 Copilot tools: read-only, on for MC 451 and MC 501, off for MC 427 by default (U3)
   registerCopilotTools(context, {
     setting: () => setting<CopilotToolsSetting>('copilotTools', 'auto'),

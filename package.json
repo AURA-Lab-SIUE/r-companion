@@ -158,6 +158,31 @@
         "category": "AURA"
       },
       {
+        "command": "auraR.newPortfolio",
+        "title": "Create my White Paper project",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.pointAtProject",
+        "title": "Point R at my White Paper project",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.installPdfTool",
+        "title": "Install the PDF tool (TinyTeX)",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.insertInlineR",
+        "title": "Insert a number from R",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.deployPortfolio",
+        "title": "Publish my White Paper site",
+        "category": "AURA"
+      },
+      {
         "command": "auraR.fixNotAttached",
         "title": "Fix R (not attached)",
         "category": "AURA"

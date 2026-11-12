@@ -158,6 +158,18 @@ export function panelTree(input: PanelInput): PanelNode[] {
         ? [
             { id: 'steps/preview', label: 'Preview this document', tooltip: 'Quarto Preview of the open .qmd file', icon: 'open-preview', command: { command: 'auraR.previewDocument' } },
             { id: 'steps/render', label: 'Render this document', tooltip: 'Quarto Render of the open .qmd file, so its HTML sits beside it', icon: 'file-code', command: { command: 'auraR.renderDocument' } },
+            {
+              id: 'steps/paper',
+              label: 'White Paper',
+              icon: 'book',
+              children: [
+                { id: 'steps/paper/new', label: 'Create my White Paper project', tooltip: 'Worksheet 09, Steps 3 and 4: v2v::new_portfolio()', icon: 'new-folder', command: { command: 'auraR.newPortfolio' } },
+                { id: 'steps/paper/point', label: 'Point R at my White Paper project', tooltip: 'Worksheet 14, Step 2', icon: 'target', command: { command: 'auraR.pointAtProject' } },
+                { id: 'steps/paper/tinytex', label: 'Install the PDF tool (TinyTeX)', tooltip: 'Worksheet 14, Step 3: quarto install tinytex in a Terminal', icon: 'desktop-download', command: { command: 'auraR.installPdfTool' } },
+                { id: 'steps/paper/inline', label: 'Insert a number from R', tooltip: 'Worksheet 14, Step 7: inline R at the cursor in a .qmd chapter', icon: 'symbol-number', command: { command: 'auraR.insertInlineR' } },
+                { id: 'steps/paper/deploy', label: 'Publish my White Paper site', tooltip: 'Worksheet 14, Step 13: v2v::deploy_portfolio()', icon: 'globe', command: { command: 'auraR.deployPortfolio' } },
+              ],
+            },
           ]
         : []),
       ...input.banners.map((b) => ({
