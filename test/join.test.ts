@@ -23,6 +23,23 @@ test('tableSources reads back the files and the course corpus a script loads', (
   assert.equal(s.has('joined'), false, 'a table built from others has no source');
 });
 
+test('a table read with clean_names() is probed with the cleaned names (G12)', () => {
+  const code = [
+    'mc451_my_codes <- read_csv("data/MC451-my-codes.csv") %>%',
+    '  janitor::clean_names()',
+    'coded <- read_csv("data/episode-codes.csv")',
+    'coded <- coded %>%',
+    '  clean_names()',
+    'raw <- read_csv("data/raw.csv")',
+    'other <- raw %>% clean_names()',
+  ].join('\n');
+  const s = tableSources(code, 'C:\\course');
+  assert.equal(s.get('mc451_my_codes'), 'janitor::clean_names(readr::read_csv("C:/course/data/MC451-my-codes.csv", show_col_types = FALSE))');
+  assert.equal(s.get('coded'), 'janitor::clean_names(readr::read_csv("C:/course/data/episode-codes.csv", show_col_types = FALSE))');
+  assert.equal(s.get('raw'), 'readr::read_csv("C:/course/data/raw.csv", show_col_types = FALSE)', 'a cleaned copy under another name leaves the source as read');
+  assert.equal(s.has('other'), false);
+});
+
 test('the key list is the columns both tables have, in the left order', () => {
   assert.deepEqual(sharedColumns(['video_id', 'channel', 'region', 'title'], ['channel', 'region', 'subscribers']), ['channel', 'region']);
   assert.deepEqual(sharedColumns(['a'], ['b']), []);
