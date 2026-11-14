@@ -113,7 +113,29 @@ export function tableSources(codeAbove: string, folder?: string): Map<string, st
   for (const m of codeAbove.matchAll(/^[ \t]*(chat|streams)[ \t]*<-[ \t]*(v2v::)?twitch_(chat|streams)\(\)/gm)) {
     out.set(m[1], COURSE_SOURCES[m[1]]);
   }
+  // clean_names() piped onto the read (the Companion's own import writes it on the next line), or
+  // run later as its own step (`coded <- coded %>% clean_names()`, guide 08), renames the columns,
+  // so the probe reads the cleaned names the generated code will use (walk 2026-11-13, G12).
+  for (const name of cleanedNames(codeAbove)) {
+    const src = out.get(name);
+    if (src && !src.startsWith('janitor::clean_names(')) out.set(name, `janitor::clean_names(${src})`);
+  }
   return out;
+}
+
+/** Tables whose column names clean_names() rewrites, by a read piped into it or a later step. */
+export function cleanedNames(codeAbove: string): Set<string> {
+  const names = new Set<string>();
+  const pipe = String.raw`(?:%>%|\|>)\s*(?:janitor::)?clean_names\(\)`;
+  const name = String.raw`([A-Za-z][A-Za-z0-9._]*)`;
+  const onRead = new RegExp(
+    String.raw`^[ \t]*${name}[ \t]*<-[ \t]*(?:readr::)?(?:read_csv|readxl::read_excel|read_excel)\("[^"]+"(?:,\s*sheet\s*=\s*"[^"]+")?\)\s*${pipe}`,
+    'gm',
+  );
+  for (const m of codeAbove.matchAll(onRead)) names.add(m[1]);
+  const later = new RegExp(String.raw`^[ \t]*${name}[ \t]*<-[ \t]*${name}\s*${pipe}`, 'gm');
+  for (const m of codeAbove.matchAll(later)) if (m[1] === m[2]) names.add(m[1]);
+  return names;
 }
 
 /** Column names both tables have, in the left table's order: the keys a join can use. */

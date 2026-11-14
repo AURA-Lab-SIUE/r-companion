@@ -78,6 +78,8 @@ export function scriptBanners(text: string): Banner[] {
 export const GUIDES: Partial<Record<CourseId, { label: string; url: string }>> = {
   mc451: { label: 'Step-by-step guides and videos', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc451/' },
   mc501: { label: 'Step-by-step guides and videos', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc501/' },
+  // Audit F9 (owner q-20261112-0024 = c): the hub's copies of the R Field Guide and R Quick Reference.
+  mc427: { label: 'R Field Guide and Quick Reference', url: 'https://aura-lab.siue.edu/v2v-hub/guides/mc427/' },
 };
 
 const write = (task: string): PanelCommand => ({ command: 'auraR.writeCode', args: [task] });
@@ -153,6 +155,27 @@ export function panelTree(input: PanelInput): PanelNode[] {
     children: [
       { id: 'steps/open', label: 'Open my steps', description: input.stepsScript, icon: 'go-to-file', command: { command: 'auraR.openSteps' } },
       { id: 'steps/run', label: 'Run my steps from the top', icon: 'run-all', command: { command: 'auraR.runSteps' } },
+      { id: 'steps/new', label: 'New R script in my course folder', icon: 'new-file', command: { command: 'auraR.newScript' } },
+      ...(course === 'mc427' ? [{ id: 'steps/starter', label: 'Open a starter', tooltip: 'A starter file from the starters folder', icon: 'file-code', command: { command: 'auraR.openStarter' } }] : []),
+      // MC 451 and MC 501 render .qmd worksheets
+      ...(course && course !== 'mc427'
+        ? [
+            { id: 'steps/preview', label: 'Preview this document', tooltip: 'Quarto Preview of the open .qmd file', icon: 'open-preview', command: { command: 'auraR.previewDocument' } },
+            { id: 'steps/render', label: 'Render this document', tooltip: 'Quarto Render of the open .qmd file, so its HTML sits beside it', icon: 'file-code', command: { command: 'auraR.renderDocument' } },
+            {
+              id: 'steps/paper',
+              label: 'White Paper',
+              icon: 'book',
+              children: [
+                { id: 'steps/paper/new', label: 'Create my White Paper project', tooltip: 'Worksheet 09, Steps 3 and 4: v2v::new_portfolio()', icon: 'new-folder', command: { command: 'auraR.newPortfolio' } },
+                { id: 'steps/paper/point', label: 'Point R at my White Paper project', tooltip: 'Worksheet 14, Step 2', icon: 'target', command: { command: 'auraR.pointAtProject' } },
+                { id: 'steps/paper/tinytex', label: 'Install the PDF tool (TinyTeX)', tooltip: 'Worksheet 14, Step 3: quarto install tinytex in a Terminal', icon: 'desktop-download', command: { command: 'auraR.installPdfTool' } },
+                { id: 'steps/paper/inline', label: 'Insert a number from R', tooltip: 'Worksheet 14, Step 7: inline R at the cursor in a .qmd chapter', icon: 'symbol-number', command: { command: 'auraR.insertInlineR' } },
+                { id: 'steps/paper/deploy', label: 'Publish my White Paper site', tooltip: 'Worksheet 14, Step 13: v2v::deploy_portfolio()', icon: 'globe', command: { command: 'auraR.deployPortfolio' } },
+              ],
+            },
+          ]
+        : []),
       ...input.banners.map((b) => ({
         id: `steps/banner/${b.line}`,
         label: b.label,
@@ -170,6 +193,7 @@ export function panelTree(input: PanelInput): PanelNode[] {
     icon: 'question',
     children: [
       { id: 'help/explain', label: 'Explain an R error', icon: 'lightbulb', command: { command: 'auraR.explainError' } },
+      { id: 'help/function', label: 'Help for an R function', tooltip: 'Opens the help page for a function you name, such as ymd_hms', icon: 'question', command: { command: 'auraR.functionHelp' } },
       { id: 'help/where', label: 'Where to get help', icon: 'comment-discussion', command: { command: 'auraR.getHelp' } },
       { id: 'help/report', label: 'Make a help report', tooltip: 'Your setup, versions, and error logs, ready to email to your instructor', icon: 'report', command: { command: 'auraR.makeHelpReport' } },
       ...(course && GUIDES[course]

@@ -2,7 +2,7 @@
   "name": "r-companion",
   "displayName": "AURA Lab R Companion",
   "description": "Gets students to a working R setup in VS Code, then writes commented tidyverse code from menus: data and wrangling, a data viewer and coding sheet, reliability, descriptive statistics and charts, and the course's statistical tests.",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "icon": "media/icon.png",
   "publisher": "aura-lab-siue",
   "license": "MIT",
@@ -145,6 +145,56 @@
       {
         "command": "auraR.makeHelpReport",
         "title": "Make a help report",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.renderDocument",
+        "title": "Render this document",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.previewDocument",
+        "title": "Preview this document",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.newPortfolio",
+        "title": "Create my White Paper project",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.pointAtProject",
+        "title": "Point R at my White Paper project",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.installPdfTool",
+        "title": "Install the PDF tool (TinyTeX)",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.insertInlineR",
+        "title": "Insert a number from R",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.deployPortfolio",
+        "title": "Publish my White Paper site",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.newScript",
+        "title": "New R script in my course folder",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.openStarter",
+        "title": "Open a starter",
+        "category": "AURA"
+      },
+      {
+        "command": "auraR.functionHelp",
+        "title": "Help for an R function",
         "category": "AURA"
       },
       {

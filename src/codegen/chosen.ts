@@ -58,6 +58,29 @@ export function chosenBar(v2v: boolean, data: string, column: string): string {
   );
 }
 
+/**
+ * A bar chart from a table that already holds the numbers, one row per bar (audit 2026-11-12, F6): the
+ * MC 451/501 Figure 2 (chat_by_hour: hour, messages) and the MC 427 funnel (month, players). The bars
+ * keep the table's own row order, so hours run 0 to 23 and months run in the order the table lists them.
+ */
+export function chosenBarHeights(v2v: boolean, data: string, names: string, heights: string): string {
+  const x = rName(names);
+  const y = rName(heights);
+  return lines(
+    banner(`Bar chart: ${heights} for each ${names}`),
+    `# ${data} already holds the numbers, one row per bar. Draw one bar per row: ${names} names the bar`,
+    `# and ${heights} is its height. fct_inorder() keeps the bars in the table's own row order, and`,
+    '# as.character() lets a number column such as an hour name the bars too. Inside ggplot() the',
+    '# pieces join with +, not the pipe.',
+    `${data} %>%`,
+    `  ggplot(aes(x = fct_inorder(as.character(${x})), y = ${y})) +`,
+    '  geom_col() +',
+    ...(v2v ? ['  # Write the numbers with commas (12,000), not 12000.', '  scale_y_continuous(labels = scales::label_comma()) +'] : []),
+    ...labsLines(v2v),
+    ...save(v2v, `${slug(heights)}-by-${slug(names)}-bar`),
+  );
+}
+
 export function chosenHistogram(v2v: boolean, data: string, column: string): string {
   const c = rName(column);
   return lines(

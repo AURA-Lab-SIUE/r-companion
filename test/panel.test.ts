@@ -64,17 +64,19 @@ test('Your steps lists the banners of the open script, each a jump to its line',
   ]);
   const steps = tree('mc451', { banners, stepsScript: 'analysis.R' }).find((r) => r.id === 'steps')!;
   assert.equal(steps.children![0].description, 'analysis.R');
-  assert.deepEqual(steps.children!.slice(2).map((n) => [n.label, n.command]), [
+  assert.deepEqual(steps.children!.filter((n) => n.id.startsWith('steps/banner/')).map((n) => [n.label, n.command]), [
     ['Load the course data', { command: 'auraR.goToLine', args: [2] }],
     ['Count rows per group: count()', { command: 'auraR.goToLine', args: [5] }],
   ]);
 });
 
-test('Help: the course guides for MC 451 and MC 501, the help links for every course, all through auraR.openLink', () => {
+test('Help: the course guides for MC 451, MC 501, and MC 427, the help links for every course, all through auraR.openLink', () => {
   const h451 = tree('mc451').find((r) => r.id === 'help')!.children!;
   assert.deepEqual(h451.find((n) => n.id === 'help/guides')!.command, { command: 'auraR.openLink', args: ['https://aura-lab.siue.edu/v2v-hub/guides/mc451/'] });
   const h427 = tree('mc427').find((r) => r.id === 'help')!.children!;
-  assert.ok(!h427.some((n) => n.id === 'help/guides'), 'MC 427 has no public guides page');
+  // Audit F9 (owner q-20261112-0024 = c): MC 427 links the hub's copies of its two R guides.
+  assert.deepEqual(h427.find((n) => n.id === 'help/guides')!.command, { command: 'auraR.openLink', args: ['https://aura-lab.siue.edu/v2v-hub/guides/mc427/'] });
+  assert.equal(h427.find((n) => n.id === 'help/guides')!.label, 'R Field Guide and Quick Reference');
   assert.ok(h427.some((n) => n.id.startsWith('help/link/')));
   assert.ok(flat(tree('mc501')).filter((n) => n.command?.command === 'vscode.open').length === 0);
 });

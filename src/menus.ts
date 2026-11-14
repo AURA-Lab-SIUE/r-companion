@@ -20,6 +20,10 @@ import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
 import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
+import { splitValues } from './codegen/extra';
+import { FUNCTION_NAME, helpLine } from './scripts';
+import { scriptNameProblem, scriptFileName, newScriptText, listStarters } from './scripts';
+import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from './paper';
 import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
 
 export { menuTasks, menuItems } from './catalog';
@@ -104,6 +108,174 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   reg('auraR.openSteps', () => openSteps());
   reg('auraR.runSteps', () => runSteps(context, deps));
   reg('auraR.goToLine', (line: number) => goToLine(line));
+  // The White Paper R steps (audit 2026-11-12, F5)
+  reg('auraR.newPortfolio', () => newPortfolioCommand(deps));
+  reg('auraR.pointAtProject', () => projectBlockCommand(deps, 'Point R at my White Paper project', pointAtProjectBlock));
+  reg('auraR.deployPortfolio', () => projectBlockCommand(deps, 'Publish my White Paper site', deployBlock));
+  reg('auraR.insertInlineR', () => insertInlineR());
+  // F8 (audit 2026-11-12)
+  reg('auraR.newScript', () => newScriptCommand(deps));
+  reg('auraR.openStarter', () => openStarterCommand());
+  reg('auraR.functionHelp', () => functionHelpCommand(deps));
+}
+
+// ---------------- Store one number, labeled factor, function help (audit 2026-11-12, F10) ----------------
+
+async function pullFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const t = await pickTable(deps, profile, label, 'Which table holds the number?', profile === 'mc427' ? 'df' : 'analysis');
+  if (!t) return;
+  const noFilter = '$(list-flat) No row to pick: take the whole column';
+  let filterCol = '';
+  if (t.probe) {
+    const probe = t.probe;
+    const pick = await vscode.window.showQuickPick(
+      [{ label: noFilter, value: '' }, ...probe.columns.map((c) => ({ label: c.name, description: c.type, detail: pickerHint(c, probe.rows), value: c.name }))],
+      { title: label, placeHolder: 'Which column picks the row, such as month? Or take the whole column.' },
+    );
+    if (!pick) return;
+    filterCol = pick.value;
+  } else {
+    const typed = await vscode.window.showInputBox({
+      title: label,
+      prompt: 'The column that picks the row, such as month. Leave it empty to take the whole column.',
+      validateInput: COLUMN_NAME,
+      ignoreFocusOut: true,
+    });
+    if (typed === undefined) return;
+    filterCol = typed.trim();
+  }
+  let value: string | undefined;
+  let raw = false;
+  if (filterCol) {
+    value = await vscode.window.showInputBox({ title: label, prompt: `Which ${filterCol}? Type the value as it appears in the table, such as 2018-06.`, ignoreFocusOut: true });
+    if (!value || !value.trim()) return;
+    value = value.trim();
+    const col = t.probe?.columns.find((c) => c.name === filterCol);
+    raw = col ? isNumber(col) && NUMBER_TEXT.test(value) : NUMBER_TEXT.test(value) || value === 'TRUE' || value === 'FALSE';
+  }
+  const cols = await pickColumnsInTurn(label, t.probe, [{ prompt: 'The column the number comes from, such as posts', fits: isNumber }]);
+  if (!cols) return;
+  const result = await vscode.window.showInputBox({ title: label, prompt: 'A short name to store it under, such as jun', value: 'value', validateInput: COLUMN_NAME, ignoreFocusOut: true });
+  if (!result || !result.trim()) return;
+  const params: GenParams = { data: t.table.name, column: cols[0], result: result.trim(), value, rawValue: raw };
+  if (filterCol) params.columns = [filterCol];
+  await insertAndMaybeRun(deps, generate(profile, 'pull-value', params), label, 'pull-value');
+}
+
+const NUMBER_TEXT = /^-?\d+(\.\d+)?$/;
+
+async function labelCodesFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const t = await pickTable(deps, profile, label, 'Which table has the code column?', 'codes');
+  if (!t) return;
+  const cols = await pickColumnsInTurn(label, t.probe, ['The code column, such as reaction_only']);
+  if (!cols) return;
+  const levels = await vscode.window.showInputBox({ title: label, prompt: 'The codes, with commas between them, such as 0, 1', ignoreFocusOut: true });
+  if (!levels || !levels.trim()) return;
+  const n = splitValues(levels).values.length;
+  const labels = await vscode.window.showInputBox({
+    title: label,
+    prompt: 'A label for each code, in the same order, with commas between them, such as commentary, reaction',
+    validateInput: (v) => (v.trim() && splitValues(v).values.length !== n ? `Type ${n} labels, one for each code.` : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!labels || !labels.trim()) return;
+  await insertAndMaybeRun(deps, generate(profile, 'label-codes', { data: t.table.name, column: cols[0], value: levels, labels }), label, 'label-codes');
+}
+
+async function functionHelpCommand(deps: MenuDeps): Promise<void> {
+  const name = await vscode.window.showInputBox({
+    title: 'Help for an R function',
+    prompt: 'The function name, such as ymd_hms. Its help page opens.',
+    validateInput: (v) => (v.trim() && !FUNCTION_NAME.test(v.trim()) ? 'Type one function name, such as ymd_hms, with no brackets.' : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!name || !name.trim()) return;
+  await deps.runInSession(helpLine(name));
+}
+
+// ---------------- New R script and Open a starter (audit 2026-11-12, F8) ----------------
+
+async function newScriptCommand(deps: MenuDeps): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) {
+    void vscode.window.showWarningMessage('Open your course folder first: File, then Open Folder. Then choose this again.');
+    return;
+  }
+  const typed = await vscode.window.showInputBox({
+    title: 'New R script in my course folder',
+    prompt: 'A name for the script. It is saved in the top of your course folder.',
+    placeHolder: 'such as choose-test',
+    validateInput: (v) => (v.trim() ? scriptNameProblem(v) : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!typed || !typed.trim()) return;
+  const file = path.join(root, scriptFileName(typed));
+  if (fs.existsSync(file)) {
+    void vscode.window.showInformationMessage(`${path.basename(file)} is already in your course folder, so it is open now.`);
+  } else {
+    fs.writeFileSync(file, newScriptText());
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
+  await vscode.commands.executeCommand('auraR.openRTerminal');
+}
+
+async function openStarterCommand(): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const starters = listStarters(root);
+  if (!root || !starters.length) {
+    void vscode.window.showWarningMessage('There is no starters folder in the folder you opened. Open your MC427 folder (File, then Open Folder), then choose this again.');
+    return;
+  }
+  const pick = await vscode.window.showQuickPick(starters, { title: 'Open a starter', placeHolder: 'Which starter file?' });
+  if (!pick) return;
+  await vscode.window.showTextDocument(vscode.Uri.file(path.join(root, 'starters', pick)), { preview: false });
+}
+
+// ---------------- White Paper (audit 2026-11-12, F5) ----------------
+
+async function newPortfolioCommand(deps: MenuDeps): Promise<void> {
+  const label = 'Create my White Paper project';
+  const name = await vscode.window.showInputBox({
+    title: label,
+    prompt: 'A name about your own study: lowercase letters and hyphens, no spaces.',
+    placeHolder: 'such as podcast-ads-portfolio',
+    validateInput: (v) => (v.trim() ? projectNameProblem(v) : undefined),
+    ignoreFocusOut: true,
+  });
+  if (!name || !name.trim()) return;
+  await insertAndMaybeRun(deps, newPortfolioBlock(name), label, 'new-portfolio');
+}
+
+async function projectBlockCommand(deps: MenuDeps, label: string, block: (name: string) => string): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const projects = findProjects(root);
+  if (!projects.length) {
+    void vscode.window.showWarningMessage(
+      'There is no White Paper project in your course folder yet. In the AURA panel, open Your steps, then White Paper, and choose Create my White Paper project first.',
+    );
+    return;
+  }
+  let name = projects[0];
+  if (projects.length > 1) {
+    const pick = await vscode.window.showQuickPick(projects, { title: label, placeHolder: 'Which project folder is your White Paper?' });
+    if (!pick) return;
+    name = pick;
+  }
+  await insertAndMaybeRun(deps, block(name), label, 'paper');
+}
+
+async function insertInlineR(): Promise<void> {
+  const ed = vscode.window.activeTextEditor;
+  if (!ed || !isQuartoFile(ed.document.fileName)) {
+    void vscode.window.showWarningMessage('Click into your .qmd chapter where the number goes, so it is the open file. Then choose this again.');
+    return;
+  }
+  const above = ed.document.getText(new vscode.Range(new vscode.Position(0, 0), ed.selection.active)).split(/\r?\n/);
+  if (isInsideRChunk(above)) {
+    void vscode.window.showWarningMessage('The cursor is inside an R chunk. Click in a sentence, outside the chunk, where the number goes. Then choose this again.');
+    return;
+  }
+  await ed.insertSnippet(new vscode.SnippetString(INLINE_R_SNIPPET));
 }
 
 // ---------------- Your steps (0.5.3) ----------------
@@ -263,6 +435,21 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
   if (def.task === 'sample') return sampleFlow(deps, profile, def.label);
   if (def.task === 'crosstab') return crosstabFlow(deps, profile, def.label);
   if (def.task === 'agreement') return agreementFlow(deps, profile, def.label);
+  if (def.task === 'pull-value') return pullFlow(deps, profile, def.label);
+  if (def.task === 'label-codes') return labelCodesFlow(deps, profile, def.label);
+  if (def.task === 'five-numbers') {
+    const t = await pickTable(deps, profile, def.label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
+    if (!t) return;
+    const cols = await pickColumnsInTurn(def.label, t.probe, [{ prompt: 'The number column', fits: isNumber }]);
+    if (!cols) return;
+    return insertAndMaybeRun(deps, generate(profile, 'five-numbers', { data: t.table.name, column: cols[0] }), def.label, 'five-numbers');
+  }
+  if (def.task === 'count-missing' || def.task === 'count-distinct') {
+    // F10 (audit 2026-11-12): any table the script has, or a data file
+    const t = await pickTable(deps, profile, def.label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
+    if (!t) return;
+    return insertAndMaybeRun(deps, generate(profile, def.task, { data: t.table.name }), def.label, def.task);
+  }
   if (def.task === 'settings-block') return settingsFlow(deps, profile, def.label);
   if (def.task in DESCRIBE_ASKS) return describeFlow(deps, profile, def.task, def.label);
   if (profile === 'mc427' && def.task in MC427_TEST_ASKS) return describeFlow(deps, profile, def.task, def.label, MC427_TEST_ASKS);
@@ -630,6 +817,7 @@ async function pickTable(
   label: string,
   placeHolder: string,
   course: string,
+  courseHint?: string,
 ): Promise<{ table: ImportedTable; probe?: ColumnProbe } | undefined> {
   const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
   const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
@@ -640,7 +828,7 @@ async function pickTable(
   if (!names.includes(course)) {
     items.unshift({
       label: course,
-      description: profile === 'mc427' ? 'load your data file above this first' : 'Load the course Twitch corpus above this first',
+      description: courseHint ?? (profile === 'mc427' ? 'load your data file above this first' : 'Load the course Twitch corpus above this first'),
       value: course,
     });
   }
@@ -757,11 +945,25 @@ async function describeFlow(deps: MenuDeps, profile: GenProfile, task: string, l
     [
       { label: 'Choose the table and the columns', description: 'your own data or the course data', value: 'choose' },
       { label: 'Use the course example', description: spec.example, value: 'default' },
+      // F6 (audit 2026-11-12): a table that already holds the numbers, such as chat_by_hour or funnel
+      ...(task === 'bar'
+        ? [{ label: 'The table already has the numbers', description: 'one bar per row, such as hours and their message counts', value: 'heights' }]
+        : []),
     ],
     { title: label, placeHolder: 'Which columns does this use?' },
   );
   if (!how) return;
   if (how.value === 'default') return insertAndMaybeRun(deps, generate(profile, task, {}), label, task, note);
+  if (how.value === 'heights') {
+    const t = await pickTable(deps, profile, label, 'Which table holds the numbers?', profile === 'mc427' ? 'funnel' : 'chat_by_hour', 'make this table above, then pick it');
+    if (!t) return;
+    const cols = await pickColumnsInTurn(label, t.probe, [
+      { prompt: 'The column that names each bar (such as hour or month)' },
+      { prompt: 'The number column: the height of each bar (such as messages or players)', fits: isNumber },
+    ]);
+    if (!cols) return;
+    return insertAndMaybeRun(deps, generate(profile, 'bar', { data: t.table.name, columns: [cols[0]], heights: cols[1] }), label, task, note);
+  }
   const picked = await pickTable(deps, profile, label, 'Which table?', profile === 'mc427' ? 'df' : 'analysis');
   if (!picked) return;
   const columns = await pickColumnsInTurn(label, picked.probe, spec.asks);
