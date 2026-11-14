@@ -73,6 +73,19 @@ const QUICK = `({
   rows: Array.from(document.querySelectorAll('.quick-input-widget .monaco-list-row')).map(function (r) { return r.innerText.replace(/\\s+/g, ' ').trim(); })
 })`;
 
+const STATE = `(function () {
+  var w = document.querySelector('.quick-input-widget');
+  var a = document.activeElement;
+  return {
+    quickVisible: !!w && w.style.display !== 'none' && w.offsetParent !== null,
+    quickTitle: w ? ((w.querySelector('.quick-input-title') || {}).innerText || '') : '',
+    focused: a ? (a.tagName + '.' + String(a.className || '').split(' ').slice(0, 3).join('.') + ' ' + (a.getAttribute('aria-label') || '')).slice(0, 160) : '',
+    hasFocus: document.hasFocus(),
+    toasts: Array.from(document.querySelectorAll('.notification-toast .notification-list-item-message')).map(function (e) { return e.innerText.slice(0, 120); }),
+    dialog: !!document.querySelector('.monaco-dialog-box')
+  };
+})()`;
+
 async function waitFor(check, ms, step = 500) {
   for (let t = 0; t < ms; t += step) {
     const v = check();
@@ -102,15 +115,39 @@ async function run() {
     const xlsx = path.join(ws, 'data', 'coded-pilot.xlsx');
     fs.copyFileSync(path.join(__dirname, '..', 'golden', 'data-map', 'coded-pilot.xlsx'), xlsx);
 
+    // AURA_IT_TRACE=1 records what is on screen around the course pick (stall diagnosis, 2026-11-14)
+    const trace = [];
+    const t0 = Date.now();
+    const traceSnap = async (tag) => {
+      if (process.env.AURA_IT_TRACE !== '1' || !wb) return;
+      trace.push({ tag, ms: Date.now() - t0, screen: await wb.eval(STATE),
+        tabs: vscode.window.tabGroups.all.flatMap((g) => g.tabs.map((t) => t.label)),
+        terminals: vscode.window.terminals.map((t) => t.name) });
+      log('trace', trace);
+    };
+    // The first-run Get Started walkthrough opens on activation and moves focus to its first step
+    // about 300 ms later; a QuickPick closes when it loses focus, so the course pick came back
+    // undefined and every later pick shifted by one (the stall, traced 2026-11-14). Close it and let
+    // focus settle before picking. AURA_IT_KEEP_WELCOME=1 keeps the old order (the toggle).
+    if (process.env.AURA_IT_KEEP_WELCOME !== '1') {
+      await waitFor(() => vscode.window.tabGroups.all.some((g) => g.tabs.some((t) => /Welcome|Walkthrough/.test(t.label))), 5000, 250);
+      await sleep(1500);
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await sleep(1000);
+    }
+    await traceSnap('before pick');
     const pick = vscode.commands.executeCommand('auraR.pickCourse');
     // Wait until the course picker is on screen: a fixed wait let the keys land before it opened in
     // 2 of 3 runs on 2026-10-23, and the picker then sat over every later step
     for (let t = 0; wb && t < 20000; t += 250) {
-      const q = await wb.eval(QUICK);
-      if (q && /Which course/.test(q.title)) break;
+      const s = await wb.eval(STATE);
+      if (s && s.quickVisible && /Which course/.test(s.quickTitle)) break;
       await sleep(250);
     }
+    await traceSnap('picker seen');
+    for (let i = 0; i < 6; i++) { await sleep(250); await traceSnap('wait ' + i); }
     await choose(1);
+    await traceSnap('after accept');
     log('course', (await pick) ?? null);
 
     const analysisR = path.join(ws, 'analysis.R');
