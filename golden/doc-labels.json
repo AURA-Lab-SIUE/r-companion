@@ -1,0 +1,588 @@
+{
+  "note": "Companion labels the course documents name. Built by scripts/doc-labels.mjs; checked by test/labels.test.ts.",
+  "hub": "AURA-Lab-SIUE/v2v-hub origin/main d9f25ab 2026-11-14",
+  "videos": [
+    "guide-11-video",
+    "guide-12-video",
+    "guide-14-video",
+    "own-describe",
+    "own-tests",
+    "own-wrangle",
+    "r1-setup",
+    "r2-data",
+    "r2-wrangle",
+    "r3-describe",
+    "r3-grid",
+    "r4-test"
+  ],
+  "labels": {
+    "Add a column (mutate)": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-data"
+    ],
+    "Add the course's Copilot instructions to this folder": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "Allowed values (a dropdown)": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md"
+    ],
+    "APA numbers to check your sentence": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/own-tests",
+      "videos/r4-test"
+    ],
+    "AURA Lab R Companion": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc451/16-describe-counts-and-source-measures.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/16-describe-counts-and-source-measures.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md"
+    ],
+    "AURA: Add the course's Copilot instructions to this folder": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "AURA: Check my setup": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/01-check-your-setup.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "AURA: Check my test choice": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md",
+      "videos/own-tests"
+    ],
+    "AURA: Explain an R error": [
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/03-explain-an-r-error.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/03-explain-an-r-error.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r1-setup"
+    ],
+    "AURA: Fix R (not attached)": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "AURA: Import a data file (CSV or Excel)": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md"
+    ],
+    "AURA: Open an R terminal": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/13-publish-your-site.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc451/16-describe-counts-and-source-measures.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/13-publish-your-site.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/16-describe-counts-and-source-measures.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/18-build-your-conference-poster.md",
+      "videos/own-describe",
+      "videos/own-tests",
+      "videos/own-wrangle",
+      "videos/r2-data",
+      "videos/r3-describe",
+      "videos/r4-test"
+    ],
+    "AURA: Open my course workspace": [
+      "guides/mc451/02-open-your-course-workspace.md",
+      "guides/mc501/02-open-your-course-workspace.md"
+    ],
+    "AURA: Open the data viewer": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md",
+      "videos/r3-grid"
+    ],
+    "AURA: Pick my course": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md",
+      "videos/r2-data",
+      "videos/r4-test"
+    ],
+    "AURA: Where to get help": [
+      "videos/r1-setup"
+    ],
+    "AURA: Write R code": [
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/own-tests",
+      "videos/r2-data",
+      "videos/r2-wrangle",
+      "videos/r3-describe",
+      "videos/r4-test"
+    ],
+    "Bar chart": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "videos/r3-describe"
+    ],
+    "Boxplot": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Check my setup": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/01-check-your-setup.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/r1-setup",
+      "videos/r2-data"
+    ],
+    "Check my test choice": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md",
+      "videos/own-tests",
+      "videos/r4-test"
+    ],
+    "Chi-square test with Cramer's V": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/r4-test"
+    ],
+    "Choose columns from a data file": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Choose my own variables": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "Choose the table and the columns": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Choose the table and the two columns": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Code it once": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md"
+    ],
+    "Count rows per group (count)": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-data"
+    ],
+    "Crosstab with proportions": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Data": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc501/07-reliability-grid.md"
+    ],
+    "Describe": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Explain an R error": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/03-explain-an-r-error.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/03-explain-an-r-error.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r1-setup"
+    ],
+    "Fix R (not attached)": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "Frequency table": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "videos/r3-describe"
+    ],
+    "Git": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "Help": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "Histogram": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Histogram comparing two groups": [
+      "videos/r3-describe"
+    ],
+    "Import": [
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md"
+    ],
+    "Import a data file (CSV or Excel)": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md"
+    ],
+    "Install what is missing": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/01-check-your-setup.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/r1-setup"
+    ],
+    "Join the channel labels onto the messages": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-wrangle"
+    ],
+    "Join two tables by a key and nearest earlier time (left_join)": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md"
+    ],
+    "Join two tables by a shared column": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-wrangle"
+    ],
+    "Keep some columns (select)": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "Keep some rows (filter)": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "Label each channel by its top category": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-wrangle"
+    ],
+    "Line chart over time": [
+      "videos/r3-describe"
+    ],
+    "Linear regression": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md"
+    ],
+    "Load the course Twitch corpus": [
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-data",
+      "videos/r2-wrangle",
+      "videos/r3-describe"
+    ],
+    "Load your saved analysis (RDS)": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md"
+    ],
+    "Make a help report": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "MC 451 Research Methods": [
+      "guides/mc451/01-check-your-setup.md"
+    ],
+    "MC 501 Research Methods (graduate)": [
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "My setup": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "One-way ANOVA with eta squared": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "Open an R terminal": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/13-publish-your-site.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc451/16-describe-counts-and-source-measures.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/13-publish-your-site.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/16-describe-counts-and-source-measures.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/18-build-your-conference-poster.md",
+      "videos/own-describe",
+      "videos/own-tests",
+      "videos/own-wrangle",
+      "videos/r2-data",
+      "videos/r3-describe",
+      "videos/r4-test"
+    ],
+    "Open in the data viewer": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md"
+    ],
+    "Open my course workspace": [
+      "guides/mc451/02-open-your-course-workspace.md",
+      "guides/mc501/02-open-your-course-workspace.md"
+    ],
+    "Open the data viewer": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md",
+      "videos/r3-grid"
+    ],
+    "Pick my course": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md",
+      "videos/r1-setup",
+      "videos/r2-data",
+      "videos/r4-test"
+    ],
+    "Power analysis for your sample size": [
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/r4-test"
+    ],
+    "R (AURA)": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/11-render-a-quarto-document.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/11-render-a-quarto-document.md"
+    ],
+    "R: (not attached)": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "R2 Data": [
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/08-wrangling.md"
+    ],
+    "R3 Describe": [
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "videos/r3-describe"
+    ],
+    "R4 Test": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "Reliability grid": [
+      "videos/r2-data"
+    ],
+    "Reliability: compare two coding passes": [
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc501/07-reliability-grid.md"
+    ],
+    "Run it": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "Run my steps from the top": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc451/16-describe-counts-and-source-measures.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/16-describe-counts-and-source-measures.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md"
+    ],
+    "Run the selected lines in R": [
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc451/16-describe-counts-and-source-measures.md",
+      "guides/mc451/17-choose-your-test-and-write-it-in-apa.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/16-describe-counts-and-source-measures.md",
+      "guides/mc501/17-choose-your-test-and-write-it-in-apa.md"
+    ],
+    "Save a table as a CSV file": [
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc501/06-draw-your-coding-sample.md"
+    ],
+    "Save a table as an RDS file": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md",
+      "videos/r2-wrangle"
+    ],
+    "Settings block (name the test variables)": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md"
+    ],
+    "Summary by group": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "videos/r3-describe"
+    ],
+    "Test: a check on Copilot's code": [
+      "guides/mc427/r-field-guide.md"
+    ],
+    "Turn the date column into a time (as_datetime)": [
+      "guides/mc451/08-wrangling.md",
+      "guides/mc501/08-wrangling.md"
+    ],
+    "Use this file": [
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc501/07-reliability-grid.md"
+    ],
+    "Welch t-test with Cohen's d": [
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/r4-test"
+    ],
+    "What to do": [
+      "guides/mc451/03-explain-an-r-error.md",
+      "guides/mc501/03-explain-an-r-error.md"
+    ],
+    "Where are your two coding passes?": [
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc501/07-reliability-grid.md"
+    ],
+    "Where to get help": [
+      "videos/r1-setup"
+    ],
+    "White Paper": [
+      "guides/mc451/07-reliability-grid.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/09-describing-tables-and-charts.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc451/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/07-reliability-grid.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/09-describing-tables-and-charts.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/15-draw-a-pilot-and-make-a-blind-recode-sheet.md",
+      "guides/mc501/18-build-your-conference-poster.md"
+    ],
+    "Will you code this variable twice to check your reliability?": [
+      "guides/mc451/05-data-viewer-and-coding-columns.md",
+      "guides/mc501/05-data-viewer-and-coding-columns.md"
+    ],
+    "Write R code": [
+      "guides/mc427/r-field-guide.md",
+      "guides/mc427/r-quick-reference.md",
+      "guides/mc451/04-load-the-course-data.md",
+      "guides/mc451/06-draw-your-coding-sample.md",
+      "guides/mc451/08-wrangling.md",
+      "guides/mc451/10-tests-and-check-my-test-choice.md",
+      "guides/mc501/04-load-the-course-data.md",
+      "guides/mc501/06-draw-your-coding-sample.md",
+      "guides/mc501/08-wrangling.md",
+      "guides/mc501/10-tests-and-check-my-test-choice.md",
+      "videos/own-tests",
+      "videos/r2-data",
+      "videos/r2-wrangle",
+      "videos/r3-describe",
+      "videos/r4-test"
+    ],
+    "XQuartz": [
+      "guides/mc451/01-check-your-setup.md",
+      "guides/mc501/01-check-your-setup.md"
+    ],
+    "Your steps": [
+      "guides/mc427/r-field-guide.md"
+    ]
+  }
+}

@@ -150,3 +150,61 @@ export function repeatWarning(key: string, right: string, distinct: number, rows
   const repeats = rows - distinct;
   return `${key} repeats in ${right} (${repeats} of ${rows} rows share a value with another row), so the join will add rows. If each ${key} should appear once, count it first.`;
 }
+
+// ---------------- Save tables: RDS picker and RData (0.7.5, A2) ----------------
+
+/** Save tasks that ask which table to save (MC 451 and MC 501). */
+export const SAVE_PICK_TASKS = new Set(['export-rds', 'save-rdata']);
+
+/** RData blocks make the tables they load, so Run it records those names (filled by the menu). */
+export const RDATA_TASKS = new Set(['save-rdata', 'load-rdata']);
+
+/**
+ * The tables a save may offer, the course default first: the tables the script assigns above the
+ * cursor and the ones a run menu block made. The default stays the first item, so pressing Enter
+ * keeps the block the 0.7.4 menu wrote.
+ */
+export function saveChoices(has: Iterable<string>, courseDefault: string): string[] {
+  const names = [...new Set(has)].filter((n) => n !== courseDefault);
+  return [courseDefault, ...names];
+}
+
+/** The default RDS file for a table: the course file for the course default, else data/<name>.RDS. */
+export function rdsFileFor(table: string, courseDefault: string, courseFile: string): string {
+  return table === courseDefault ? courseFile : `data/${table}.RDS`;
+}
+
+/** A table name R accepts without backticks; anything else is not offered as a save choice. */
+export function plainName(name: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9._]*$/.test(name) && !RESERVED.has(name);
+}
+
+const RESERVED = new Set(['if', 'else', 'repeat', 'while', 'function', 'for', 'in', 'next', 'break', 'TRUE', 'FALSE', 'NULL', 'Inf', 'NaN', 'NA']);
+
+// ---------------- Run it: a table the session may not have (0.7.5, G16) ----------------
+
+/**
+ * The tables a block uses that nothing has made yet: names from `known` (the course tables and the
+ * tables the script assigns) that appear in the block's code, outside comments and quoted text,
+ * before the block assigns them itself, and that no run menu block made in this window. Lines the
+ * student ran by hand are invisible here, so the caller words this as "may not have".
+ */
+export function tablesNotMade(code: string, known: Iterable<string>, made: Set<string>): string[] {
+  const knownSet = new Set(known);
+  const assigned = new Set<string>();
+  const out: string[] = [];
+  for (const raw of code.split(/\r?\n/)) {
+    const line = raw.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""').replace(/#.*$/, '');
+    const lhs = line.match(/^[ \t]*([A-Za-z][A-Za-z0-9._]*)[ \t]*<-/);
+    const rhs = lhs ? line.slice(lhs[0].length) : line;
+    for (const m of rhs.matchAll(/(?<![A-Za-z0-9._$@:])([A-Za-z][A-Za-z0-9._]*)(?![A-Za-z0-9._]*\s*(?:=(?!=)|\())/g)) {
+      const n = m[1];
+      if (knownSet.has(n) && !assigned.has(n) && !made.has(n) && !out.includes(n)) out.push(n);
+    }
+    if (lhs) assigned.add(lhs[1]);
+  }
+  return out;
+}
+
+/** The tables every MC 451 and MC 501 menu block may read. */
+export const COURSE_TABLES = ['chat', 'streams', 'analysis', 'chat_streams'];

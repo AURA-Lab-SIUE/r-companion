@@ -3,7 +3,7 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { renderFolderProblem } from '../src/render';
+import { quartoProjectOf, renderFolderProblem } from '../src/render';
 import { panelTree } from '../src/panelModel';
 import { menuItems } from '../src/catalog';
 
@@ -23,6 +23,35 @@ test('render: a worksheet in 03_Project that reads data/ gets the Execution halt
   assert.equal(renderFolderProblem(path.join(root, 'w.qmd'), root, text), undefined);
   assert.equal(renderFolderProblem(path.join(root, '03_Project', 'w.qmd'), root, 'library(tidyverse)'), undefined);
   assert.equal(renderFolderProblem(path.join(root, '03_Project', 'w.qmd'), undefined, text), undefined);
+});
+
+test('render: a White Paper chapter in a subfolder of its project gets the ../data/ advice and no move; the project top is unchanged', () => {
+  const root = tmpTree({
+    'data/twitch_analysis.RDS': 'x',
+    'twitch-portfolio/_quarto.yml': 'project:\n  type: book\n',
+    'twitch-portfolio/data/derived/twitch_analysis.RDS': 'x',
+    'twitch-portfolio/03-results.qmd': 'x',
+    'twitch-portfolio/codebook/codebook.qmd': 'x',
+    'twitch-portfolio/journals/deep/week-09.qmd': 'x',
+    '03_Project/w.qmd': 'x',
+  });
+  const text = 'codes <- read_rds("data/derived/twitch_analysis.RDS")';
+  const proj = path.join(root, 'twitch-portfolio');
+  const cb = renderFolderProblem(path.join(proj, 'codebook', 'codebook.qmd'), root, text)!;
+  assert.match(cb, /folder twitch-portfolio\/codebook, inside your project/);
+  assert.match(cb, /type \.\.\/ in front of every data\/ \(\.\.\/ means: go up one folder first\)/);
+  assert.doesNotMatch(cb, /Move the worksheet|top of your course folder/);
+  assert.match(renderFolderProblem(path.join(proj, 'journals', 'deep', 'week-09.qmd'), root, text)!, /type \.\.\/\.\.\/ in front of every data\/ \(\.\.\/\.\.\/ means: go up 2 folders first\)/);
+  assert.equal(renderFolderProblem(path.join(proj, '03-results.qmd'), root, text), undefined);
+  assert.equal(quartoProjectOf(path.join(proj, 'codebook', 'codebook.qmd'), root), proj);
+  assert.equal(quartoProjectOf(path.join(proj, '03-results.qmd'), root), proj);
+  // a plain subfolder, and the course folder's own _quarto.yml, keep the 0.7.4 message and the move
+  assert.equal(quartoProjectOf(path.join(root, '03_Project', 'w.qmd'), root), undefined);
+  assert.match(renderFolderProblem(path.join(root, '03_Project', 'w.qmd'), root, text)!, /Move the worksheet to the top of your course folder/);
+  fs.writeFileSync(path.join(root, '_quarto.yml'), 'project:\n  type: website\n');
+  assert.equal(quartoProjectOf(path.join(root, '03_Project', 'w.qmd'), root), undefined);
+  const rc = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'renderCommands.ts'), 'utf8');
+  assert.match(rc, /quartoProjectOf\(ed\.document\.fileName, root\)\n\s+\? await vscode\.window\.showWarningMessage\(problem, 'Render anyway'\)/);
 });
 
 test('the panel: Preview and Render in Your steps for MC 451 and MC 501 only; both are AURA commands', () => {

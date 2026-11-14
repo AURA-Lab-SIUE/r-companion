@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { renderFolderProblem } from './render';
+import { quartoProjectOf, renderFolderProblem } from './render';
 
 const QUARTO_EXT = 'quarto.quarto';
 
@@ -30,7 +30,10 @@ export async function renderOrPreview(kind: 'render' | 'preview'): Promise<void>
   const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   const problem = renderFolderProblem(ed.document.fileName, root, ed.document.getText());
   if (problem && root) {
-    const move = await vscode.window.showWarningMessage(problem, 'Move it to the top folder', 'Render anyway');
+    // A chapter inside a Quarto project is never offered the move (gap P1, rgui 2026-11-14)
+    const move = quartoProjectOf(ed.document.fileName, root)
+      ? await vscode.window.showWarningMessage(problem, 'Render anyway')
+      : await vscode.window.showWarningMessage(problem, 'Move it to the top folder', 'Render anyway');
     if (move === undefined) return;
     if (move === 'Move it to the top folder') {
       const dest = path.join(root, path.basename(ed.document.fileName));

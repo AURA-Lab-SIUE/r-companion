@@ -21,7 +21,7 @@ export const TASK_RELEASE: Record<string, Release> = {
   filter: 'R2', select: 'R2', mutate: 'R2', count: 'R2',
   'clean-dates': 'R2', 'join-chat-streams': 'R2', 'channel-lookup': 'R2', 'join-lookup': 'R2', 'join-tables': 'R2',
   'label-from-snapshot': 'R2', sample: 'R2',
-  'export-csv': 'R2', 'export-rds': 'R2', reliability: 'R2',
+  'export-csv': 'R2', 'export-rds': 'R2', reliability: 'R2', 'save-rdata': 'R2', 'load-rdata': 'R2',
   // R3 Describe and plots
   'count-missing': 'R3', 'count-distinct': 'R3', frequency: 'R3', crosstab: 'R3', agreement: 'R3', 'grouped-summary': 'R3', bar: 'R3', histogram: 'R3',
   'histogram-grouped': 'R3', line: 'R3', boxplot: 'R3',

@@ -17,14 +17,14 @@ import { CHART_TASKS, watchSavedChart } from './chartWatch';
 import { alreadyShown } from './rTarget';
 import { buildGridHtml, gridCsv, GridConfig, DEFAULT_GRID, GridResult } from './grid';
 import { CATALOG, TaskDef, R4_TEST_TASKS, profileOf, offers } from './catalog';
-import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning } from './tables';
+import { assignedNames, tableChoices, TableChoice, TABLE_TASKS, MAKES, tableSources, sharedColumns, repeatWarning, saveChoices, rdsFileFor, plainName, tablesNotMade, COURSE_TABLES } from './tables';
 import { STEPS_FILE, appendBlock, runnableScript, runStepsCode, RUN_STEPS_NOTICE } from './steps';
 import { passPairs, reliabilityForPair, gridFileName, readPassesFile, pairFromColumns, PassPair } from './reliabilityCode';
 import { splitValues } from './codegen/extra';
 import { FUNCTION_NAME, helpLine } from './scripts';
 import { scriptNameProblem, scriptFileName, newScriptText, listStarters } from './scripts';
 import { projectNameProblem, newPortfolioBlock, pointAtProjectBlock, deployBlock, INLINE_R_SNIPPET, findProjects } from './paper';
-import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning } from './importFile';
+import { dataFileKind, tableNameFromFile, tableNameProblem, scriptPath, OUTSIDE_NOTICE, probeExpr, sheetListExpr, peekSummary, typeWord, namesNeedCleaning, longNumberColumns, fileHead } from './importFile';
 
 export { menuTasks, menuItems } from './catalog';
 
@@ -46,6 +46,8 @@ export interface MenuDeps {
   storageDir: string;
   /** auraR.apaCheck: offer the APA numbers block in the Test menu (owner decision U4). */
   apaCheck: () => boolean;
+  /** Close every R terminal so the next run starts a fresh R (A4). 'positron' when that cannot be done here. */
+  restartR: () => Promise<'restarted' | 'positron'>;
 }
 
 // The last text editor the student worked in. A chart tab, the data viewer, or the error
@@ -107,6 +109,9 @@ export function registerMenus(context: vscode.ExtensionContext, deps: MenuDeps):
   reg('auraR.openReliabilityGrid', () => openReliabilityGrid(context, deps));
   reg('auraR.openSteps', () => openSteps());
   reg('auraR.runSteps', () => runSteps(context, deps));
+  // VS Code refuses modal dialogs under its test runner, so the integration suite alone passes
+  // RESTART_CONFIRMED to stand in for the click; a panel row or the Command Palette passes nothing
+  reg('auraR.restartAndRunSteps', (arg?: unknown) => runSteps(context, deps, true, arg === RESTART_CONFIRMED));
   reg('auraR.goToLine', (line: number) => goToLine(line));
   // The White Paper R steps (audit 2026-11-12, F5)
   reg('auraR.newPortfolio', () => newPortfolioCommand(deps));
@@ -351,11 +356,18 @@ async function openSteps(): Promise<void> {
   await vscode.window.showTextDocument(typeof s === 'string' ? await vscode.workspace.openTextDocument(s) : s, { preview: false });
 }
 
-async function runSteps(context: vscode.ExtensionContext, deps: MenuDeps): Promise<void> {
+const RESTART_CONFIRMED = 'aura-it-restart-confirmed';
+const RESTART_ASK = 'Restart R? Every table R has now is cleared, then your steps run from the top in a fresh R. Your script is not changed.';
+
+async function runSteps(context: vscode.ExtensionContext, deps: MenuDeps, restart = false, confirmed = false): Promise<void> {
   const s = stepsScript();
   if (!s) {
     vscode.window.showInformationMessage(NO_STEPS);
     return;
+  }
+  if (restart && !confirmed) {
+    const ok = await vscode.window.showWarningMessage(RESTART_ASK, { modal: true }, 'Restart R and run');
+    if (!ok) return;
   }
   const doc = typeof s === 'string' ? await vscode.workspace.openTextDocument(s) : s;
   // source() reads the file on disk, so unsaved changes are saved first (as vscode-R's Source does)
@@ -366,6 +378,15 @@ async function runSteps(context: vscode.ExtensionContext, deps: MenuDeps): Promi
   }
   const code = runStepsCode(doc.fileName, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath);
   const run = async () => {
+    if (restart) {
+      if ((await deps.restartR()) === 'positron') {
+        void vscode.window.showInformationMessage('In Positron, click the restart button at the top of the Console, then use Run my steps from the top.');
+        return;
+      }
+      // The fresh R has none of the tables the menu blocks made in this window
+      ranTables.clear();
+      deps.output.appendLine('Restarted R: closed every R terminal, so the steps run in a fresh R (AURA).');
+    }
     deps.output.appendLine(`Run my steps from the top: ${code}`);
     try {
       await deps.runInSession(code);
@@ -451,6 +472,11 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
     return insertAndMaybeRun(deps, generate(profile, def.task, { data: t.table.name }), def.label, def.task);
   }
   if (def.task === 'settings-block') return settingsFlow(deps, profile, def.label);
+  // 0.7.5 (A2, G11): MC 451 and MC 501 save and load blocks
+  if (course !== 'mc427' && def.task === 'export-rds') return saveRdsFlow(deps, profile, def);
+  if (def.task === 'save-rdata') return saveRdataFlow(deps, profile, def.label);
+  if (def.task === 'load-rdata') return loadRdataFlow(deps, profile, def.label);
+  if (course !== 'mc427' && def.task === 'import-rds') return loadRdsFlow(deps, profile, def.label);
   if (def.task in DESCRIBE_ASKS) return describeFlow(deps, profile, def.task, def.label);
   if (profile === 'mc427' && def.task in MC427_TEST_ASKS) return describeFlow(deps, profile, def.task, def.label, MC427_TEST_ASKS);
   let task = def.task;
@@ -482,6 +508,131 @@ async function writeCodeCommand(deps: MenuDeps, presetTask?: string): Promise<vo
   // even when the student never answers that prompt.
   const note = crossCheck && R4_TEST_TASKS.has(def.task) ? COPILOT_CHECK : undefined;
   await insertAndMaybeRun(deps, code, def.label, task, note);
+}
+
+// ---------------- Save and load tables (0.7.5, A2 and G11) ----------------
+
+const COURSE_RDS = 'data/twitch_analysis.RDS';
+
+/** The tables the script assigns above the cursor plus those a run menu block made, in a plain name. */
+function tablesSoFar(): string[] {
+  const editor = vscode.window.activeTextEditor ?? (lastTextDoc && !lastTextDoc.doc.isClosed ? { document: lastTextDoc.doc, selection: lastTextDoc.selection } : undefined);
+  const above = editor ? editor.document.getText(new vscode.Range(new vscode.Position(0, 0), editor.selection.active)) : '';
+  return [...new Set([...assignedNames(above), ...ranTables])].filter(plainName);
+}
+
+/** Files in the course folder's data folder with one of these endings, as data/<name>. */
+function dataFiles(endings: RegExp): string[] {
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!folder) return [];
+  const dir = path.join(folder, 'data');
+  try {
+    return fs.readdirSync(dir).filter((f) => endings.test(f) && fs.statSync(path.join(dir, f)).isFile()).sort().map((f) => `data/${f}`);
+  } catch {
+    return [];
+  }
+}
+
+const FILE_NAME = (ending: RegExp, what: string) => (v: string) =>
+  !v.trim() ? 'Type a file name.' : !ending.test(v.trim()) ? `End the file name with ${what}.` : /["\\]/.test(v) ? 'Use / between folders, and no quotation marks.' : undefined;
+
+// Save a table as an RDS file. With one table (the course's analysis) this is the 0.7.4 flow; with
+// more, a pick of the tables, the course one first, so pressing Enter keeps the old block.
+async function saveRdsFlow(deps: MenuDeps, profile: GenProfile, def: TaskDef): Promise<void> {
+  const choices = saveChoices(tablesSoFar(), 'analysis');
+  let table = 'analysis';
+  if (choices.length > 1) {
+    const pick = await vscode.window.showQuickPick(
+      choices.map((n, i) => ({ label: n, description: i === 0 ? 'the course table' : undefined })),
+      { title: def.label, placeHolder: 'Which table do you save?' },
+    );
+    if (!pick) return;
+    table = pick.label;
+  }
+  const name = await vscode.window.showInputBox({ title: def.label, prompt: 'File name to save', value: rdsFileFor(table, 'analysis', defaultOutFile(profile, def.task)) });
+  // As in 0.7.4: an empty or dismissed box keeps the course file name
+  const params: GenParams = table === 'analysis' ? {} : { data: table, file: rdsFileFor(table, 'analysis', defaultOutFile(profile, def.task)) };
+  if (name) params.file = name;
+  return insertAndMaybeRun(deps, generate(profile, 'export-rds', params), def.label, 'export-rds');
+}
+
+// Load your saved analysis (G11). With only the course file in data/ (or none), the 0.7.4 flow;
+// with other RDS files there, a pick of them, the course file first. The table keeps the name
+// analysis, which every later Describe and Test block reads.
+async function loadRdsFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const files = dataFiles(/\.rds$/i);
+  const others = files.filter((f) => f !== COURSE_RDS);
+  let file: string | undefined;
+  if (others.length > 0) {
+    const items = [
+      ...(files.includes(COURSE_RDS) ? [{ label: COURSE_RDS, description: 'the course file' }] : []),
+      ...others.map((f) => ({ label: f, description: undefined as string | undefined })),
+    ];
+    const pick = await vscode.window.showQuickPick(items, { title: label, placeHolder: 'Which saved file do you load? It is loaded as analysis.' });
+    if (!pick) return;
+    file = pick.label;
+  }
+  return insertAndMaybeRun(deps, generate(profile, 'import-rds', file && file !== COURSE_RDS ? { file } : {}), label, 'import-rds');
+}
+
+// Save several tables (.RData): a multi-pick of the tables, then the file name. save(), never
+// save.image(), so the file holds only the tables picked.
+async function saveRdataFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const names = tablesSoFar();
+  if (names.length === 0) {
+    vscode.window.showWarningMessage('Your script makes no table above the cursor yet. Put the cursor below the lines that make your tables, then try again.');
+    return;
+  }
+  const picked = await vscode.window.showQuickPick(
+    names.map((n) => ({ label: n })),
+    { title: label, canPickMany: true, placeHolder: 'Tick each table to save in the file' },
+  );
+  if (!picked || picked.length === 0) return;
+  const file = await vscode.window.showInputBox({ title: label, prompt: 'File name to save', value: 'data/my-tables.RData', validateInput: FILE_NAME(/\.(rdata|rda)$/i, '.RData'), ignoreFocusOut: true });
+  if (!file) return;
+  const tables = picked.map((p) => p.label);
+  return insertAndMaybeRun(deps, generate(profile, 'save-rdata', { tables, file: file.trim() }), label, 'save-rdata');
+}
+
+// Load saved tables (.RData): the .RData files in data/, or a typed name when there are none.
+// The tables it makes are read from the file by R, so Run it records them for the table pickers.
+async function loadRdataFlow(deps: MenuDeps, profile: GenProfile, label: string): Promise<void> {
+  const files = dataFiles(/\.(rdata|rda)$/i);
+  let file: string | undefined;
+  if (files.length > 0) {
+    const pick = await vscode.window.showQuickPick(files.map((f) => ({ label: f })), { title: label, placeHolder: 'Which saved file do you load?' });
+    file = pick?.label;
+  } else {
+    file = (await vscode.window.showInputBox({ title: label, prompt: 'File name to load', value: 'data/my-tables.RData', validateInput: FILE_NAME(/\.(rdata|rda)$/i, '.RData'), ignoreFocusOut: true }))?.trim();
+  }
+  if (!file) return;
+  const makes = await rdataNames(deps, file);
+  return insertAndMaybeRun(deps, generate(profile, 'load-rdata', { file }), label, 'load-rdata', undefined, makes);
+}
+
+/** The table names an .RData file holds, read by R; none when R cannot read it yet. */
+async function rdataNames(deps: MenuDeps, file: string): Promise<string[]> {
+  const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const rscript = deps.rscriptPath();
+  if (!folder || !rscript) return [];
+  const abs = path.join(folder, file);
+  if (!fs.existsSync(abs)) return [];
+  fs.mkdirSync(deps.storageDir, { recursive: true });
+  const stamp = Date.now();
+  const outPath = path.join(deps.storageDir, `rdata-${stamp}.txt`);
+  const scriptPathR = path.join(deps.storageDir, `rdata-${stamp}.R`);
+  const q = (x: string) => JSON.stringify(x.replace(/\\/g, '/'));
+  fs.writeFileSync(scriptPathR, `writeLines(load(${q(abs)}, envir = new.env()), ${q(outPath)})\n`);
+  try {
+    await deps.runRscript(rscript, [scriptPathR], 60000);
+    return fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8').split(/\r?\n/).filter(plainName) : [];
+  } catch (e: any) {
+    deps.output.appendLine(`Could not list the tables in ${file}: ${e?.message ?? e}`);
+    return [];
+  } finally {
+    fs.rmSync(outPath, { force: true });
+    fs.rmSync(scriptPathR, { force: true });
+  }
 }
 
 // ---------------- Import a data file (0.5.3) ----------------
@@ -549,9 +700,18 @@ async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string
 
   // The peek: the columns R will read, with their types. A failed probe (no R yet) still writes
   // the block, since the student may install R next and run it then.
+  // Whole numbers too long for R to keep exactly (a 19-digit id) are read as text (0.7.5, G8)
+  let textColumns: string[] = [];
+  if (kind === 'csv') {
+    try {
+      textColumns = longNumberColumns(fileHead(file));
+    } catch (e: any) {
+      deps.output.appendLine(`Could not read the start of ${file}: ${e?.message ?? e}`);
+    }
+  }
   let probe: ColumnProbe | undefined;
   try {
-    probe = await runColumnProbe(deps, probeExpr(file, sheet));
+    probe = await runColumnProbe(deps, probeExpr(file, sheet, textColumns));
   } catch (e: any) {
     deps.output.appendLine(`Peek skipped: ${e?.message ?? e}`);
   }
@@ -573,11 +733,12 @@ async function importDataFile(deps: MenuDeps, profile: GenProfile, label: string
   const where = scriptPath(file, folder);
   if (where.outside) void vscode.window.showWarningMessage(OUTSIDE_NOTICE);
   const params: GenParams = { data: name.trim(), file: where.path, sheet };
+  if (textColumns.length > 0) params.textColumns = textColumns;
   // janitor is required in MC 451 and MC 501 only
   if (profile !== 'mc427' && probe && namesNeedCleaning(probe).length > 0) params.cleanNames = true;
   const task = kind === 'excel' ? 'import-xlsx' : 'import-csv';
   await insertAndMaybeRun(deps, generate(profile, task, params), label, task, undefined, [name.trim()]);
-  const expr = probeExpr(file, sheet);
+  const expr = probeExpr(file, sheet, textColumns);
   return { name: name.trim(), probe: params.cleanNames ? `janitor::clean_names(${expr})` : expr };
 }
 
@@ -1293,11 +1454,14 @@ function logSkipped(deps: MenuDeps, skipped: string[]): void {
 async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, task?: string, note?: string, makes: string[] = []): Promise<void> {
   const editor = await scriptEditor();
   const steps = stepsFile();
+  // The script above the block, for the Run it note (G16)
+  let above = '';
   if (!editor && steps) {
     // No script open (0.5.3, coordinator decision on spec Rank 5): the block goes to the end of
     // steps.R in the course folder, so every block lives in exactly one script. The file is made
     // only now, by the first block written, never on activation.
     const before = fs.existsSync(steps) ? fs.readFileSync(steps, 'utf8') : '';
+    above = before;
     const block = skipLoadedLibraries(code, before);
     logSkipped(deps, block.skipped);
     fs.writeFileSync(steps, appendBlock(before, block.code));
@@ -1315,6 +1479,7 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
     const doc = editor.document;
     const quarto = isQuartoFile(doc.fileName) || doc.languageId === 'quarto' || doc.languageId === 'rmd';
     const linesAbove = doc.getText(new vscode.Range(0, 0, editor.selection.active.line, editor.selection.active.character)).split(/\r?\n/);
+    above = linesAbove.join('\n');
     const chart = CHART_TASKS.has(task ?? '');
     // Only the script above the cursor counts: a library() line below it would load too late
     const block = skipLoadedLibraries(code, linesAbove.join('\n'));
@@ -1331,7 +1496,14 @@ async function insertAndMaybeRun(deps: MenuDeps, code: string, label: string, ta
   }
   deps.output.appendLine(`Inserted: ${label}.`);
   if (note) void vscode.window.showInformationMessage(note);
-  const run = await vscode.window.showInformationMessage(`Inserted the ${label} code. Run it now?`, 'Run it');
+  // G16 (0.7.5): Run it sends only this block, so a table it uses that no run menu block made may
+  // be missing from R. Lines run by hand are invisible here, hence "may not have".
+  const course = deps.currentCourse();
+  const missing = course && course !== 'mc427' ? tablesNotMade(code, [...COURSE_TABLES, ...assignedNames(above)], ranTables) : [];
+  const ask = missing.length > 0
+    ? `Inserted the ${label} code. It uses ${missing.join(' and ')}, which R may not have yet. If R says object not found, use Run my steps from the top. Run it now?`
+    : `Inserted the ${label} code. Run it now?`;
+  const run = await vscode.window.showInformationMessage(ask, 'Run it');
   if (run) {
     const runIt = async () => {
       // Watch for the chart before the block is sent, so a fast R cannot save it unseen

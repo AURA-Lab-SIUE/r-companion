@@ -93,6 +93,8 @@ function taskNode(prefix: string, it: MenuItem): PanelNode {
 
 export function panelTree(input: PanelInput): PanelNode[] {
   const course = input.course;
+  // 0.7.5 items go after every node the course videos show, so none of those moves
+  const DATA_ADDED_LAST = new Set(['save-rdata', 'load-rdata']);
   const by = (category: string) => input.items.filter((i) => i.category === category);
 
   const setup: PanelNode = {
@@ -120,7 +122,7 @@ export function panelTree(input: PanelInput): PanelNode[] {
     label: 'Data',
     icon: 'database',
     children: [
-      ...by('R2 Data').map((i) => taskNode('data', i)),
+      ...by('R2 Data').filter((i) => !DATA_ADDED_LAST.has(i.task)).map((i) => taskNode('data', i)),
       { id: 'data/viewer', label: 'Open the data viewer', icon: 'table', command: { command: 'auraR.openDataViewer' } },
       // Rank 6, owner q-20261022-0005 = A: vscode-R's Workspace panel is the environment view
       {
@@ -137,6 +139,7 @@ export function panelTree(input: PanelInput): PanelNode[] {
         icon: 'debug-disconnect',
         command: { command: 'auraR.fixNotAttached' },
       },
+      ...by('R2 Data').filter((i) => DATA_ADDED_LAST.has(i.task)).map((i) => taskNode('data', i)),
     ],
   };
 
@@ -176,6 +179,14 @@ export function panelTree(input: PanelInput): PanelNode[] {
             },
           ]
         : []),
+      // 0.7.5 (A4): after the fixed nodes the course videos show, before the script's own sections
+      {
+        id: 'steps/restart-run',
+        label: 'Restart R and run my steps',
+        tooltip: 'Start a fresh R, then run your steps from the top: a step that worked only because of something typed by hand shows up here',
+        icon: 'debug-restart',
+        command: { command: 'auraR.restartAndRunSteps' },
+      },
       ...input.banners.map((b) => ({
         id: `steps/banner/${b.line}`,
         label: b.label,
