@@ -3489,6 +3489,96 @@
           "has_caption"
         ]
       }
+    },
+    {
+      "id": "mc451.save-rdata",
+      "release": "R2",
+      "task": "save-rdata",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-save-rdata.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Loading objects:",
+        "  analysis",
+        "  chat"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.save-rdata",
+      "release": "R2",
+      "task": "save-rdata",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-save-rdata.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-import-rds.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Loading objects:",
+        "  analysis",
+        "  chat"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc451.load-rdata",
+      "release": "R2",
+      "task": "load-rdata",
+      "profile": "mc451",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-load-rdata.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-import-rds.R",
+        "fixtures/v2v/r2-save-rdata.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Loading objects:",
+        "  analysis",
+        "  chat"
+      ],
+      "sentence_template": null
+    },
+    {
+      "id": "mc501.load-rdata",
+      "release": "R2",
+      "task": "load-rdata",
+      "profile": "mc501",
+      "generated": true,
+      "role": "default",
+      "alternative_to": null,
+      "file": "fixtures/v2v/r2-load-rdata.R",
+      "requires": [
+        "fixtures/v2v/_setup-build-analysis.R",
+        "fixtures/v2v/r2-import-course-dataset.R",
+        "fixtures/v2v/r2-import-rds.R",
+        "fixtures/v2v/r2-save-rdata.R"
+      ],
+      "data": [],
+      "must_print": [
+        "Loading objects:",
+        "  analysis",
+        "  chat"
+      ],
+      "sentence_template": null
     }
   ]
 }

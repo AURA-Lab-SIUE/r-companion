@@ -3,8 +3,10 @@
 // file, the table name, and the Excel sheet, shows a peek from the column probe, then writes the
 // Load block from the codegen templates.
 
+import * as fs from 'fs';
 import * as path from 'path';
 import { ColumnProbe } from './columnProbe';
+import { parseCsv } from './csv';
 
 export type DataFileKind = 'csv' | 'excel' | 'rds';
 
@@ -58,9 +60,38 @@ export const OUTSIDE_NOTICE =
   // No "data/": MC 427 course folders keep their files at the top level and have no data folder.
   'This file is outside your course folder, so your script will find it only on this computer, not in your copy on GitHub or on your instructor\'s computer. Copy the file into your course folder, then import it again from there.';
 
+/**
+ * The columns of a CSV whose whole numbers have 16 or more digits, by their names in the file.
+ * R keeps about 15 digits of a number, so a 19-digit id read as a number comes back changed
+ * (7301928374650000062 became 7301928374650000384, walk 2026-11-13, G8). Reads the text given
+ * (the start of the file), so a column whose long numbers start later is not seen.
+ */
+export function longNumberColumns(csvText: string): string[] {
+  const { header, rows } = parseCsv(csvText);
+  const long = /^\s*[-+]?\d{16,}\s*$/;
+  return header.filter((_, i) => rows.some((r) => long.test(r[i] ?? '')));
+}
+
+/** The start of a file, cut at its last whole line, for longNumberColumns. */
+export function fileHead(file: string, bytes = 1 << 20): string {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(bytes);
+    const n = fs.readSync(fd, buf, 0, bytes, 0);
+    const text = buf.subarray(0, n).toString('utf8');
+    return n < bytes ? text : text.slice(0, text.lastIndexOf('\n') + 1);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 /** The R expression the column probe reads the chosen file with. */
-export function probeExpr(file: string, sheet?: string): string {
+export function probeExpr(file: string, sheet?: string, textColumns: string[] = []): string {
   const p = JSON.stringify(file.replace(/\\/g, '/'));
+  if (textColumns.length > 0 && dataFileKind(file) === 'csv') {
+    const cols = textColumns.map((c) => `${JSON.stringify(c)} = readr::col_character()`).join(', ');
+    return `readr::read_csv(${p}, show_col_types = FALSE, col_types = readr::cols(${cols}))`;
+  }
   switch (dataFileKind(file)) {
     case 'excel':
       return sheet ? `readxl::read_excel(${p}, sheet = ${JSON.stringify(sheet)})` : `readxl::read_excel(${p})`;

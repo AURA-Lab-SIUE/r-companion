@@ -60,6 +60,10 @@ export const CATALOG: TaskDef[] = [
   { task: 'power', label: 'Power analysis for your sample size', category: 'R4 Test' },
   { task: 'check-test-choice', label: 'Check my test choice', category: 'R4 Test' },
   { task: 'apa-check', label: 'APA numbers to check your sentence', category: 'R4 Test' },
+  // 0.7.5 (A2): added at the very end so every item shown in the course videos keeps its place in
+  // Write R code; the panel puts them after the last Data node (panelModel.ts)
+  { task: 'save-rdata', label: 'Save several tables (.RData)', category: 'R2 Data' },
+  { task: 'load-rdata', label: 'Load saved tables (.RData)', category: 'R2 Data' },
 ];
 
 

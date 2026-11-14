@@ -7,14 +7,22 @@
 // exactly the value the student saw in the grid, on the row they saw it on.
 //
 // usage: node scripts/verify-codes.mjs       env: RSCRIPT, R_COMPANION_LIB
+//
+// The rebuild block is built with the same inputs the viewer gives it (src/dataViewer.ts
+// rebuildCode): the id column the codes are keyed on and whether its ids are short numbers. Until
+// 0.7.5 this script left both out, so the block joined on a row_id the data does not have
+// ("named parsers don't match the column names: row_id") whenever the data carries its own id
+// column, as the course chat does. VERIFY_CODES_OLD_INPUTS=1 builds the block the old way, which
+// is the toggle that shows the failure came from this script and not from the viewer.
+const OLD_INPUTS = process.env.VERIFY_CODES_OLD_INPUTS === '1';
 
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
-import { loadCsvFile, loadRDataFrame } from '../out/src/dataSource.js';
+import { loadCsvFile, loadRDataFrame, idStampOf } from '../out/src/dataSource.js';
 import { CodeStore } from '../out/src/codesStore.js';
-import { rebuildChunk } from '../out/src/rebuild.js';
+import { rebuildChunk, idsAreShortNumbers, codingSheetPath } from '../out/src/rebuild.js';
 
 const RSCRIPT = process.env.RSCRIPT || '/opt/homebrew/bin/Rscript';
 const LIB = process.env.R_COMPANION_LIB || '';
@@ -31,6 +39,7 @@ const VALUES = ['positive', 'neutral', 'negative, mostly', 'said "gg"', 'café',
 
 // Code a spread of rows the way a student would, in the order they would see them.
 function codeRows(data, store, columns) {
+  if (!OLD_INPUTS) store.idColumn = idStampOf(data);   // the viewer stamps the id column the same way
   const expected = new Map();
   const n = data.rows.length;
   const picks = [0, 1, 2, Math.floor(n / 2), n - 2, n - 1].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
@@ -47,6 +56,11 @@ function codeRows(data, store, columns) {
 }
 
 function check(label, work, data, store, columns, expected) {
+  const viewerInputs = OLD_INPUTS ? {} : {
+    sheetRelPath: codingSheetPath(data.name),
+    idColumn: data.rowIdField,
+    numericIds: idsAreShortNumbers(data.rows.map((row) => String(row[data.rowIdField] ?? ''))),
+  };
   const block = rebuildChunk({
     dataRelPath: path.relative(work, data.sourcePath).split(path.sep).join('/'),
     codesRelPath: path.relative(work, store.filePath).split(path.sep).join('/'),
@@ -54,6 +68,7 @@ function check(label, work, data, store, columns, expected) {
     origin: data.origin,
     sourceExpr: data.sourceExpr,
     codingColumns: columns,
+    ...viewerInputs,
   });
   fs.writeFileSync(path.join(work, 'steps.R'), block);
   const res = r(work, `
@@ -93,6 +108,25 @@ write_csv(coding_sample, "data/coding-sample.csv")`);
   results.push(check('CSV sample, two coding columns', work, data, store, ['tone', 'topic'], expected));
 }
 
+// Case 1b: a student's own CSV with no id column, so the viewer numbers the rows itself
+// Case 1c: a student's own CSV whose ids are 19-digit numbers (tweet or post ids), keyed as text
+{
+  const files = {
+    'no-id.csv': 'author,text,likes\nann,"hello, world",3\nbo,"said ""hi""",0\ncy,café,12\ndee,last one,1\n',
+    'long-id.csv': 'post_id,text\n1853472910385720321,first\n1853472910385720322,second\n1853472910385720399,"third, with a comma"\n1853472910385720400,fourth\n',
+  };
+  for (const [name, body] of Object.entries(files)) {
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rcodes-'));
+    fs.mkdirSync(path.join(work, 'data'));
+    fs.writeFileSync(path.join(work, 'data', name), body);
+    const data = loadCsvFile(path.join(work, 'data', name));
+    const store = new CodeStore(path.join(work, 'data', 'derived', `${data.name}-codes.csv`));
+    const expected = codeRows(data, store, ['tone']);
+    const label = name === 'no-id.csv' ? 'own CSV with no id column (row position)' : 'own CSV with 19-digit ids (text key)';
+    results.push(check(label, work, data, store, ['tone'], expected));
+  }
+}
+
 // Case 2: the course corpus opened as an R data frame (the viewer's "Twitch chat" pick)
 {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rcodes-'));
@@ -107,7 +141,7 @@ write_csv(coding_sample, "data/coding-sample.csv")`);
   const c = check('R data frame twitch_chat(), one coding column', work, data, store, ['tone'], expected);
   // and the original columns R rebuilt must equal the corpus itself
   const same = r(work, `suppressMessages(source("steps.R"))
-a <- coded_data %>% select(-row_id, -tone)
+a <- coded_data %>% select(-any_of("row_id"), -tone)   # row_id exists only when the viewer added it
 b <- v2v::twitch_chat()
 cat("##SAME", isTRUE(all.equal(as.data.frame(a), as.data.frame(b), check.attributes = FALSE)), "\\n")
 cat("##TYPES", paste(vapply(a, function(x) class(x)[1], ""), collapse = ","), "|", paste(vapply(b, function(x) class(x)[1], ""), collapse = ","), "\\n")`);

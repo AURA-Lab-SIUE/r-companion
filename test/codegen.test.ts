@@ -49,9 +49,9 @@ const generated = manifest.entries.filter((e) => e.generated);
 // Describe tasks on columns picked from the course data, and 32 run every column-taking task on a
 // student's own file, whose column names and types differ from the course data (owner, 2026-10-28:
 // nothing hard-coded to the sample).
-test('the golden manifest has 155 entries, 149 generated', () => {
-  assert.equal(manifest.entries.length, 155);
-  assert.equal(generated.length, 149);
+test('the golden manifest has 159 entries, 153 generated', () => {
+  assert.equal(manifest.entries.length, 159);
+  assert.equal(generated.length, 153);
 });
 
 for (const e of generated) {

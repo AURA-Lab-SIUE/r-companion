@@ -24,6 +24,21 @@ function readStep(name: string, call: string, p: GenParams, comment: string[]): 
   ];
 }
 
+/**
+ * The CSV read call. A column of whole numbers longer than R keeps exactly (an id of 16 or more
+ * digits) is read as text, so no digit changes (0.7.5, G8); with none, the 0.7.4 call.
+ */
+function csvCall(p: GenParams, file: string): { call: string; comment: string[] } {
+  const cols = p.textColumns ?? [];
+  if (cols.length === 0) return { call: `read_csv("${file}")`, comment: [] };
+  const named = cols.map((c) => `${/^[A-Za-z.][A-Za-z0-9._]*$/.test(c) ? c : `\`${c}\``} = col_character()`).join(', ');
+  const list = cols.length === 1 ? cols[0] : `${cols.slice(0, -1).join(', ')}${cols.length > 2 ? ',' : ''} and ${cols[cols.length - 1]}`;
+  return {
+    call: `read_csv("${file}", col_types = cols(${named}))`,
+    comment: [`# col_types reads ${list} as text: ${cols.length === 1 ? 'its numbers are' : 'their numbers are'} too long for R to keep every digit.`],
+  };
+}
+
 /** The Excel read call: readxl comes with the tidyverse but library(tidyverse) does not load it. */
 function excelCall(p: GenParams, file: string): string {
   return `readxl::read_excel("${file}", sheet = "${p.sheet ?? 'Sheet1'}")`;
@@ -56,7 +71,8 @@ const mc427ImportCsv: Template = (p) => {
     'options(scipen = 10)',
     '',
     `# Read the file and name it ${name}. Prints a report: rows, columns, and each column's type.`,
-    `${name} <- read_csv("${file}")`,
+    ...csvCall(p, file).comment,
+    `${name} <- ${csvCall(p, file).call}`,
     '',
     '# Look at every column: its name, its type, and its first values.',
     `glimpse(${name})`,
@@ -181,8 +197,9 @@ const v2vImportCsv: Template = (p) => {
     "# p-values still print the usual way (< 2e-16), so test results look like the course pages.",
     'options(scipen = 10)',
     '',
-    ...readStep(name, `read_csv("${file}")`, p, [
+    ...readStep(name, csvCall(p, file).call, p, [
       `# Read the file and name it ${name}. Prints a report: rows, columns, and each column's type.`,
+      ...csvCall(p, file).comment,
     ]),
     '',
     '# Look at every column: its name, its type, and its first values.',
@@ -442,6 +459,40 @@ const v2vExportRds: Template = (p) => {
   );
 };
 
+// Several tables in one file (0.7.5, A2). save() and load() are base R: readr has no way to keep
+// several tables in one file. Never save.image(), so the file holds only the tables the student
+// chose. The check loads the file into a separate place (new.env()), so it changes no table.
+const v2vSaveRdata: Template = (p) => {
+  const tables = p.tables && p.tables.length > 0 ? p.tables : ['analysis', 'chat'];
+  const file = p.file ?? 'data/my-tables.RData';
+  return lines(
+    banner('Save several tables in one file: save()'),
+    '# An .RData file holds several tables. Each one comes back under the same name when you',
+    '# load the file. Prints nothing.',
+    `save(${tables.join(', ')}, file = "${file}")`,
+    '',
+    '# Look inside the saved file without changing your tables: it lists the names it holds.',
+    `load("${file}", envir = new.env(), verbose = TRUE)`,
+  );
+};
+
+const v2vLoadRdata: Template = (p) => {
+  const file = p.file ?? 'data/my-tables.RData';
+  return lines(
+    banner('Load the tidyverse, the course package, and your saved tables'),
+    'library(tidyverse)',
+    'library(v2v)',
+    '',
+    '# Print big numbers in full (20000000, not 2e+07) for the rest of this session. Very small',
+    "# p-values still print the usual way (< 2e-16), so test results look like the course pages.",
+    'options(scipen = 10)',
+    '',
+    '# Read every table in the file back under the name it was saved with. A table you already',
+    '# have with the same name is replaced. verbose = TRUE prints the names that came back.',
+    `load("${file}", verbose = TRUE)`,
+  );
+};
+
 // Reliability with the irr calls reliability() wraps (owner q-20261018-0044 = A). The codes are
 // numbered from the data, never from a fixed list, so any codebook works; the wrapper runs last as
 // a check.
@@ -643,4 +694,6 @@ export const V2V_R2: Record<string, Template> = {
   'export-csv': v2vExportCsv,
   'export-rds': v2vExportRds,
   reliability: v2vReliability,
+  'save-rdata': v2vSaveRdata,
+  'load-rdata': v2vLoadRdata,
 };

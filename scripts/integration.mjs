@@ -43,6 +43,8 @@ fs.writeFileSync(
       // AURA_IT_STARTUP_EDITOR=none matches the video capture profile, where nothing opens the
       // Welcome page at startup, so VS Code builds its walkthrough list only when one is opened
       ...(process.env.AURA_IT_STARTUP_EDITOR ? { 'workbench.startupEditor': process.env.AURA_IT_STARTUP_EDITOR } : {}),
+      // AURA_IT_DIALOG_STYLE=custom draws a modal confirm in the page, where a suite can press it
+      ...(process.env.AURA_IT_DIALOG_STYLE ? { 'window.dialogStyle': process.env.AURA_IT_DIALOG_STYLE } : {}),
     },
     null,
     2,

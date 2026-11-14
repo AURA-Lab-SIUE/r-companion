@@ -182,6 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
     resourcePath,
     storageDir: context.globalStorageUri.fsPath,
     apaCheck: () => setting<boolean>('apaCheck', true),
+    restartR,
   });
   reg('auraR.checkTestChoice', (input?: TestChoiceInput) => checkTestChoiceCommand(input));
   // The AURA panel in the Activity Bar (0.5.3): a second door to the same commands
@@ -728,6 +729,34 @@ async function openRTerminal() {
  * the block goes where it went before: vscode-R's terminal through r.runCommand, else the
  * companion's terminal.
  */
+/**
+ * Restart R and run my steps (0.7.5, A4): closes every live R terminal (R (AURA) and vscode-R's)
+ * and waits for each to close, so the next runInSession opens a fresh R (AURA) with nothing typed
+ * by hand in it. Positron's console is not a terminal, so there the student restarts it.
+ */
+async function restartR(): Promise<'restarted' | 'positron'> {
+  if (pickAdapter(setting('runWith', 'auto'), terminalAdapter).id === 'positron') return 'positron';
+  const live = vscode.window.terminals.filter((t) => t.exitStatus === undefined && isRTerminalName(t.name));
+  await Promise.all(
+    live.map(
+      (t) =>
+        new Promise<void>((resolve) => {
+          const timer = setTimeout(() => done(), 5000);
+          const sub = vscode.window.onDidCloseTerminal((x) => {
+            if (x === t) done();
+          });
+          function done() {
+            clearTimeout(timer);
+            sub.dispose();
+            resolve();
+          }
+          t.dispose();
+        }),
+    ),
+  );
+  return 'restarted';
+}
+
 async function runInSession(code: string): Promise<void> {
   try {
     const adapter = pickAdapter(setting('runWith', 'auto'), terminalAdapter);

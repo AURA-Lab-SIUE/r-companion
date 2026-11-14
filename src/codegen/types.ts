@@ -29,6 +29,8 @@ export interface GenParams {
   sheet?: string;
   /** Add janitor::clean_names() after the read (MC 451 and MC 501, when a column name needs it). */
   cleanNames?: boolean;
+  /** CSV columns read as text, by their names in the file: whole numbers too long for R to keep exactly (0.7.5, G8). */
+  textColumns?: string[];
   /** The second table of a join (the one columns are taken from). */
   right?: string;
   /** Join with inner_join(): keep only the rows that match on both sides. */
@@ -45,6 +47,8 @@ export interface GenParams {
   heights?: string;
   /** Labeled factor: the labels, comma-separated, in the order of the levels (value holds the levels). */
   labels?: string;
+  /** The tables a save or load of several tables names (Save several tables (.RData)). */
+  tables?: string[];
 }
 
 /** A template: golden-reproducing when given no overrides. */
